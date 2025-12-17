@@ -1,0 +1,39 @@
+{   
+     "Odoo Abstract Model": {
+        "prefix": "odoo abstract model",
+        "body": [
+            "from odoo import api,fields,models",
+            "",
+            "class ${1:ModelName}(models.AbstractModel):",
+            "    _name = '${2:model.name}'",
+            "    _description = '${3:Model Description}'",
+            "",
+            "    name = fields.Char(string='Name', required=True)",
+            "    ${4:active} = fields.Boolean(string='Active', default=True)"
+        ],
+        "description": "Create a new Odoo abstract model"
+    },
+    "Odoo Transient Model": {
+        "prefix": "odoo transient model",
+        "body": [
+            "from odoo import api,fields,models",
+            "",
+            "class ${1:ModelName}(models.TransientModel):",
+            "    _name = '${2:model.name}'",
+            "    _description = '${3:Model Description}'",
+            "",
+            "    name = fields.Char(string='Name', required=True)",
+            "    ${4:active} = fields.Boolean(string='Active', default=True)"
+        ],
+        "description": "Create a new Odoo transient model"
+    },
+    "SQL Constraint": {
+        "prefix": "odoo sql constraints",
+        "body": [
+            "_sql_constraints = [",
+            "    ('${1:constraint_name}', '${2:constraint_type}', '${3:message}')",
+            "]"
+        ],
+        "description": "Add SQL constraints"
+    }
+}

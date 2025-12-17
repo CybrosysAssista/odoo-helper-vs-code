@@ -1,0 +1,203 @@
+{
+  "name": "cybrosys-assista-odoo-helper",
+  "displayName": "Cybrosys Assista: Odoo Helper",
+  "icon": "logo/logo.png",
+  "description": "VS Code extension focused on Odoo 18 and 19 development. Includes code completions, model/view scaffolding, XML/Python snippets, and decorator intelligence.",
+  "version": "1.5.0",
+  "publisher": "CybrosysTechnologiesOdooOfficialPartner",
+  "author": {
+    "name": "Cybrosys Technologies",
+    "url": "https://www.cybrosys.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CybrosysAssista/Assista-VS-Code.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CybrosysAssista/Assista-VS-Code/issues"
+  },
+  "homepage": "https://github.com/CybrosysAssista/Assista-VS-Code#readme",
+  "keywords": [
+    "odoo",
+    "odoo18",
+    "odoo19",
+    "odoo18-dev",
+    "odoo-dev",
+    "vscode",
+    "vscode-extension",
+    "xml",
+    "python",
+    "owl",
+    "snippets",
+    "scaffold",
+    "decorators",
+    "code-completion",
+    "odoo-snippets",
+    "odoo-module"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:**/__manifest__.py",
+    "workspaceContains:**/odoo/release.py",
+    "onLanguage:python",
+    "onLanguage:xml"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cybrosys-assista-odoo-helper.createOdooModelFile",
+        "title": "Create Model File"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOdooViewFile",
+        "title": "Create View File"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOdooAccessFile",
+        "title": "Create Security File"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createModuleBasic",
+        "title": "Create Basic Module"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createModuleAdvanced",
+        "title": "Create Advanced Module"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createModuleowlBasic",
+        "title": "Create Basic OWL Module"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createModuleowlAdvanced",
+        "title": "Create Advanced OWL Module"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createModuleWithSystrayMenu",
+        "title": "Create Module with Systray Menu"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createModuleWebsiteTheme",
+        "title": "Create Website Theme"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.setOdooVersion",
+        "title": "Assista: Set Odoo Version"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
+          "group": "navigation@1",
+          "title": "Create Odoo File"
+        },
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createModuleSubmenu",
+          "group": "navigation@2",
+          "title": "Create Odoo Module"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.createFileSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooModelFile",
+          "group": "odoo@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooViewFile",
+          "group": "odoo@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooAccessFile",
+          "group": "odoo@3"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.createModuleSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createModuleBasic",
+          "group": "odoo@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createModuleAdvanced",
+          "group": "odoo@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createModuleowlBasic",
+          "group": "odoo@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createModuleowlAdvanced",
+          "group": "odoo@4"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createModuleWithSystrayMenu",
+          "group": "odoo@5"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createModuleWebsiteTheme",
+          "group": "odoo@6"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "cybrosys-assista-odoo-helper.createFileSubmenu",
+        "label": "Create Odoo File"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createModuleSubmenu",
+        "label": "Create Odoo Module"
+      }
+    ],
+    "snippets": [],
+    "configuration": {
+      "title": "Cybrosys Assista Odoo Helper",
+      "properties": {
+        "cybrosys-assista-odoo-helper.enableCodeStandardWarnings": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable Odoo code standard warnings and linting"
+        },
+        "cybrosys-assista-odoo-helper.odooVersion": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "18",
+            "19"
+          ],
+          "default": "auto",
+          "description": "Target Odoo version for completions, lint rules, and scaffolding. Use 'auto' to detect from odoo/release.py."
+        },
+        "cybrosys-assista-odoo-helper.odooSourcePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to Odoo source root (containing 'odoo/release.py') to help auto-detection."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "20.x",
+    "eslint": "^8.54.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.3",
+    "@vscode/test-electron": "^2.3.8"
+  }
+}

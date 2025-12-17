@@ -1,0 +1,377 @@
+{
+  "Odoo Common Tag": {
+    "prefix": "odoo xml",
+    "body": [
+      "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
+      "<odoo>",
+      "    ${0:<!-- Enter your Odoo XML code here -->}",
+      "</odoo>"
+    ],
+    "description": "Basic Odoo XML file with UTF-8 declaration and placeholder"
+  },
+  "Odoo Record": {
+    "prefix": "odoo record",
+    "body": [
+      "<record id=\"${1:record_id}\" model=\"${2:model.name}\">",
+      "    <field name=\"${3:field_name}\">${4:value}</field>",
+      "    ${5:<!-- Add more <field> tags here -->}",
+      "</record>"
+    ],
+    "description": "Basic Odoo record tag with dynamic ID, model, and fields"
+  },
+  "Odoo Form View": {
+    "prefix": "odoo form view",
+    "body": [
+      "<record id=\"${1:model_name}_view_form\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.form</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <form string=\"${3:Form Title}\">",
+      "            <sheet>",
+      "                <group>",
+      "                    <field name=\"name\"/>",
+      "                    ${4:<!-- Add your fields here -->}",
+      "                </group>",
+      "            </sheet>",
+      "        </form>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo form view"
+  },
+  "Odoo List View": {
+    "prefix": "odoo list view",
+    "body": [
+      "<record id=\"${1:model_name}_view_list\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.list</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <list string=\"${3:List Title}\">",
+      "            <field name=\"name\"/>",
+      "            ${4:<!-- Add your fields here -->}",
+      "        </list>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo list view"
+  },
+  "Odoo Pivot View": {
+    "prefix": "odoo pivot view",
+    "body": [
+      "<record id=\"${1:model_name}_view_pivot\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.pivot</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <pivot string=\"${3:Pivot Title}\">",
+      "            <field name=\"${4:field_name}\"/>",
+      "            <field name=\"${5:field_name}\"/>",
+      "            <field name=\"${6:field_name}\"/>",
+      "        </pivot>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo pivot view"
+  },
+  "Odoo Calendar View": {
+    "prefix": "odoo calendar view",
+    "body": [
+      "<record id=\"${1:model_name}_view_calendar\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.calendar</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <calendar string=\"${3:Calendar Title}\" date_start=\"${4:start_date_field}\" date_stop=\"${5:end_date_field}\" mode=\"month\">",
+      "            <field name=\"name\"/>",
+      "            ${6:<!-- Add your fields here -->}",
+      "        </calendar>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo calendar view"
+  },
+  "Odoo Graph View": {
+    "prefix": "odoo graph view",
+    "body": [
+      "<record id=\"${1:model_name}_view_graph\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.graph</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <graph string=\"${3:Graph Title}\" type=\"bar\">",
+      "            <field name=\"${4:field_name}\" type=\"row\"/>",
+      "            <field name=\"${5:field_name}\" type=\"measure\"/>",
+      "        </graph>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo graph view"
+  },
+  "Odoo Search View": {
+    "prefix": "odoo search view",
+    "body": [
+      "<record id=\"${1:model_name}_view_search\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.search</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <search string=\"${3:Search Title}\">",
+      "            <field name=\"name\"/>",
+      "            ${4:<!-- Add your fields here -->}",
+      "            <filter string=\"${5:Filter Name}\" name=\"${6:filter_name}\" domain=\"[('${7:field}', '=', ${8:value})]\"/>",
+      "            <group expand=\"0\" string=\"Group By\">",
+      "                <filter string=\"${9:Group By Name}\" name=\"${10:group_by_name}\" context=\"{'group_by': '${11:field}'}\"/>",
+      "            </group>",
+      "        </search>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo search view"
+  },
+  "Odoo Kanban View": {
+    "prefix": "odoo kanban view",
+    "body": [
+      "<record id=\"${1:model_name}_view_kanban\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.kanban</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <kanban string=\"${3:Kanban Title}\" class=\"o_kanban_small_column\">",
+      "            <field name=\"name\"/>",
+      "            ${4:<!-- Add your fields here -->}",
+      "            <templates>",
+      "                <t t-name=\"card\">",
+      "                    <div class=\"oe_kanban_global_click\">",
+      "                        <div class=\"oe_kanban_details\">",
+      "                            <strong class=\"o_kanban_record_title\">",
+      "                                <field name=\"name\"/>",
+      "                            </strong>",
+      "                        </div>",
+      "                    </div>",
+      "                </t>",
+      "            </templates>",
+      "        </kanban>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create a new Odoo kanban view"
+  },
+  "Odoo Action": {
+    "prefix": "odoo action",
+    "body": [
+      "<record id=\"action_${1:model_name}\" model=\"ir.actions.act_window\">",
+      "    <field name=\"name\">${2:Action Name}</field>",
+      "    <field name=\"res_model\">${3:model.name}</field>",
+      "    <field name=\"view_mode\">${4:list,form}</field>",
+      "    <field name=\"help\" type=\"html\">",
+      "        <p class=\"o_view_nocontent_smiling_face\">",
+      "            ${5:Create your first record!}",
+      "        </p>",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create an Odoo window action"
+  },
+  "Odoo View Inherit": {
+    "prefix": "odoo view inherit",
+    "body": [
+      "<record id=\"${1:model_name}_view_${2:view_type}_inherit\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${3:model.name}.inherit.${2:view_type}</field>",
+      "    <field name=\"model\">${3:model.name}</field>",
+      "    <field name=\"inherit_id\" ref=\"${4:module.view_id}\"/>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        ${5:<!-- Add your xpath modifications here -->}",
+      "    </field>",
+      "</record>"
+    ],
+    "description": "Create an inherited view"
+  },
+  "Odoo Page": {
+    "prefix": "odoo page",
+    "body": [
+      "<page string=\"${1:Page Title}\" name=\"${2:page_name}\">",
+      "    ${3:<!-- Add your page content here -->}",
+      "</page>"
+    ],
+    "description": "Add a page element in notebook"
+  },
+  "Odoo Notebook": {
+    "prefix": "odoo notebook",
+    "body": [
+      "<notebook>",
+      "    <page string=\"${1:Page Title}\" name=\"${2:page_name}\">",
+      "        ${3:<!-- Add your page content here -->}",
+      "    </page>",
+      "</notebook>"
+    ],
+    "description": "Add a notebook block with pages"
+  },
+  "Odoo XPath": {
+    "prefix": "odoo xpath",
+    "body": [
+      "<xpath expr=\"${1://field[@name='field_name']}\" position=\"${2:after}\">",
+      "    ${3:<!-- Add your content here -->}",
+      "</xpath>"
+    ],
+    "description": "Add XPath block for view inheritance"
+  },
+  "Odoo Header": {
+    "prefix": "odoo header",
+    "body": [
+      "<header>",
+      "    <button name=\"${1:action_confirm}\" string=\"${2:Confirm}\" type=\"object\" states=\"${3:draft}\" class=\"btn-primary\"/>",
+      "    <button name=\"${4:action_cancel}\" string=\"${5:Cancel}\" type=\"object\" states=\"${6:confirmed}\"/>",
+      "    <field name=\"state\" widget=\"statusbar\" statusbar_visible=\"${7:draft,confirmed,done}\"/>",
+      "</header>"
+    ],
+    "description": "Add header with buttons and statusbar"
+  },
+  "Odoo Sheet": {
+    "prefix": "odoo sheet",
+    "body": [
+      "<sheet>",
+      "    <group>",
+      "        <field name=\"${1:field_name}\"/>",
+      "        ${2:<!-- Add more fields here -->}",
+      "    </group>",
+      "</sheet>"
+    ],
+    "description": "Add sheet with group and fields"
+  },
+  "Odoo Smart Button": {
+    "prefix": "odoo smart button",
+    "body": [
+      "<button name=\"${1:action_view_records}\" type=\"object\" class=\"oe_stat_button\" icon=\"fa-${2:list}\">",
+      "    <field name=\"${3:record_count}\" widget=\"statinfo\" string=\"${4:Records}\"/>",
+      "</button>"
+    ],
+    "description": "Add smart button with statistics"
+  },
+  "Odoo Label": {
+    "prefix": "odoo label",
+    "body": [
+      "<label for=\"${1:field_name}\" string=\"${2:Label Text}\" class=\"${3:o_form_label}\"/>"
+    ],
+    "description": "Add label element"
+  },
+  "Odoo Groups": {
+    "prefix": "odoo groups",
+    "body": [
+      "groups=\"${1:base.group_user}\""
+    ],
+    "description": "Add groups restriction"
+  },
+  "Odoo Field": {
+    "prefix": "odoo field",
+    "body": [
+      "<field name=\"${1:field_name}\"/>"
+    ],
+    "description": "Add field in form/view"
+  },
+  "Odoo Domain": {
+    "prefix": "odoo domain",
+    "body": [
+      "domain=\"[('${1:field_name}', '${2:=}', ${3:value})]\""
+    ],
+    "description": "Add domain to field"
+  },
+  "Odoo Field Invisible": {
+    "prefix": "odoo field invisible",
+    "body": [
+      "<field name=\"${1:field_name}\" invisible=\"${2:True}\"/>"
+    ],
+    "description": "Add invisible condition to field"
+  },
+  "Odoo Field Readonly": {
+    "prefix": "odoo field readonly",
+    "body": [
+      "<field name=\"${1:field_name}\" readonly=\"${2:True}\"/>"
+    ],
+    "description": "Add readonly condition to field"
+  },
+  "Odoo Field Required": {
+    "prefix": "odoo field required",
+    "body": [
+      "<field name=\"${1:field_name}\" required=\"${2:True}\"/>"
+    ],
+    "description": "Add required condition to field"
+  },
+  "Odoo Field State": {
+    "prefix": "odoo field state",
+    "body": [
+      "<field name=\"state\" widget=\"statusbar\" statusbar_visible=\"${1:draft,confirmed,done}\"/>"
+    ],
+    "description": "Add state field in status bar"
+  },
+  "Odoo Field Widget": {
+    "prefix": "odoo field widget",
+    "body": [
+      "<field name=\"${1:field_name}\" widget=\"${2:many2many_tags}\"/>"
+    ],
+    "description": "Add widget to field"
+  },
+  "Odoo Options": {
+    "prefix": "odoo options",
+    "body": [
+      "options=\"{'${1:option_name}': ${2:option_value}}\""
+    ],
+    "description": "Add options to field"
+  },
+  "Odoo Chatter": {
+    "prefix": "odoo chatter",
+    "body": [
+      "<chatter/>"
+    ],
+    "description": "Add chatter in form view"
+  },
+  "Odoo Button Box": {
+    "prefix": "odoo button box",
+    "body": [
+      "<div class=\"oe_button_box\" name=\"button_box\">",
+      "    ${1:<!-- Add smart buttons here -->}",
+      "</div>"
+    ],
+    "description": "Add button box for smart buttons"
+  },
+  "Odoo Action Button": {
+    "prefix": "odoo action button",
+    "body": [
+      "<button name=\"${1:%(action_name)d}\" string=\"${2:Button Text}\" type=\"action\" class=\"${3:btn-primary}\"/>"
+    ],
+    "description": "Add action button"
+  },
+  "Odoo Object Button": {
+    "prefix": "odoo object button",
+    "body": [
+      "<button name=\"${1:method_name}\" string=\"${2:Button Text}\" type=\"object\" class=\"${3:btn-primary}\"/>"
+    ],
+    "description": "Add object button"
+  },
+  "Odoo Menu Category": {
+    "prefix": "odoo menu category",
+    "body": [
+      "<menuitem id=\"menu_${1:category_name}\"",
+      "    name=\"${2:Category Name}\"",
+      "    sequence=\"${3:10}\"/>"
+    ],
+    "description": "Add category menu item (top-level)"
+  },
+  "Odoo Menu Action": {
+    "prefix": "odoo menu action",
+    "body": [
+      "<menuitem id=\"menu_${1:menu_name}\"",
+      "    name=\"${2:Menu Name}\"",
+      "    action=\"${3:action_name}\"",
+      "    parent=\"${4:parent_menu}\"",
+      "    sequence=\"${5:10}\"/>"
+    ],
+    "description": "Add action menu item"
+  },
+  "Odoo Menu Root": {
+    "prefix": "odoo menu root",
+    "body": [
+      "<menuitem id=\"menu_${1:root_name}\"",
+      "    name=\"${2:Root Menu Name}\"",
+      "    web_icon=\"${3:module_name,static/description/icon.png}\"",
+      "    sequence=\"${4:10}\"/>"
+    ],
+    "description": "Add root menu item with icon"
+  }
+}
+
+
