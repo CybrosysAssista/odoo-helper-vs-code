@@ -97,13 +97,20 @@
     "menus": {
       "explorer/context": [
         {
+          "submenu": "cybrosys-assista-odoo-helper.mainMenu",
+          "group": "navigation",
+          "title": "Odoo Developer Tools"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.mainMenu": [
+        {
           "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
-          "group": "navigation@1",
+          "group": "1_files",
           "title": "Create Odoo File"
         },
         {
           "submenu": "cybrosys-assista-odoo-helper.createModuleSubmenu",
-          "group": "navigation@2",
+          "group": "2_modules",
           "title": "Create Odoo Module"
         }
       ],
@@ -149,6 +156,10 @@
       ]
     },
     "submenus": [
+      {
+        "id": "cybrosys-assista-odoo-helper.mainMenu",
+        "label": "Odoo Developer Tools"
+      },
       {
         "id": "cybrosys-assista-odoo-helper.createFileSubmenu",
         "label": "Create Odoo File"
