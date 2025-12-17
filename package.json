@@ -65,10 +65,6 @@
         "title": "Create Security File"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.addToInit",
-        "title": "Add to __init__.py"
-      },
-      {
         "command": "cybrosys-assista-odoo-helper.createModuleBasic",
         "title": "Create Basic Module"
       },
@@ -108,31 +104,21 @@
     "menus": {
       "explorer/context": [
         {
-          "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
+          "submenu": "cybrosys-assista-odoo-helper.mainMenu",
           "group": "navigation@1",
+          "title": "Assista Odoo"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.mainMenu": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
+          "group": "1_file",
           "title": "Create Odoo File"
         },
         {
           "submenu": "cybrosys-assista-odoo-helper.createModuleSubmenu",
-          "group": "navigation@2",
+          "group": "2_module",
           "title": "Create Odoo Module"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "cybrosys-assista-odoo-helper.addToInit",
-          "group": "odoo@1",
-          "when": "resourceLangId == python"
-        },
-        {
-          "submenu": "cybrosys-assista-odoo-helper.createReportSubmenu",
-          "group": "odoo@2",
-          "title": "Create Report"
-        },
-        {
-          "command": "cybrosys-assista-odoo-helper.createOdooViewFile",
-          "group": "odoo@3",
-          "title": "Create View"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [
@@ -191,6 +177,10 @@
       ]
     },
     "submenus": [
+      {
+        "id": "cybrosys-assista-odoo-helper.mainMenu",
+        "label": "Assista Odoo"
+      },
       {
         "id": "cybrosys-assista-odoo-helper.createFileSubmenu",
         "label": "Create Odoo File"
