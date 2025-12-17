@@ -48,9 +48,6 @@ async function handleCreateModule(uri, type) {
 async function handleCreateOdooModelFile(uri) {
     try {
         const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
-        if (!moduleRoot) {
-            return vscode.window.showErrorMessage('Please right-click a file or folder inside an valid Odoo module.');
-        }
         const fileType = await vscode.window.showQuickPick(['__init__', '__manifest__', 'Odoo Model', 'Odoo Controller'], {
             placeHolder: 'Select the type of Odoo file to create',
             ignoreFocusOut: true
@@ -89,6 +86,11 @@ from . import `;
 }`;
         }
         else {
+            console.log(moduleRoot);
+            console.log(uri);
+            if (!moduleRoot || uri.path == moduleRoot.path) {
+                return vscode.window.showErrorMessage(`${fileType} Creation is not allowed in module root directory or outside of module directory.`);
+            }
             fileName = await vscode.window.showInputBox({
                 placeHolder: 'Enter the name of the file (without extension)',
                 prompt: 'Example: sale_order, project_task (no dots or spaces)',
@@ -139,6 +141,10 @@ class MainController(http.Controller):
     }
 }
 async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType = 'qweb-pdf') {
+    const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+    if (!moduleRoot || uri.path == moduleRoot.path) {
+        return vscode.window.showErrorMessage('View Creation is not allowed in module root directory or outside of module directory.');
+    }
     try {
         let fileType = preSelectedType;
         if (!fileType) {
@@ -226,6 +232,13 @@ async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType 
     }
 }
 async function handleCreateOdooAccessFile(uri) {
+    const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+    const securityDir = path.join(moduleRoot.fsPath, 'security');
+    console.log("securityDir", securityDir);
+    console.log("uri", uri);
+    if (!moduleRoot.path || !(securityDir == uri.path)) {
+        return vscode.window.showWarningMessage('Security file creation is only allowed in the security directory inside a valid Odoo module.');
+    }
     try {
         const modelName = await vscode.window.showInputBox({
             placeHolder: 'Enter the model name (e.g., sale.order)',
