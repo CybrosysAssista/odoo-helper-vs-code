@@ -1,12 +1,12 @@
 module.exports = {
-    getReportViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+    getReportViewTemplate: (pureName, modelDotName, modelTitle, reportType = 'qweb-pdf') => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Report Action -->
         <record id="action_report_${pureName}" model="ir.actions.report">
             <field name="name">${modelTitle} Report</field>
             <field name="model">${modelDotName}</field>
-            <field name="report_type">qweb-pdf</field>
+            <field name="report_type">${reportType}</field>
             <field name="report_name">${modelDotName}.report_${pureName}</field>
             <field name="report_file">${modelDotName}.report_${pureName}</field>
             <field name="binding_model_id" ref="model_${pureName.replace('.', '_')}"/>

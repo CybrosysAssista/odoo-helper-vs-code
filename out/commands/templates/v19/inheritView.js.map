@@ -1,0 +1,1 @@
+{"version":3,"file":"inheritView.js","sourceRoot":"","sources":["../../../../src/commands/templates/v19/inheritView.js"],"names":[],"mappings":";AAAA,MAAM,CAAC,OAAO,GAAG;IACb,sBAAsB,EAAE,CAAC,QAAQ,EAAE,YAAY,EAAE,EAAE,CAAC;;;;sBAIlC,QAAQ;iCACG,YAAY;kCACX,YAAY;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;sBA2CxB,QAAQ;iCACG,YAAY;kCACX,YAAY;;;;;;;;;QAStC;CACP,CAAC"}

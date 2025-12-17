@@ -50,7 +50,6 @@
     "onLanguage:python",
     "onLanguage:xml"
   ],
-  "main": "./extension.js",
   "contributes": {
     "commands": [
       {
@@ -64,6 +63,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.createOdooAccessFile",
         "title": "Create Security File"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.addToInit",
+        "title": "Add to __init__.py"
       },
       {
         "command": "cybrosys-assista-odoo-helper.createModuleBasic",
@@ -90,6 +93,14 @@
         "title": "Create Website Theme"
       },
       {
+        "command": "cybrosys-assista-odoo-helper.createOdooReportPdf",
+        "title": "Create PDF Report"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOdooReportHtml",
+        "title": "Create HTML Report"
+      },
+      {
         "command": "cybrosys-assista-odoo-helper.setOdooVersion",
         "title": "Assista: Set Odoo Version"
       }
@@ -97,21 +108,31 @@
     "menus": {
       "explorer/context": [
         {
-          "submenu": "cybrosys-assista-odoo-helper.mainMenu",
-          "group": "navigation",
-          "title": "Odoo Developer Tools"
-        }
-      ],
-      "cybrosys-assista-odoo-helper.mainMenu": [
-        {
           "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
-          "group": "1_files",
+          "group": "navigation@1",
           "title": "Create Odoo File"
         },
         {
           "submenu": "cybrosys-assista-odoo-helper.createModuleSubmenu",
-          "group": "2_modules",
+          "group": "navigation@2",
           "title": "Create Odoo Module"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInit",
+          "group": "odoo@1",
+          "when": "resourceLangId == python"
+        },
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createReportSubmenu",
+          "group": "odoo@2",
+          "title": "Create Report"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooViewFile",
+          "group": "odoo@3",
+          "title": "Create View"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [
@@ -126,6 +147,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.createOdooAccessFile",
           "group": "odoo@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInit",
+          "group": "odoo@4"
         }
       ],
       "cybrosys-assista-odoo-helper.createModuleSubmenu": [
@@ -153,13 +178,19 @@
           "command": "cybrosys-assista-odoo-helper.createModuleWebsiteTheme",
           "group": "odoo@6"
         }
+      ],
+      "cybrosys-assista-odoo-helper.createReportSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooReportPdf",
+          "group": "1_type"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooReportHtml",
+          "group": "1_type"
+        }
       ]
     },
     "submenus": [
-      {
-        "id": "cybrosys-assista-odoo-helper.mainMenu",
-        "label": "Odoo Developer Tools"
-      },
       {
         "id": "cybrosys-assista-odoo-helper.createFileSubmenu",
         "label": "Create Odoo File"
@@ -167,6 +198,10 @@
       {
         "id": "cybrosys-assista-odoo-helper.createModuleSubmenu",
         "label": "Create Odoo Module"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createReportSubmenu",
+        "label": "Create Report"
       }
     ],
     "snippets": [],
@@ -196,19 +231,24 @@
       }
     }
   },
+  "main": "./out/extension.js",
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "20.x",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.8",
     "eslint": "^8.54.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "typescript": "^5.3.3",
-    "@vscode/test-electron": "^2.3.8"
+    "typescript": "^5.9.3"
   }
 }

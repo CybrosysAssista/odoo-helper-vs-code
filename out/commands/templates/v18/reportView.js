@@ -1,3 +1,4 @@
+"use strict";
 module.exports = {
     getReportViewTemplate: (pureName, modelDotName, modelTitle, reportType = 'qweb-pdf') => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
@@ -87,3 +88,4 @@ module.exports = {
     </data>
 </odoo>`
 };
+//# sourceMappingURL=reportView.js.map
