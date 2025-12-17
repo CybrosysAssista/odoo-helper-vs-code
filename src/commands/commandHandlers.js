@@ -3,6 +3,7 @@ const { createOdooScaffold } = require('../modules/scaffold');
 const fs = require('fs');
 const path = require('path');
 const templates = require('./templates');
+const OdooModuleUtils = require('../utils/odooModuleUtils');
 
 function capitalize(text) {
     return text
@@ -51,6 +52,13 @@ async function handleCreateModule(uri, type) {
 
 async function handleCreateOdooModelFile(uri) {
     try {
+
+        const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+
+        if (!moduleRoot) {
+            return vscode.window.showErrorMessage('Please right-click a file or folder inside an valid Odoo module.');
+        }
+
         const fileType = await vscode.window.showQuickPick(
             ['__init__', '__manifest__', 'Odoo Model', 'Odoo Controller'],
             {
@@ -209,9 +217,9 @@ async function handleCreateOdooViewFile(uri) {
                 break;
 
             case 'Advanced View':
-                console.log("pureName",pureName);
-                console.log("modelDotName",modelDotName);
-                console.log("modelTitle",modelTitle);
+                console.log("pureName", pureName);
+                console.log("modelDotName", modelDotName);
+                console.log("modelTitle", modelTitle);
                 fileContent = await templates.getAdvancedViewTemplate(pureName, modelDotName, modelTitle);
                 break;
 
