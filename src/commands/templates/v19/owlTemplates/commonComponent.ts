@@ -1,6 +1,7 @@
 import { FileSystemNode } from "../../../../utils/utils";
 
-class commonComponent {
+
+export class commonComponent {
     private componentName: string;
     private moduleName: string;
     private componentTechnicalName: string;
@@ -85,37 +86,37 @@ class commonComponent {
 
     public getXmlContent(): string {
         const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<templates xml:space="preserve">
-    <t t-name="${this.templateName}" owl="1">
-        <div class="o_${this.componentTechnicalName}_widget" t-ref="containerRef">
-            <t t-if="state.loading">
-                <div class="o-widget-loading">Loading...</div>
-            </t>
+        <templates xml:space="preserve">
+            <t t-name="${this.templateName}" owl="1">
+                <div class="o_${this.componentTechnicalName}_widget" t-ref="containerRef">
+                    <t t-if="state.loading">
+                        <div class="o-widget-loading">Loading...</div>
+                    </t>
 
-            <t t-if="!state.loading">
-                <h4 t-esc="${this.componentClassName}"/>
-                <div class="o-widget-body">
-                    <p>Count: <t t-esc="state.count"/></p>
+                    <t t-if="!state.loading">
+                        <h4 t-esc="${this.componentClassName}"/>
+                        <div class="o-widget-body">
+                            <p>Count: <t t-esc="state.count"/></p>
 
-                    <div>
-                        <button class="btn btn-sm btn-primary" t-on-click="increment">Increment</button>
-                        <button class="btn btn-sm btn-secondary" t-on-click="reset">Reset</button>
-                    </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary" t-on-click="increment">Increment</button>
+                                <button class="btn btn-sm btn-secondary" t-on-click="reset">Reset</button>
+                            </div>
 
-                    <div class="mt-2">
-                        <input t-ref="inputRef"
-                                type="text"
-                                t-att-value="state.message"
-                                t-on-input="(ev) => this.onInput(ev)"
-                                placeholder="Type message..." />
-                    </div>
+                            <div class="mt-2">
+                                <input t-ref="inputRef"
+                                        type="text"
+                                        t-att-value="state.message"
+                                        t-on-input="(ev) => this.onInput(ev)"
+                                        placeholder="Type message..." />
+                            </div>
 
-                    <p class="mt-2">Message: <t t-esc="state.message"/></p>
+                            <p class="mt-2">Message: <t t-esc="state.message"/></p>
+                        </div>
+                    </t>
                 </div>
             </t>
-        </div>
-    </t>
-</templates>`;
+        </templates>`;
         return xmlContent;
     }
 
@@ -127,27 +128,27 @@ class commonComponent {
     background: var(--bg, #ffffff);
     display: inline-block;
     max-width: 420px;
-}
+    }
 
-.o_${this.componentTechnicalName}_widget .o-widget-loading {
-    padding: 10px;
-    color: var(--text-muted, #666);
-}
+    .o_${this.componentTechnicalName}_widget .o-widget-loading {
+        padding: 10px;
+        color: var(--text-muted, #666);
+    }
 
-.o_${this.componentTechnicalName}_widget .o-widget-body p {
-    margin: 6px 0;
-}
+    .o_${this.componentTechnicalName}_widget .o-widget-body p {
+        margin: 6px 0;
+    }
 
-.o_${this.componentTechnicalName}_widget input[type="text"] {
-    width: 100%;
-    padding: 6px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color, #ccc);
-}`;
+    .o_${this.componentTechnicalName}_widget input[type="text"] {
+        width: 100%;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color, #ccc);
+    }`;
         return cssContent;
     }
 
-    public getDirectoryStructure(): FileSystemNode[] {
+    public getCompleteDirectoryStructure(): FileSystemNode[] {
         return [
             {
                 type: 'folder',
@@ -205,4 +206,4 @@ class commonComponent {
     }
 }
 
-export { commonComponent };
+

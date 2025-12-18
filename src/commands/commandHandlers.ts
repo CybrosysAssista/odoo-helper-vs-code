@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createOdooScaffold } from '../modules/scaffold';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { helperUtils } from '../utils/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const templates = require('./templates');
@@ -376,8 +377,37 @@ async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): 
         vscode.window.showWarningMessage('Pos component creation is only allowed in a valid Odoo module.');
         return;
     }
-    // Placeholder for future implementation
-    vscode.window.showInformationMessage(`Creating POS component of type: ${type}`);
+
+    const componentName = await vscode.window.showInputBox({
+        prompt: 'Enter the POS component name (e.g. ActionButton)',
+        placeHolder: 'MyCustomButton',
+    });
+
+    if (!componentName) {
+        vscode.window.showWarningMessage('Component name is required.');
+        return;
+    }
+
+    try {
+        const moduleName = path.basename(moduleRoot.fsPath);
+        const componentInstance = await templates.getPosComponentTemplate(componentName, moduleName, type);
+
+        if (componentInstance && componentInstance.getCompleteDirectoryStructure) {
+            const structure = componentInstance.getCompleteDirectoryStructure();
+            const result = await helperUtils.createRecursiveDirectory(moduleRoot, structure);
+
+            if (result.success) {
+                vscode.window.showInformationMessage(`POS Component "${componentName}" created successfully.`);
+                await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
+            } else {
+                vscode.window.showErrorMessage(`Failed to create component: ${result.message.join(', ')}`);
+            }
+        } else {
+            vscode.window.showErrorMessage('Could not load POS component template structure.');
+        }
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Error creating POS component: ${error.message}`);
+    }
 }
 
 export function registerCommands(context: vscode.ExtensionContext): void {
@@ -467,8 +497,8 @@ export function registerCommands(context: vscode.ExtensionContext): void {
             handler: handleAddToInit
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosComponentFile',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'basic')
+            command: 'cybrosys-assista-odoo-helper.createPosCommonComponent',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'commonComponent')
         }
     ];
 

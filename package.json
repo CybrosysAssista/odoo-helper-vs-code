@@ -113,8 +113,8 @@
         "title": "Add File to Manifest (Tree-sitter)"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.createPosComponentFile",
-        "title": "Create POS Component File"
+        "command": "cybrosys-assista-odoo-helper.createPosCommonComponent",
+        "title": "Common Component"
       }
     ],
     "menus": {
@@ -144,7 +144,7 @@
       ],
       "cybrosys-assista-odoo-helper.createPosComponentsSubmenu": [
         {
-          "command": "cybrosys-assista-odoo-helper.createPosComponentFile",
+          "command": "cybrosys-assista-odoo-helper.createPosCommonComponent",
           "group": "pos@1"
         }
       ],
