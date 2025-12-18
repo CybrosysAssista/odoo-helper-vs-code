@@ -1,5 +1,4 @@
-module.exports = {
-    getInheritViewTemplate: (pureName, modelDotName) => `<?xml version="1.0" encoding="utf-8"?>
+export const getInheritViewTemplate = (pureName: string, modelDotName: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Inherit Form View -->
@@ -59,5 +58,4 @@ module.exports = {
             </field>
         </record>
     </data>
-</odoo>`
-};
+</odoo>`;

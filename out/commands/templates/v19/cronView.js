@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getCronViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getCronViewTemplate = void 0;
+const getCronViewTemplate = (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <!-- Scheduled Action -->
     <record id="ir_cron_${pureName}" model="ir.cron">
@@ -15,6 +16,6 @@ module.exports = {
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
     </record>
-</odoo>`
-};
+</odoo>`;
+exports.getCronViewTemplate = getCronViewTemplate;
 //# sourceMappingURL=cronView.js.map

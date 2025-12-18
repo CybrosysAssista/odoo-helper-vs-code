@@ -1,13 +1,13 @@
-const vscode = require('vscode');
+import * as vscode from "vscode";
 
 /**
  * Scaffold the module sub‑folders and files (Odoo 19)
  */
-async function createOdooScaffold(rootUri, moduleName, type) {
+export async function createOdooScaffold(rootUri: vscode.Uri, moduleName: string, type: string): Promise<void> {
     const displayName = moduleName
-      .split("_")
-      .map((w) => w[0].toUpperCase() + w.slice(1))
-      .join(" ");
+        .split("_")
+        .map((w) => w[0].toUpperCase() + w.slice(1))
+        .join(" ");
     if (type == 'basic') {
         const folders = ['models', 'views', 'security'];
 
@@ -39,9 +39,9 @@ async function createOdooScaffold(rootUri, moduleName, type) {
 from odoo import api,fields,models
 
 class ${moduleName
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join("")}(models.Model):
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join("")}(models.Model):
     _name = '${modelName}'
     _description = '${displayName}'
 
@@ -161,16 +161,16 @@ access_${formattedModelName},access_${moduleName},model_${formattedModelName},ba
 `;
 
         const files = {
-          "__init__.py": 
-`# -*- coding: utf-8 -*-
+            "__init__.py":
+                `# -*- coding: utf-8 -*-
 from . import models`,
-          "__manifest__.py": manifestContent,
-          "models/__init__.py": 
-`# -*- coding: utf-8 -*-
+            "__manifest__.py": manifestContent,
+            "models/__init__.py":
+                `# -*- coding: utf-8 -*-
 from . import ${formattedModelName}`,
-          [`models/${formattedModelName}.py`]: modelPy,
-          [`views/${formattedModelName}_views.xml`]: viewXml,
-          "security/ir.model.access.csv": accessCsv,
+            [`models/${formattedModelName}.py`]: modelPy,
+            [`views/${formattedModelName}_views.xml`]: viewXml,
+            "security/ir.model.access.csv": accessCsv,
         };
 
         // Create all directories
@@ -224,9 +224,9 @@ from datetime import datetime
 from odoo import api,fields,models,_
 
 class ${moduleName
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join("")}(models.Model):
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join("")}(models.Model):
     _name = '${modelName}'
     _description = '${displayName}'
 
@@ -433,19 +433,19 @@ access_${formattedModelName},access_${moduleName},model_${formattedModelName},ba
 `;
 
         const files = {
-          "__init__.py": 
-`# -*- coding: utf-8 -*-
+            "__init__.py":
+                `# -*- coding: utf-8 -*-
 from . import models`,
-          "__manifest__.py": manifestContent,
-          "models/__init__.py": 
-`# -*- coding: utf-8 -*-
+            "__manifest__.py": manifestContent,
+            "models/__init__.py":
+                `# -*- coding: utf-8 -*-
 from . import ${formattedModelName}`,
-          [`models/${formattedModelName}.py`]: modelPy,
-          [`views/${formattedModelName}_views.xml`]: viewXml,
-          "security/ir.model.access.csv": accessCsv,
-          "data/ir_sequence_data.xml": sequenceXml,
-          [`demo/${moduleName}_data.xml`]: dataXml,
-          "data/ir_cron_data.xml": cronXml,
+            [`models/${formattedModelName}.py`]: modelPy,
+            [`views/${formattedModelName}_views.xml`]: viewXml,
+            "security/ir.model.access.csv": accessCsv,
+            "data/ir_sequence_data.xml": sequenceXml,
+            [`demo/${moduleName}_data.xml`]: dataXml,
+            "data/ir_cron_data.xml": cronXml,
         };
 
         const dirPromises = folders.map(dir =>
@@ -497,9 +497,9 @@ from . import ${formattedModelName}`,
 from odoo import api,fields,models
 
 class ${moduleName
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join("")}(models.Model):
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join("")}(models.Model):
     _name = '${modelName}'
     _description = '${displayName}'
 
@@ -593,18 +593,18 @@ registry.category("actions").add("${moduleName}.${moduleName}", ${modelClassName
 </templates>`;
 
         const files = {
-          "__init__.py": 
-`# -*- coding: utf-8 -*-
+            "__init__.py":
+                `# -*- coding: utf-8 -*-
 from . import models`,
-          "__manifest__.py": manifestContent,
-          "models/__init__.py": 
-`# -*- coding: utf-8 -*-
+            "__manifest__.py": manifestContent,
+            "models/__init__.py":
+                `# -*- coding: utf-8 -*-
 from . import ${formattedModelName}`,
-          [`models/${formattedModelName}.py`]: modelPy,
-          [`views/${formattedModelName}_views.xml`]: viewXml,
-          "security/ir.model.access.csv": accessCsv,
-          ["static/src/js/client_action.js"]: clientAction,
-          ["static/src/xml/client_action.xml"]: clientActionTemplate,
+            [`models/${formattedModelName}.py`]: modelPy,
+            [`views/${formattedModelName}_views.xml`]: viewXml,
+            "security/ir.model.access.csv": accessCsv,
+            ["static/src/js/client_action.js"]: clientAction,
+            ["static/src/xml/client_action.xml"]: clientActionTemplate,
         };
 
         const dirPromises = folders.map(dir =>
@@ -688,9 +688,9 @@ from datetime import datetime
 from odoo import models, fields, api, _
 
 class ${moduleName
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join("")}(models.Model):
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join("")}(models.Model):
     _name = '${modelName}'
     _description = '${displayName}'
     _inherit = ['mail.thread']
@@ -939,7 +939,7 @@ access_${formattedModelName},access_${moduleName},model_${formattedModelName},ba
     </record>
 </odoo>
 `;
-        const clientAction =`/** @odoo-module */
+        const clientAction = `/** @odoo-module */
 import { registry } from '@web/core/registry';
 import { Component, onWillStart, useState, onMounted, useEffect } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
@@ -1408,22 +1408,22 @@ registry.category("actions").add("${moduleName}.${moduleName}", ${modelClassName
 </templates>`;
 
         const files = {
-          "__init__.py": `# -*- coding: utf-8 -*-
+            "__init__.py": `# -*- coding: utf-8 -*-
 from . import models, controllers`,
-          "__manifest__.py": manifestContent,
-          "models/__init__.py": `# -*- coding: utf-8 -*-
+            "__manifest__.py": manifestContent,
+            "models/__init__.py": `# -*- coding: utf-8 -*-
 from . import ${formattedModelName}`,
-          "controllers/__init__.py": `# -*- coding: utf-8 -*-
+            "controllers/__init__.py": `# -*- coding: utf-8 -*-
 from . import main`,
-          ["controllers/main.py"]: controllerPy,
-          [`models/${formattedModelName}.py`]: modelPy,
-          [`views/${formattedModelName}_views.xml`]: viewXml,
-          "security/ir.model.access.csv": accessCsv,
-          "data/ir_sequence_data.xml": sequenceXml,
-          ["static/src/js/client_action.js"]: clientAction,
-          ["static/src/xml/client_action.xml"]: clientActionTemplate,
-          [`demo/${moduleName}_data.xml`]: dataXml,
-          "data/ir_cron_data.xml": cronXml,
+            ["controllers/main.py"]: controllerPy,
+            [`models/${formattedModelName}.py`]: modelPy,
+            [`views/${formattedModelName}_views.xml`]: viewXml,
+            "security/ir.model.access.csv": accessCsv,
+            "data/ir_sequence_data.xml": sequenceXml,
+            ["static/src/js/client_action.js"]: clientAction,
+            ["static/src/xml/client_action.xml"]: clientActionTemplate,
+            [`demo/${moduleName}_data.xml`]: dataXml,
+            "data/ir_cron_data.xml": cronXml,
         };
 
         const dirPromises = folders.map(dir =>
@@ -1438,9 +1438,9 @@ from . import main`,
 
         await Promise.all([...dirPromises, ...filePromises]);
     } else if (type == 'website_theme') {
-    const folders = ['views'];
-    
-    const manifestContent = `# -*- coding: utf-8 -*-
+        const folders = ['views'];
+
+        const manifestContent = `# -*- coding: utf-8 -*-
 {
     "name": "${displayName}",
     "version": "1.0.0",
@@ -1466,7 +1466,7 @@ from . import main`,
     "application": False
 }`;
 
-    const layoutTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+        const layoutTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="${moduleName}_homepage" inherit_id="website.homepage">
         <xpath expr="//*[@id='wrap']" position="replace">
@@ -1486,7 +1486,7 @@ from . import main`,
     </template>
 </odoo>`;
 
-    const headerTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+        const headerTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="${moduleName}_header" inherit_id="website.layout" name="${displayName} Header">
         <xpath expr="//header" position="replace">
@@ -1511,7 +1511,7 @@ from . import main`,
     </template>
 </odoo>`;
 
-    const footerTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+        const footerTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="${moduleName}_footer" inherit_id="web.frontend_layout">
         <xpath expr="//footer[@id='bottom']" position="replace">
@@ -1532,27 +1532,27 @@ from . import main`,
     </template>
 </odoo>`;
 
-    const files = {
-        "__init__.py": `# -*- coding: utf-8 -*-`,
-        "__manifest__.py": manifestContent,
-        "views/layout_template_views.xml": layoutTemplate,
-        "views/header_template_views.xml": headerTemplate,
-        "views/footer_template_views.xml": footerTemplate,
-    };
+        const files = {
+            "__init__.py": `# -*- coding: utf-8 -*-`,
+            "__manifest__.py": manifestContent,
+            "views/layout_template_views.xml": layoutTemplate,
+            "views/header_template_views.xml": headerTemplate,
+            "views/footer_template_views.xml": footerTemplate,
+        };
 
-    const dirPromises = folders.map(dir =>
-        vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(rootUri, dir))
-    );
+        const dirPromises = folders.map(dir =>
+            vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(rootUri, dir))
+        );
 
-    const filePromises = Object.entries(files).map(([relPath, content]) => {
-        const fileUri = vscode.Uri.joinPath(rootUri, relPath);
-        const uint8arr = Buffer.from(content, 'utf8');
-        return vscode.workspace.fs.writeFile(fileUri, uint8arr);
-    });
+        const filePromises = Object.entries(files).map(([relPath, content]) => {
+            const fileUri = vscode.Uri.joinPath(rootUri, relPath);
+            const uint8arr = Buffer.from(content, 'utf8');
+            return vscode.workspace.fs.writeFile(fileUri, uint8arr);
+        });
 
-    await Promise.all([...dirPromises, ...filePromises]);
-}
- else if (type == 'systray_module') {
+        await Promise.all([...dirPromises, ...filePromises]);
+    }
+    else if (type == 'systray_module') {
         const folders = ['static'];
 
         const manifestContent = `# -*- coding: utf-8 -*-
@@ -1579,7 +1579,7 @@ from . import main`,
     "application": True
     }`;
 
-const systrayJS = `/** @odoo-module **/
+        const systrayJS = `/** @odoo-module **/
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { Component } from "@odoo/owl";
@@ -1609,7 +1609,7 @@ registry.category("systray").add("SystrayIcon", systrayItem, { sequence: 1 });
 `;
 
 
-const systrayXML = `<?xml version="1.0" encoding="UTF-8" ?>
+        const systrayXML = `<?xml version="1.0" encoding="UTF-8" ?>
 <templates xml:space="preserve">
     <t t-name="systray_icon" owl="1">
         <div style="display: flex; align-items: center; height: 100%;">
@@ -1642,8 +1642,6 @@ const systrayXML = `<?xml version="1.0" encoding="UTF-8" ?>
     }
 }
 
-module.exports = {
-    createOdooScaffold
-};
+
 
 

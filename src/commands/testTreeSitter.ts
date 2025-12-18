@@ -1,10 +1,10 @@
-const vscode = require('vscode');
-const { getPythonParserService } = require('../services/pythonParserService');
+import * as vscode from 'vscode';
+import { getPythonParserService } from '../services/pythonParserService';
 
 /**
  * Test command to verify Tree-sitter parser functionality
  */
-async function testTreeSitterParser() {
+export async function testTreeSitterParser(): Promise<void> {
     const parser = getPythonParserService();
 
     if (!parser.isInitialized()) {
@@ -45,7 +45,3 @@ async function testTreeSitterParser() {
         { modal: true }
     );
 }
-
-module.exports = {
-    testTreeSitterParser
-};

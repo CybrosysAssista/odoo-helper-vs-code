@@ -1,5 +1,4 @@
-module.exports = {
-    getSecurityGroupViewTemplate: (pureName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+export const getSecurityGroupViewTemplate = (pureName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Custom Groups -->
@@ -26,11 +25,11 @@ module.exports = {
             <field name="email">${pureName}_demo_user@example.com</field>
         </record>
     </data>
-</odoo>`,
+</odoo>`;
 
-    getSecurityRuleViewTemplate: (pureName, modelDotName) => {
-        const modelUnderscore = modelDotName.replace('.', '_');
-        return `<?xml version="1.0" encoding="utf-8"?>
+export const getSecurityRuleViewTemplate = (pureName: string, modelDotName: string): string => {
+    const modelUnderscore = modelDotName.replace('.', '_');
+    return `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Access Rights -->
@@ -78,5 +77,4 @@ module.exports = {
         </record>
     </data>
 </odoo>`;
-    }
 };

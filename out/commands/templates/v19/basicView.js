@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getBasicViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getBasicViewTemplate = void 0;
+const getBasicViewTemplate = (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Form View -->
@@ -49,6 +50,6 @@ module.exports = {
                   action="action_${pureName}"
                   sequence="10"/>
     </data>
-</odoo>`
-};
+</odoo>`;
+exports.getBasicViewTemplate = getBasicViewTemplate;
 //# sourceMappingURL=basicView.js.map

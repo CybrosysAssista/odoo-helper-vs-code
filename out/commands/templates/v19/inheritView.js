@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getInheritViewTemplate: (pureName, modelDotName) => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getInheritViewTemplate = void 0;
+const getInheritViewTemplate = (pureName, modelDotName) => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Inherit Form View -->
@@ -60,6 +61,6 @@ module.exports = {
             </field>
         </record>
     </data>
-</odoo>`
-};
+</odoo>`;
+exports.getInheritViewTemplate = getInheritViewTemplate;
 //# sourceMappingURL=inheritView.js.map

@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getSettingsViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSettingsViewTemplate = void 0;
+const getSettingsViewTemplate = (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Inherit Res Config Settings Form -->
@@ -21,6 +22,6 @@ module.exports = {
             </field>
         </record>
     </data>
-</odoo>`
-};
+</odoo>`;
+exports.getSettingsViewTemplate = getSettingsViewTemplate;
 //# sourceMappingURL=settingsView.js.map

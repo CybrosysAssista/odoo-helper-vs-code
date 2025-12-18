@@ -1,5 +1,4 @@
-module.exports = {
-    getAdvancedViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+export const getAdvancedViewTemplate = (pureName: string, modelDotName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Form View -->
@@ -151,5 +150,4 @@ module.exports = {
                   action="action_${pureName}"
                   sequence="10"/>
     </data>
-</odoo>`
-};
+</odoo>`;

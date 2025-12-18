@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getSequenceViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSequenceViewTemplate = void 0;
+const getSequenceViewTemplate = (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <!-- Sequence -->
     <record id="seq_${pureName}" model="ir.sequence">
@@ -10,6 +11,6 @@ module.exports = {
         <field name="padding">5</field>
         <field name="company_id" eval="False"/>
     </record>
-</odoo>`
-};
+</odoo>`;
+exports.getSequenceViewTemplate = getSequenceViewTemplate;
 //# sourceMappingURL=sequenceView.js.map

@@ -111,6 +111,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.addFileToManifest",
         "title": "Add File to Manifest (Tree-sitter)"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createPosComponentFile",
+        "title": "Create POS Component File"
       }
     ],
     "menus": {
@@ -131,6 +135,17 @@
           "submenu": "cybrosys-assista-odoo-helper.createModuleSubmenu",
           "group": "2_module",
           "title": "Create Odoo Module"
+        },
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
+          "group": "3_pos",
+          "title": "Create POS Components"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.createPosComponentsSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createPosComponentFile",
+          "group": "pos@1"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [
@@ -204,6 +219,10 @@
       {
         "id": "cybrosys-assista-odoo-helper.createReportSubmenu",
         "label": "Create Report"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
+        "label": "Create POS Components"
       }
     ],
     "snippets": [],

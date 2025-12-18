@@ -1,5 +1,4 @@
-module.exports = {
-    getReportViewTemplate: (pureName, modelDotName, modelTitle, reportType = 'qweb-pdf') => `<?xml version="1.0" encoding="utf-8"?>
+export const getReportViewTemplate = (pureName: string, modelDotName: string, modelTitle: string, reportType = 'qweb-pdf'): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Report Action -->
@@ -85,5 +84,4 @@ module.exports = {
             </t>
         </template>
     </data>
-</odoo>`
-};
+</odoo>`;

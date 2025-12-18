@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getReportViewTemplate: (pureName, modelDotName, modelTitle, reportType = 'qweb-pdf') => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getReportViewTemplate = void 0;
+const getReportViewTemplate = (pureName, modelDotName, modelTitle, reportType = 'qweb-pdf') => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Report Action -->
@@ -86,6 +87,6 @@ module.exports = {
             </t>
         </template>
     </data>
-</odoo>`
-};
+</odoo>`;
+exports.getReportViewTemplate = getReportViewTemplate;
 //# sourceMappingURL=reportView.js.map

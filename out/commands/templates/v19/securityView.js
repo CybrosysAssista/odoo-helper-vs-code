@@ -1,6 +1,7 @@
 "use strict";
-module.exports = {
-    getSecurityGroupViewTemplate: (pureName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSecurityRuleViewTemplate = exports.getSecurityGroupViewTemplate = void 0;
+const getSecurityGroupViewTemplate = (pureName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Custom Groups -->
@@ -27,10 +28,11 @@ module.exports = {
             <field name="email">${pureName}_demo_user@example.com</field>
         </record>
     </data>
-</odoo>`,
-    getSecurityRuleViewTemplate: (pureName, modelDotName) => {
-        const modelUnderscore = modelDotName.replace('.', '_');
-        return `<?xml version="1.0" encoding="utf-8"?>
+</odoo>`;
+exports.getSecurityGroupViewTemplate = getSecurityGroupViewTemplate;
+const getSecurityRuleViewTemplate = (pureName, modelDotName) => {
+    const modelUnderscore = modelDotName.replace('.', '_');
+    return `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Access Rights -->
@@ -78,6 +80,6 @@ module.exports = {
         </record>
     </data>
 </odoo>`;
-    }
 };
+exports.getSecurityRuleViewTemplate = getSecurityRuleViewTemplate;
 //# sourceMappingURL=securityView.js.map

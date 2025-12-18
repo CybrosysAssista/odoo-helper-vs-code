@@ -1,14 +1,13 @@
-const vscode = require('vscode');
-const path = require('path');
-const { getPythonParserService } = require('../services/pythonParserService');
-const { OdooModuleUtils } = require('../utils/odooModuleUtils');
-
+import * as vscode from 'vscode';
+import * as path from 'path';
+import { getPythonParserService } from '../services/pythonParserService';
+import { OdooModuleUtils } from '../utils/odooModuleUtils';
 
 /**
  * Command: Add current XML/CSV file to manifest data list
  * This uses Tree-sitter to safely add the file
  */
-async function addCurrentFileToManifest(uri) {
+export async function addCurrentFileToManifest(uri?: vscode.Uri): Promise<void> {
     const parser = getPythonParserService();
 
     if (!parser.isInitialized()) {
@@ -87,12 +86,8 @@ async function addCurrentFileToManifest(uri) {
             vscode.window.showErrorMessage('Failed to update manifest');
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('[addCurrentFileToManifest] Error:', error);
         vscode.window.showErrorMessage(`Error: ${error.message}`);
     }
 }
-
-module.exports = {
-    addCurrentFileToManifest
-};

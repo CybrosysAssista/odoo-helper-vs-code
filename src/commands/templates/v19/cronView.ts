@@ -1,5 +1,4 @@
-module.exports = {
-    getCronViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+export const getCronViewTemplate = (pureName: string, modelDotName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <!-- Scheduled Action -->
     <record id="ir_cron_${pureName}" model="ir.cron">
@@ -14,5 +13,4 @@ module.exports = {
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
     </record>
-</odoo>`
-};
+</odoo>`;

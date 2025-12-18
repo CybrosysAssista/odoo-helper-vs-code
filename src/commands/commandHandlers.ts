@@ -1,22 +1,25 @@
-const vscode = require('vscode');
-const { createOdooScaffold } = require('../modules/scaffold');
-const fs = require('fs');
-const path = require('path');
-const templates = require('./templates');
-const { OdooModuleUtils } = require('../utils/odooModuleUtils');
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { createOdooScaffold } from '../modules/scaffold';
+import { OdooModuleUtils } from '../utils/odooModuleUtils';
 
-function capitalize(text) {
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const templates = require('./templates');
+
+function capitalize(text: string): string {
     return text
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join('');
 }
 
-async function handleCreateModule(uri, type) {
+async function handleCreateModule(uri: vscode.Uri, type: string): Promise<void> {
     if (!uri || !uri.fsPath) {
-        return vscode.window.showErrorMessage(
+        vscode.window.showErrorMessage(
             `Right‑click a folder and choose "Create ${type} Module".`
         );
+        return;
     }
 
     const moduleName = await vscode.window.showInputBox({
@@ -29,7 +32,8 @@ async function handleCreateModule(uri, type) {
     const targetUri = vscode.Uri.joinPath(uri, moduleName);
     try {
         await vscode.workspace.fs.stat(targetUri);
-        return vscode.window.showErrorMessage(`Module "${moduleName}" already exists.`);
+        vscode.window.showErrorMessage(`Module "${moduleName}" already exists.`);
+        return;
     } catch { }
 
     try {
@@ -45,14 +49,13 @@ async function handleCreateModule(uri, type) {
         const manifestUri = vscode.Uri.joinPath(targetUri, '__manifest__.py');
         await vscode.window.showTextDocument(manifestUri);
         vscode.window.showInformationMessage(`${type} Odoo module "${moduleName}" created successfully!`);
-    } catch (err) {
+    } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to create module: ${err.message}`);
     }
 }
 
-async function handleCreateOdooModelFile(uri) {
+async function handleCreateOdooModelFile(uri: vscode.Uri): Promise<void> {
     try {
-
         const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
 
         const fileType = await vscode.window.showQuickPick(
@@ -64,7 +67,8 @@ async function handleCreateOdooModelFile(uri) {
         );
 
         if (!fileType) {
-            return vscode.window.showWarningMessage('You must select a file type.');
+            vscode.window.showWarningMessage('You must select a file type.');
+            return;
         }
 
         let fileName = '';
@@ -97,13 +101,12 @@ from . import `;
     'auto_install': False,
 }`;
         } else {
-            console.log(moduleRoot);
-            console.log(uri);
-            if (!moduleRoot || uri.path == moduleRoot.path) {
-                return vscode.window.showErrorMessage(`${fileType} Creation is not allowed in module root directory or outside of module directory.`);
+            if (!moduleRoot || uri.path === moduleRoot.path) {
+                vscode.window.showErrorMessage(`${fileType} Creation is not allowed in module root directory or outside of module directory.`);
+                return;
             }
 
-            fileName = await vscode.window.showInputBox({
+            const input = await vscode.window.showInputBox({
                 placeHolder: 'Enter the name of the file (without extension)',
                 prompt: 'Example: sale_order, project_task (no dots or spaces)',
                 validateInput: (value) => {
@@ -115,10 +118,11 @@ from . import `;
                 ignoreFocusOut: true
             });
 
-            if (!fileName) {
-                return vscode.window.showWarningMessage('File name is required.');
+            if (!input) {
+                vscode.window.showWarningMessage('File name is required.');
+                return;
             }
-
+            fileName = input;
             fullFileName = `${fileName}.py`;
 
             if (fileType === 'Odoo Model') {
@@ -147,21 +151,23 @@ class MainController(http.Controller):
         const filePath = path.join(folderPath, fullFileName);
 
         if (fs.existsSync(filePath)) {
-            return vscode.window.showWarningMessage(`File "${fullFileName}" already exists.`);
+            vscode.window.showWarningMessage(`File "${fullFileName}" already exists.`);
+            return;
         }
 
         fs.writeFileSync(filePath, fileContent, 'utf8');
         vscode.window.showInformationMessage(`Created ${fullFileName} successfully.`);
 
-    } catch (error) {
+    } catch (error: any) {
         vscode.window.showErrorMessage('Error creating file: ' + error.message);
     }
 }
 
-async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType = 'qweb-pdf') {
+async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: string, reportType = 'qweb-pdf'): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
-    if (!moduleRoot || uri.path == moduleRoot.path) {
-        return vscode.window.showErrorMessage('View Creation is not allowed in module root directory or outside of module directory.');
+    if (!moduleRoot || uri.path === moduleRoot.path) {
+        vscode.window.showErrorMessage('View Creation is not allowed in module root directory or outside of module directory.');
+        return;
     }
     try {
         let fileType = preSelectedType;
@@ -177,7 +183,8 @@ async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType 
         }
 
         if (!fileType) {
-            return vscode.window.showWarningMessage('You must select a file type.');
+            vscode.window.showWarningMessage('You must select a file type.');
+            return;
         }
 
         const fileName = await vscode.window.showInputBox({
@@ -193,7 +200,8 @@ async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType 
         });
 
         if (!fileName) {
-            return vscode.window.showWarningMessage('File name is required.');
+            vscode.window.showWarningMessage('File name is required.');
+            return;
         }
 
         const fullFileName = fileName.endsWith('.xml') ? fileName : `${fileName}.xml`;
@@ -201,7 +209,8 @@ async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType 
         const filePath = path.join(folderPath, fullFileName);
 
         if (fs.existsSync(filePath)) {
-            return vscode.window.showWarningMessage(`File "${fullFileName}" already exists.`);
+            vscode.window.showWarningMessage(`File "${fullFileName}" already exists.`);
+            return;
         }
 
         let fileContent = '';
@@ -226,9 +235,6 @@ async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType 
                 break;
 
             case 'Advanced View':
-                console.log("pureName", pureName);
-                console.log("modelDotName", modelDotName);
-                console.log("modelTitle", modelTitle);
                 fileContent = await templates.getAdvancedViewTemplate(pureName, modelDotName, modelTitle);
                 break;
 
@@ -265,18 +271,21 @@ async function handleCreateOdooViewFile(uri, preSelectedType = null, reportType 
         await vscode.window.showTextDocument(vscode.Uri.file(filePath));
         vscode.window.showInformationMessage(`Created ${fullFileName} successfully.`);
 
-    } catch (error) {
+    } catch (error: any) {
         vscode.window.showErrorMessage('Error creating file: ' + error.message);
     }
 }
 
-async function handleCreateOdooAccessFile(uri) {
+async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+    if (!moduleRoot) {
+        vscode.window.showWarningMessage('Security file creation is only allowed inside a valid Odoo module.');
+        return;
+    }
     const securityDir = path.join(moduleRoot.fsPath, 'security');
-    console.log("securityDir", securityDir);
-    console.log("uri", uri);
-    if (!moduleRoot.path || !(securityDir == uri.path)) {
-        return vscode.window.showWarningMessage('Security file creation is only allowed in the security directory inside a valid Odoo module.');
+    if (securityDir !== uri.fsPath) {
+        vscode.window.showWarningMessage('Security file creation is only allowed in the security directory inside a valid Odoo module.');
+        return;
     }
 
     try {
@@ -287,11 +296,10 @@ async function handleCreateOdooAccessFile(uri) {
         });
 
         if (!modelName) {
-            return vscode.window.showWarningMessage('Model name is required.');
+            vscode.window.showWarningMessage('Model name is required.');
+            return;
         }
 
-        // Create security directory if it doesn't exist
-        const securityDir = path.join(uri.fsPath, 'security');
         if (!fs.existsSync(securityDir)) {
             fs.mkdirSync(securityDir, { recursive: true });
         }
@@ -299,21 +307,16 @@ async function handleCreateOdooAccessFile(uri) {
         const fileName = 'ir.model.access.csv';
         const filePath = path.join(securityDir, fileName);
 
-        // Check if file exists
         let fileContent = '';
         if (fs.existsSync(filePath)) {
-            // Read existing content
             fileContent = fs.readFileSync(filePath, 'utf8');
-            // Add new line if file doesn't end with newline
             if (!fileContent.endsWith('\n')) {
                 fileContent += '\n';
             }
         } else {
-            // Create new file with header
             fileContent = 'id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink\n';
         }
 
-        // Add new access rights
         const accessId = `access_${modelName.replace('.', '_')}`;
         const newLine = `${accessId},${modelName.replace('.', ' ')} access,model_${modelName.replace('.', '_')},base.group_user,1,1,1,1\n`;
         fileContent += newLine;
@@ -322,12 +325,12 @@ async function handleCreateOdooAccessFile(uri) {
         await vscode.window.showTextDocument(vscode.Uri.file(filePath));
         vscode.window.showInformationMessage(`Created/Updated ${fileName} successfully.`);
 
-    } catch (error) {
+    } catch (error: any) {
         vscode.window.showErrorMessage('Error creating access file: ' + error.message);
     }
 }
 
-async function handleAddToInit(uri) {
+async function handleAddToInit(uri: vscode.Uri): Promise<void> {
     if (!uri || !uri.fsPath) return;
 
     try {
@@ -346,7 +349,6 @@ async function handleAddToInit(uri) {
         }
 
         if (fileName && fileName !== '__init__' && fileName !== '__manifest__') {
-            // Adding a specific file
             const importLine = `from . import ${fileName}`;
             if (!content.includes(importLine)) {
                 if (content && !content.endsWith('\n')) content += '\n';
@@ -357,44 +359,52 @@ async function handleAddToInit(uri) {
                 vscode.window.showInformationMessage(`"${fileName}" is already in __init__.py`);
             }
         } else if (isDirectory) {
-            // If directory, maybe user wants to add the directory to parent init?
-            // For now, let's just create an empty init if missing
             if (!fs.existsSync(initPath)) {
                 fs.writeFileSync(initPath, '# -*- coding: utf-8 -*-\n', 'utf8');
                 vscode.window.showInformationMessage(`Created __init__.py in ${path.basename(dirPath)}`);
             }
         }
 
-    } catch (error) {
+    } catch (error: any) {
         vscode.window.showErrorMessage('Error adding to init: ' + error.message);
     }
 }
 
-function registerCommands(context) {
+async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
+    const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+    if (!moduleRoot) {
+        vscode.window.showWarningMessage('Pos component creation is only allowed in a valid Odoo module.');
+        return;
+    }
+    // Placeholder for future implementation
+    vscode.window.showInformationMessage(`Creating POS component of type: ${type}`);
+}
+
+export function registerCommands(context: vscode.ExtensionContext): void {
     const commands = [
         {
             command: 'cybrosys-assista-odoo-helper.createModuleBasic',
-            handler: (uri) => handleCreateModule(uri, 'basic')
+            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'basic')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createModuleAdvanced',
-            handler: (uri) => handleCreateModule(uri, 'advanced')
+            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'advanced')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createModuleowlBasic',
-            handler: (uri) => handleCreateModule(uri, 'owl_basic')
+            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'owl_basic')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createModuleowlAdvanced',
-            handler: (uri) => handleCreateModule(uri, 'owl_advanced')
+            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'owl_advanced')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createModuleWithSystrayMenu',
-            handler: (uri) => handleCreateModule(uri, 'systray_module')
+            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'systray_module')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createModuleWebsiteTheme',
-            handler: (uri) => handleCreateModule(uri, 'website_theme')
+            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'website_theme')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooModelFile',
@@ -402,51 +412,51 @@ function registerCommands(context) {
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewFile',
-            handler: (uri) => handleCreateOdooViewFile(uri)
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri)
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewBasic',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Basic View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Basic View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewAdvanced',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Advanced View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Advanced View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewInherit',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Inherit View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Inherit View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooReportFile',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Report View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Report View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooReportPdf',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Report View', 'qweb-pdf')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Report View', 'qweb-pdf')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooReportHtml',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Report View', 'qweb-html')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Report View', 'qweb-html')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewSecurityGroup',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Security Group View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Security Group View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewSecurityRule',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Security Rule View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Security Rule View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewSequence',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Sequence View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Sequence View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewSettings',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Settings View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Settings View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooViewCron',
-            handler: (uri) => handleCreateOdooViewFile(uri, 'Cron Job View')
+            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Cron Job View')
         },
         {
             command: 'cybrosys-assista-odoo-helper.createOdooAccessFile',
@@ -455,6 +465,10 @@ function registerCommands(context) {
         {
             command: 'cybrosys-assista-odoo-helper.addToInit',
             handler: handleAddToInit
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createPosComponentFile',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'basic')
         }
     ];
 
@@ -463,7 +477,3 @@ function registerCommands(context) {
         context.subscriptions.push(disposable);
     });
 }
-
-module.exports = {
-    registerCommands
-}; 

@@ -1,5 +1,4 @@
-module.exports = {
-    getSequenceViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+export const getSequenceViewTemplate = (pureName: string, modelDotName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <!-- Sequence -->
     <record id="seq_${pureName}" model="ir.sequence">
@@ -9,5 +8,4 @@ module.exports = {
         <field name="padding">5</field>
         <field name="company_id" eval="False"/>
     </record>
-</odoo>`
-};
+</odoo>`;

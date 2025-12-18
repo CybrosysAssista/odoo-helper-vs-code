@@ -1,21 +1,23 @@
-const vscode = require('vscode');
-const { registerModelProviders } = require('./providers/odooModelProvider');
-const { registerFieldProviders } = require('./providers/odooCompletionProvider');
-const { registerCommands } = require('./commands/commandHandlers');
-const { runOdooLint } = require('./services/odooLinter');
-const modelIndexService = require('./services/modelIndexService').default;
-const templateIndexService = require('./services/templateIndexService').default;
-const OdooXmlCompletionProvider = require('./providers/xml/xmlCompletionProvider').OdooXmlCompletionProvider;
-const RelationalFieldCompletionProvider = require('./providers/completion/relationalFieldProvider').RelationalFieldCompletionProvider;
-const ImportCompletionProvider = require('./providers/completion/importCompletionProvider').ImportCompletionProvider;
-const ManifestDependsCompletionProvider = require('./providers/completion/manifestDependsCompletionProvider').ManifestDependsCompletionProvider;
-const OdooDefinitionProvider = require('./providers/odooDefinitionProvider').OdooDefinitionProvider;
-const { getOdooVersion, clearCache } = require('./services/versionService');
-const { getPythonParserService } = require('./services/pythonParserService');
-const fs = require('fs');
-const path = require('path');
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { registerModelProviders } from './providers/odooModelProvider';
+import { registerFieldProviders } from './providers/odooCompletionProvider';
+import { registerCommands } from './commands/commandHandlers';
+import { runOdooLint } from './services/odooLinter';
+import modelIndexService from './services/modelIndexService';
+import templateIndexService from './services/templateIndexService';
+import { OdooXmlCompletionProvider } from './providers/xml/xmlCompletionProvider';
+import { RelationalFieldCompletionProvider } from './providers/completion/relationalFieldProvider';
+import { ImportCompletionProvider } from './providers/completion/importCompletionProvider';
+import { ManifestDependsCompletionProvider } from './providers/completion/manifestDependsCompletionProvider';
+import { OdooDefinitionProvider } from './providers/odooDefinitionProvider';
+import { getOdooVersion, clearCache } from './services/versionService';
+import { getPythonParserService } from './services/pythonParserService';
+import { testTreeSitterParser } from './commands/testTreeSitter';
+import { addCurrentFileToManifest } from './commands/addToManifest';
 
-async function activate(context) {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Initialize Tree-sitter Python Parser
     console.log('[Extension] Initializing Python Parser Service...');
     const pythonParser = getPythonParserService();
@@ -57,7 +59,7 @@ async function activate(context) {
         )
     );
 
-    // ✅ Register import completion provider (was missing in second version)
+    // ✅ Register import completion provider
     const importProvider = new ImportCompletionProvider();
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider(
@@ -101,13 +103,11 @@ async function activate(context) {
     registerCommands(context);
 
     // Register Tree-sitter test command
-    const { testTreeSitterParser } = require('./commands/testTreeSitter');
     context.subscriptions.push(
         vscode.commands.registerCommand('cybrosys-assista-odoo-helper.testTreeSitter', testTreeSitterParser)
     );
 
     // Register add file to manifest command
-    const { addCurrentFileToManifest } = require('./commands/addToManifest');
     context.subscriptions.push(
         vscode.commands.registerCommand('cybrosys-assista-odoo-helper.addFileToManifest', addCurrentFileToManifest)
     );
@@ -194,7 +194,7 @@ async function activate(context) {
     );
 }
 
-async function registerVersionedSnippets(context) {
+async function registerVersionedSnippets(context: vscode.ExtensionContext): Promise<void> {
     try {
         const extensionPath = context.extensionPath;
 
@@ -209,8 +209,8 @@ async function registerVersionedSnippets(context) {
 
                     const raw = fs.readFileSync(xmlPath, 'utf8');
                     const snippets = JSON.parse(raw);
-                    const items = [];
-                    for (const [name, def] of Object.entries(snippets)) {
+                    const items: vscode.CompletionItem[] = [];
+                    for (const [name, def] of Object.entries(snippets) as [string, any][]) {
                         const label = def.prefix || name;
                         const item = new vscode.CompletionItem(label, vscode.CompletionItemKind.Snippet);
                         const body = Array.isArray(def.body) ? def.body.join('\n') : String(def.body || '');
@@ -243,8 +243,8 @@ async function registerVersionedSnippets(context) {
 
                     const raw = fs.readFileSync(pyPath, 'utf8');
                     const snippets = JSON.parse(raw);
-                    const items = [];
-                    for (const [name, def] of Object.entries(snippets)) {
+                    const items: vscode.CompletionItem[] = [];
+                    for (const [name, def] of Object.entries(snippets) as [string, any][]) {
                         const label = def.prefix || name;
                         const item = new vscode.CompletionItem(label, vscode.CompletionItemKind.Snippet);
                         const body = Array.isArray(def.body) ? def.body.join('\n') : String(def.body || '');
@@ -270,11 +270,6 @@ async function registerVersionedSnippets(context) {
     }
 }
 
-function deactivate() {
+export function deactivate(): void {
     modelIndexService.dispose();
 }
-
-module.exports = {
-    activate,
-    deactivate
-};

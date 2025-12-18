@@ -1,5 +1,8 @@
-module.exports = {
-    getAdvancedViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+export const getAdvancedViewTemplate = (
+    pureName: string,
+    modelDotName: string,
+    modelTitle: string
+): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Form View -->
@@ -52,13 +55,16 @@ module.exports = {
                 </form>
             </field>
         </record>
-        
+
         <!-- List View -->
         <record id="${pureName}_list" model="ir.ui.view">
             <field name="name">${modelDotName}.list</field>
             <field name="model">${modelDotName}</field>
             <field name="arch" type="xml">
-                <list string="${modelTitle}" decoration-info="state=='draft'" decoration-success="state=='done'" decoration-warning="state=='confirmed'">
+                <list string="${modelTitle}"
+                      decoration-info="state=='draft'"
+                      decoration-success="state=='done'"
+                      decoration-warning="state=='confirmed'">
                     <field name="name"/>
                     <field name="field1"/>
                     <field name="field2"/>
@@ -67,7 +73,7 @@ module.exports = {
                 </list>
             </field>
         </record>
-        
+
         <!-- Search View -->
         <record id="${pureName}_search" model="ir.ui.view">
             <field name="name">${modelDotName}.search</field>
@@ -83,12 +89,13 @@ module.exports = {
                     <filter string="Done" name="done" domain="[('state','=','done')]"/>
                     <group expand="0" string="Group By">
                         <filter string="State" name="groupby_state" context="{'group_by': 'state'}"/>
-                        <filter string="Creation Date" name="groupby_create_date" context="{'group_by': 'create_date:month'}"/>
+                        <filter string="Creation Date" name="groupby_create_date"
+                                context="{'group_by': 'create_date:month'}"/>
                     </group>
                 </search>
             </field>
         </record>
-        
+
         <!-- Calendar View -->
         <record id="${pureName}_calendar" model="ir.ui.view">
             <field name="name">${modelDotName}.calendar</field>
@@ -100,7 +107,7 @@ module.exports = {
                 </calendar>
             </field>
         </record>
-        
+
         <!-- Kanban View -->
         <record id="${pureName}_kanban" model="ir.ui.view">
             <field name="name">${modelDotName}.kanban</field>
@@ -131,7 +138,7 @@ module.exports = {
                 </kanban>
             </field>
         </record>
-        
+
         <!-- Actions -->
         <record id="action_${pureName}" model="ir.actions.act_window">
             <field name="name">${modelTitle}</field>
@@ -144,12 +151,11 @@ module.exports = {
                 </p>
             </field>
         </record>
-        
+
         <!-- Menu -->
         <menuitem id="menu_${pureName}"
                   name="${modelTitle}"
                   action="action_${pureName}"
                   sequence="10"/>
     </data>
-</odoo>`
-};
+</odoo>`;

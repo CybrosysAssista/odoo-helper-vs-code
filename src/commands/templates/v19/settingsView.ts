@@ -1,5 +1,4 @@
-module.exports = {
-    getSettingsViewTemplate: (pureName, modelDotName, modelTitle) => `<?xml version="1.0" encoding="utf-8"?>
+export const getSettingsViewTemplate = (pureName: string, modelDotName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Inherit Res Config Settings Form -->
@@ -20,5 +19,4 @@ module.exports = {
             </field>
         </record>
     </data>
-</odoo>`
-}; 
+</odoo>`;
