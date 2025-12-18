@@ -410,6 +410,35 @@ async function handleCreateOwlComponentCreation(uri: vscode.Uri, type: string): 
     }
 }
 
+async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
+    const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+    if (!moduleRoot) {
+        vscode.window.showWarningMessage('POS component creation is only allowed in a valid Odoo module.');
+        return;
+    }
+
+    try {
+        const moduleName = path.basename(moduleRoot.fsPath);
+        const componentInstance = await templates.getPosComponentTemplate(moduleName, type);
+
+        if (componentInstance && componentInstance.getCompleteDirectoryStructure) {
+            const structure = componentInstance.getCompleteDirectoryStructure();
+            const result = await helperUtils.createRecursiveDirectory(moduleRoot, structure);
+
+            if (result.success) {
+                vscode.window.showInformationMessage(`POS Component created successfully.`);
+                await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
+            } else {
+                vscode.window.showErrorMessage(`Failed to create POS component: ${result.message.join(', ')}`);
+            }
+        } else {
+            vscode.window.showErrorMessage('Could not load POS component template structure.');
+        }
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Error creating POS component: ${error.message}`);
+    }
+}
+
 export function registerCommands(context: vscode.ExtensionContext): void {
     const commands = [
         {
@@ -511,6 +540,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.createOwlOdooService',
             handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'serviceTemplate')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosProductScreen',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendProductScreen')
         }
     ];
 

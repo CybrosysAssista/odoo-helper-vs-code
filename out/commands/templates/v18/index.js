@@ -14,8 +14,9 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOwlComponentTemplate = void 0;
+exports.getPosComponentTemplate = exports.getOwlComponentTemplate = void 0;
 const owlTemplates_1 = require("./owlTemplates");
+const posTemplate_1 = require("./posTemplate");
 __exportStar(require("./basicView"), exports);
 __exportStar(require("./advancedView"), exports);
 __exportStar(require("./inheritView"), exports);
@@ -40,4 +41,11 @@ const getOwlComponentTemplate = (componentName, moduleName, type) => {
     return null;
 };
 exports.getOwlComponentTemplate = getOwlComponentTemplate;
+const getPosComponentTemplate = (moduleName, type) => {
+    if (type === 'extendProductScreen') {
+        return new posTemplate_1.extendProductScreen(moduleName);
+    }
+    return null;
+};
+exports.getPosComponentTemplate = getPosComponentTemplate;
 //# sourceMappingURL=index.js.map

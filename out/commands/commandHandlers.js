@@ -397,6 +397,34 @@ async function handleCreateOwlComponentCreation(uri, type) {
         vscode.window.showErrorMessage(`Error creating Owl component: ${error.message}`);
     }
 }
+async function handleCreatePosComponentCreation(uri, type) {
+    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(uri);
+    if (!moduleRoot) {
+        vscode.window.showWarningMessage('POS component creation is only allowed in a valid Odoo module.');
+        return;
+    }
+    try {
+        const moduleName = path.basename(moduleRoot.fsPath);
+        const componentInstance = await templates.getPosComponentTemplate(moduleName, type);
+        if (componentInstance && componentInstance.getCompleteDirectoryStructure) {
+            const structure = componentInstance.getCompleteDirectoryStructure();
+            const result = await utils_1.helperUtils.createRecursiveDirectory(moduleRoot, structure);
+            if (result.success) {
+                vscode.window.showInformationMessage(`POS Component created successfully.`);
+                await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
+            }
+            else {
+                vscode.window.showErrorMessage(`Failed to create POS component: ${result.message.join(', ')}`);
+            }
+        }
+        else {
+            vscode.window.showErrorMessage('Could not load POS component template structure.');
+        }
+    }
+    catch (error) {
+        vscode.window.showErrorMessage(`Error creating POS component: ${error.message}`);
+    }
+}
 function registerCommands(context) {
     const commands = [
         {
@@ -498,6 +526,10 @@ function registerCommands(context) {
         {
             command: 'cybrosys-assista-odoo-helper.createOwlOdooService',
             handler: (uri) => handleCreateOwlComponentCreation(uri, 'serviceTemplate')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosProductScreen',
+            handler: (uri) => handleCreatePosComponentCreation(uri, 'extendProductScreen')
         }
     ];
     commands.forEach(({ command, handler }) => {

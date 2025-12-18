@@ -21,3 +21,4 @@ export const getSequenceViewTemplate = async (...args: any[]): Promise<string> =
 export const getSettingsViewTemplate = async (...args: any[]): Promise<string> => (await getTemplates()).getSettingsViewTemplate(...args);
 export const getCronViewTemplate = async (...args: any[]): Promise<string> => (await getTemplates()).getCronViewTemplate(...args);
 export const getOwlComponentTemplate = async (...args: any[]): Promise<any> => (await getTemplates()).getOwlComponentTemplate(...args);
+export const getPosComponentTemplate = async (...args: any[]): Promise<any> => (await getTemplates()).getPosComponentTemplate(...args);

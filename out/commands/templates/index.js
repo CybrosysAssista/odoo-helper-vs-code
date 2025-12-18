@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOwlComponentTemplate = exports.getCronViewTemplate = exports.getSettingsViewTemplate = exports.getSequenceViewTemplate = exports.getSecurityRuleViewTemplate = exports.getSecurityGroupViewTemplate = exports.getReportViewTemplate = exports.getInheritViewTemplate = exports.getAdvancedViewTemplate = exports.getBasicViewTemplate = void 0;
+exports.getPosComponentTemplate = exports.getOwlComponentTemplate = exports.getCronViewTemplate = exports.getSettingsViewTemplate = exports.getSequenceViewTemplate = exports.getSecurityRuleViewTemplate = exports.getSecurityGroupViewTemplate = exports.getReportViewTemplate = exports.getInheritViewTemplate = exports.getAdvancedViewTemplate = exports.getBasicViewTemplate = void 0;
 const versionService_1 = require("../../services/versionService");
 async function getTemplates() {
     const v = await (0, versionService_1.getOdooVersion)();
@@ -32,4 +32,6 @@ const getCronViewTemplate = async (...args) => (await getTemplates()).getCronVie
 exports.getCronViewTemplate = getCronViewTemplate;
 const getOwlComponentTemplate = async (...args) => (await getTemplates()).getOwlComponentTemplate(...args);
 exports.getOwlComponentTemplate = getOwlComponentTemplate;
+const getPosComponentTemplate = async (...args) => (await getTemplates()).getPosComponentTemplate(...args);
+exports.getPosComponentTemplate = getPosComponentTemplate;
 //# sourceMappingURL=index.js.map

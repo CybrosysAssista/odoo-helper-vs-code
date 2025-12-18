@@ -1,4 +1,5 @@
 import { commonComponent, fieldWidgetComponent, publicComponent, serviceTemplate } from './owlTemplates';
+import { extendProductScreen } from './posTemplate';
 
 export * from './basicView';
 export * from './advancedView';
@@ -21,6 +22,13 @@ export const getOwlComponentTemplate = (componentName: string, moduleName: strin
     }
     if (type === 'serviceTemplate') {
         return new serviceTemplate(componentName, moduleName);
+    }
+    return null;
+};
+
+export const getPosComponentTemplate = (moduleName: string, type: string) => {
+    if (type === 'extendProductScreen') {
+        return new extendProductScreen(moduleName);
     }
     return null;
 };

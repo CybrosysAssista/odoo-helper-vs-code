@@ -127,6 +127,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.createOwlOdooService",
         "title": "Owl Service"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosProductScreen",
+        "title": "Product Screen"
       }
     ],
     "menus": {
@@ -152,6 +156,11 @@
           "submenu": "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu",
           "group": "3_owl",
           "title": "Create OWL Components"
+        },
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
+          "group": "4_pos",
+          "title": "POS Components"
         }
       ],
       "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [
@@ -225,6 +234,19 @@
           "command": "cybrosys-assista-odoo-helper.createOdooReportHtml",
           "group": "1_type"
         }
+      ],
+      "cybrosys-assista-odoo-helper.createPosComponentsSubmenu": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.extendPosScreenSubmenu",
+          "group": "pos@1",
+          "title": "Extend Screen"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.extendPosScreenSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosProductScreen",
+          "group": "extend@1"
+        }
       ]
     },
     "submenus": [
@@ -247,6 +269,14 @@
       {
         "id": "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu",
         "label": "Create Owl Components"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
+        "label": "POS Components"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.extendPosScreenSubmenu",
+        "label": "Extend Screen"
       }
     ],
     "snippets": [],
