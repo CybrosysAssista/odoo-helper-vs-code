@@ -115,6 +115,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.createPosCommonComponent",
         "title": "Common Component"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createPosFieldWidgetComponent",
+        "title": "Field Widget Component"
       }
     ],
     "menus": {
@@ -146,6 +150,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.createPosCommonComponent",
           "group": "pos@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createPosFieldWidgetComponent",
+          "group": "pos@2"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [

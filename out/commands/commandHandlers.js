@@ -486,6 +486,10 @@ function registerCommands(context) {
         {
             command: 'cybrosys-assista-odoo-helper.createPosCommonComponent',
             handler: (uri) => handleCreatePosComponentCreation(uri, 'commonComponent')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createPosFieldWidgetComponent',
+            handler: (uri) => handleCreatePosComponentCreation(uri, 'fieldWidgetComponent')
         }
     ];
     commands.forEach(({ command, handler }) => {

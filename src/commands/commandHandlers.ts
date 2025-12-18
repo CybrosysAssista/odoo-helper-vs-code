@@ -499,6 +499,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.createPosCommonComponent',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'commonComponent')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createPosFieldWidgetComponent',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'fieldWidgetComponent')
         }
     ];
 

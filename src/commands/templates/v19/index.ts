@@ -8,8 +8,14 @@ export * from './settingsView';
 export * from './cronView';
 export * from './owlTemplates';
 
-import { commonComponent } from './owlTemplates';
+import { commonComponent, fieldWidgetComponent } from './owlTemplates';
 
-export const getPosComponentTemplate = (componentName: string, moduleName: string) => {
-    return new commonComponent(componentName, moduleName);
+export const getPosComponentTemplate = (componentName: string, moduleName: string, type: string) => {
+    if (type === 'commonComponent') {
+        return new commonComponent(componentName, moduleName);
+    }
+    if (type === 'fieldWidgetComponent') {
+        return new fieldWidgetComponent(componentName, moduleName);
+    }
+    return null;
 };

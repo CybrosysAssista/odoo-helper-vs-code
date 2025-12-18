@@ -28,6 +28,9 @@ const getPosComponentTemplate = (componentName, moduleName, type) => {
     if (type === 'commonComponent') {
         return new owlTemplates_1.commonComponent(componentName, moduleName);
     }
+    if (type === 'fieldWidgetComponent') {
+        return new owlTemplates_1.fieldWidgetComponent(componentName, moduleName);
+    }
     return null;
 };
 exports.getPosComponentTemplate = getPosComponentTemplate;

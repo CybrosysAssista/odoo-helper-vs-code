@@ -1,4 +1,4 @@
-import { commonComponent } from './owlTemplates';
+import { commonComponent, fieldWidgetComponent } from './owlTemplates';
 
 export * from './basicView';
 export * from './advancedView';
@@ -12,6 +12,9 @@ export * from './cronView';
 export const getPosComponentTemplate = (componentName: string, moduleName: string, type: string) => {
     if (type === 'commonComponent') {
         return new commonComponent(componentName, moduleName);
+    }
+    if (type === 'fieldWidgetComponent') {
+        return new fieldWidgetComponent(componentName, moduleName);
     }
     return null;
 };
