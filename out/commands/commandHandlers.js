@@ -534,6 +534,10 @@ function registerCommands(context) {
         {
             command: 'cybrosys-assista-odoo-helper.extendPosPartnerListScreen',
             handler: (uri) => handleCreatePosComponentCreation(uri, 'extendPartnerListScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosPaymentScreen',
+            handler: (uri) => handleCreatePosComponentCreation(uri, 'extendPaymentScreen')
         }
     ];
     commands.forEach(({ command, handler }) => {

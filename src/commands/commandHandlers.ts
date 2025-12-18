@@ -548,6 +548,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.extendPosPartnerListScreen',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendPartnerListScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosPaymentScreen',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendPaymentScreen')
         }
     ];
 

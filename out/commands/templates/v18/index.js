@@ -48,6 +48,9 @@ const getPosComponentTemplate = (moduleName, type) => {
     if (type === 'extendPartnerListScreen') {
         return new posTemplate_1.extendPartnerListScreen(moduleName);
     }
+    if (type === 'extendPaymentScreen') {
+        return new posTemplate_1.extendPaymentScreen(moduleName);
+    }
     return null;
 };
 exports.getPosComponentTemplate = getPosComponentTemplate;

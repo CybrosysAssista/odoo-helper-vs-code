@@ -9,7 +9,7 @@ export * from './cronView';
 export * from './owlTemplates';
 
 import { commonComponent, fieldWidgetComponent, publicComponent, serviceTemplate } from './owlTemplates';
-import { extendProductScreen, extendPartnerListScreen } from './posTemplate';
+import { extendProductScreen, extendPartnerListScreen, extendPaymentScreen } from './posTemplate';
 
 export const getOwlComponentTemplate = (componentName: string, moduleName: string, type: string) => {
     if (type === 'commonComponent') {
@@ -33,6 +33,9 @@ export const getPosComponentTemplate = (moduleName: string, type: string) => {
     }
     if (type === 'extendPartnerListScreen') {
         return new extendPartnerListScreen(moduleName);
+    }
+    if (type === 'extendPaymentScreen') {
+        return new extendPaymentScreen(moduleName);
     }
     return null;
 };

@@ -135,6 +135,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.extendPosPartnerListScreen",
         "title": "Partner List Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosPaymentScreen",
+        "title": "Payment Screen"
       }
     ],
     "menus": {
@@ -254,6 +258,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.extendPosPartnerListScreen",
           "group": "extend@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosPaymentScreen",
+          "group": "extend@3"
         }
       ]
     },
