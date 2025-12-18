@@ -544,6 +544,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.extendPosProductScreen',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendProductScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosPartnerListScreen',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendPartnerListScreen')
         }
     ];
 

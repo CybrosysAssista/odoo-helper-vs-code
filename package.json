@@ -131,6 +131,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.extendPosProductScreen",
         "title": "Product Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosPartnerListScreen",
+        "title": "Partner List Screen"
       }
     ],
     "menus": {
@@ -246,6 +250,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.extendPosProductScreen",
           "group": "extend@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosPartnerListScreen",
+          "group": "extend@2"
         }
       ]
     },

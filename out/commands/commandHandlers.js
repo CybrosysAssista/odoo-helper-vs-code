@@ -530,6 +530,10 @@ function registerCommands(context) {
         {
             command: 'cybrosys-assista-odoo-helper.extendPosProductScreen',
             handler: (uri) => handleCreatePosComponentCreation(uri, 'extendProductScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosPartnerListScreen',
+            handler: (uri) => handleCreatePosComponentCreation(uri, 'extendPartnerListScreen')
         }
     ];
     commands.forEach(({ command, handler }) => {
