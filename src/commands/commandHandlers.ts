@@ -503,6 +503,14 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.createPosFieldWidgetComponent',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'fieldWidgetComponent')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createPosPublicComponent',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'publicComponent')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createOdooService',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'serviceTemplate')
         }
     ];
 

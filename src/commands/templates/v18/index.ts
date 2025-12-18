@@ -1,4 +1,4 @@
-import { commonComponent, fieldWidgetComponent } from './owlTemplates';
+import { commonComponent, fieldWidgetComponent, publicComponent, serviceTemplate } from './owlTemplates';
 
 export * from './basicView';
 export * from './advancedView';
@@ -15,6 +15,12 @@ export const getPosComponentTemplate = (componentName: string, moduleName: strin
     }
     if (type === 'fieldWidgetComponent') {
         return new fieldWidgetComponent(componentName, moduleName);
+    }
+    if (type === 'publicComponent') {
+        return new publicComponent(componentName, moduleName);
+    }
+    if (type === 'serviceTemplate') {
+        return new serviceTemplate(componentName, moduleName);
     }
     return null;
 };

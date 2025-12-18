@@ -119,6 +119,14 @@
       {
         "command": "cybrosys-assista-odoo-helper.createPosFieldWidgetComponent",
         "title": "Field Widget Component"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createPosPublicComponent",
+        "title": "Public Component"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOdooService",
+        "title": "Odoo Service"
       }
     ],
     "menus": {
@@ -154,6 +162,14 @@
         {
           "command": "cybrosys-assista-odoo-helper.createPosFieldWidgetComponent",
           "group": "pos@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createPosPublicComponent",
+          "group": "pos@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooService",
+          "group": "pos@4"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [

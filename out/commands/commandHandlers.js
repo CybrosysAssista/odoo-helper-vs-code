@@ -490,6 +490,14 @@ function registerCommands(context) {
         {
             command: 'cybrosys-assista-odoo-helper.createPosFieldWidgetComponent',
             handler: (uri) => handleCreatePosComponentCreation(uri, 'fieldWidgetComponent')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createPosPublicComponent',
+            handler: (uri) => handleCreatePosComponentCreation(uri, 'publicComponent')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createOdooService',
+            handler: (uri) => handleCreatePosComponentCreation(uri, 'serviceTemplate')
         }
     ];
     commands.forEach(({ command, handler }) => {
