@@ -12,9 +12,21 @@ const ImportCompletionProvider = require('./providers/completion/importCompletio
 const ManifestDependsCompletionProvider = require('./providers/completion/manifestDependsCompletionProvider').ManifestDependsCompletionProvider;
 const OdooDefinitionProvider = require('./providers/odooDefinitionProvider').OdooDefinitionProvider;
 const { getOdooVersion, clearCache } = require('./services/versionService');
+const { getPythonParserService } = require('./services/pythonParserService');
 const fs = require('fs');
 const path = require('path');
-function activate(context) {
+async function activate(context) {
+    // Initialize Tree-sitter Python Parser
+    console.log('[Extension] Initializing Python Parser Service...');
+    const pythonParser = getPythonParserService();
+    try {
+        await pythonParser.init(context);
+        console.log('[Extension] ✅ Python Parser Service initialized');
+    }
+    catch (error) {
+        console.error('[Extension] ❌ Failed to initialize Python Parser:', error);
+        vscode.window.showWarningMessage('Tree-sitter parser failed to initialize. Some features may be limited.');
+    }
     // Initialize index services
     modelIndexService.initialize();
     modelIndexService.buildCache();
@@ -46,6 +58,12 @@ function activate(context) {
     context.subscriptions.push(vscode.languages.registerDefinitionProvider({ scheme: 'file', language: 'python' }, odooDefProvider));
     // Register commands
     registerCommands(context);
+    // Register Tree-sitter test command
+    const { testTreeSitterParser } = require('./commands/testTreeSitter');
+    context.subscriptions.push(vscode.commands.registerCommand('cybrosys-assista-odoo-helper.testTreeSitter', testTreeSitterParser));
+    // Register add file to manifest command
+    const { addCurrentFileToManifest } = require('./commands/addToManifest');
+    context.subscriptions.push(vscode.commands.registerCommand('cybrosys-assista-odoo-helper.addFileToManifest', addCurrentFileToManifest));
     // Status bar: Odoo version indicator and quick switch
     const odooVersionStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     odooVersionStatusItem.command = 'cybrosys-assista-odoo-helper.setOdooVersion';

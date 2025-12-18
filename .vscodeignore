@@ -8,3 +8,5 @@ vsc-extension-quickstart.md
 **/*.map
 **/eslint.config.mjs
 **/.vscode-test.*
+# Include resources folder (contains tree-sitter WASM files)
+!resources/**

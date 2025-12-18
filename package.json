@@ -97,8 +97,20 @@
         "title": "Create HTML Report"
       },
       {
+        "command": "cybrosys-assista-odoo-helper.addToInit",
+        "title": "Add to __init__.py"
+      },
+      {
         "command": "cybrosys-assista-odoo-helper.setOdooVersion",
         "title": "Assista: Set Odoo Version"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.testTreeSitter",
+        "title": "Assista: Test Tree-sitter Parser"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.addFileToManifest",
+        "title": "Add File to Manifest (Tree-sitter)"
       }
     ],
     "menus": {
@@ -240,5 +252,8 @@
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "web-tree-sitter": "^0.26.3"
   }
 }
