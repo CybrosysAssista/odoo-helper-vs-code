@@ -371,15 +371,15 @@ async function handleAddToInit(uri: vscode.Uri): Promise<void> {
     }
 }
 
-async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
+async function handleCreateOwlComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
     if (!moduleRoot) {
-        vscode.window.showWarningMessage('Pos component creation is only allowed in a valid Odoo module.');
+        vscode.window.showWarningMessage('Owl component creation is only allowed in a valid Odoo module.');
         return;
     }
 
     const componentName = await vscode.window.showInputBox({
-        prompt: 'Enter the POS component name (e.g. ActionButton)',
+        prompt: 'Enter the Owl component name (e.g. ActionButton)',
         placeHolder: 'MyCustomButton',
     });
 
@@ -390,23 +390,23 @@ async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): 
 
     try {
         const moduleName = path.basename(moduleRoot.fsPath);
-        const componentInstance = await templates.getPosComponentTemplate(componentName, moduleName, type);
+        const componentInstance = await templates.getOwlComponentTemplate(componentName, moduleName, type);
 
         if (componentInstance && componentInstance.getCompleteDirectoryStructure) {
             const structure = componentInstance.getCompleteDirectoryStructure();
             const result = await helperUtils.createRecursiveDirectory(moduleRoot, structure);
 
             if (result.success) {
-                vscode.window.showInformationMessage(`POS Component "${componentName}" created successfully.`);
+                vscode.window.showInformationMessage(`Owl Component "${componentName}" created successfully.`);
                 await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
             } else {
                 vscode.window.showErrorMessage(`Failed to create component: ${result.message.join(', ')}`);
             }
         } else {
-            vscode.window.showErrorMessage('Could not load POS component template structure.');
+            vscode.window.showErrorMessage('Could not load Owl component template structure.');
         }
     } catch (error: any) {
-        vscode.window.showErrorMessage(`Error creating POS component: ${error.message}`);
+        vscode.window.showErrorMessage(`Error creating Owl component: ${error.message}`);
     }
 }
 
@@ -497,20 +497,20 @@ export function registerCommands(context: vscode.ExtensionContext): void {
             handler: handleAddToInit
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosCommonComponent',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'commonComponent')
+            command: 'cybrosys-assista-odoo-helper.createOwlCommonComponent',
+            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'commonComponent')
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosFieldWidgetComponent',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'fieldWidgetComponent')
+            command: 'cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent',
+            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'fieldWidgetComponent')
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosPublicComponent',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'publicComponent')
+            command: 'cybrosys-assista-odoo-helper.createOwlPublicComponent',
+            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'publicComponent')
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createOdooService',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'serviceTemplate')
+            command: 'cybrosys-assista-odoo-helper.createOwlOdooService',
+            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'serviceTemplate')
         }
     ];
 

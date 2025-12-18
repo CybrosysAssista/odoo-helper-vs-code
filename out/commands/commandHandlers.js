@@ -361,14 +361,14 @@ async function handleAddToInit(uri) {
         vscode.window.showErrorMessage('Error adding to init: ' + error.message);
     }
 }
-async function handleCreatePosComponentCreation(uri, type) {
+async function handleCreateOwlComponentCreation(uri, type) {
     const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(uri);
     if (!moduleRoot) {
-        vscode.window.showWarningMessage('Pos component creation is only allowed in a valid Odoo module.');
+        vscode.window.showWarningMessage('Owl component creation is only allowed in a valid Odoo module.');
         return;
     }
     const componentName = await vscode.window.showInputBox({
-        prompt: 'Enter the POS component name (e.g. ActionButton)',
+        prompt: 'Enter the Owl component name (e.g. ActionButton)',
         placeHolder: 'MyCustomButton',
     });
     if (!componentName) {
@@ -377,12 +377,12 @@ async function handleCreatePosComponentCreation(uri, type) {
     }
     try {
         const moduleName = path.basename(moduleRoot.fsPath);
-        const componentInstance = await templates.getPosComponentTemplate(componentName, moduleName, type);
+        const componentInstance = await templates.getOwlComponentTemplate(componentName, moduleName, type);
         if (componentInstance && componentInstance.getCompleteDirectoryStructure) {
             const structure = componentInstance.getCompleteDirectoryStructure();
             const result = await utils_1.helperUtils.createRecursiveDirectory(moduleRoot, structure);
             if (result.success) {
-                vscode.window.showInformationMessage(`POS Component "${componentName}" created successfully.`);
+                vscode.window.showInformationMessage(`Owl Component "${componentName}" created successfully.`);
                 await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
             }
             else {
@@ -390,11 +390,11 @@ async function handleCreatePosComponentCreation(uri, type) {
             }
         }
         else {
-            vscode.window.showErrorMessage('Could not load POS component template structure.');
+            vscode.window.showErrorMessage('Could not load Owl component template structure.');
         }
     }
     catch (error) {
-        vscode.window.showErrorMessage(`Error creating POS component: ${error.message}`);
+        vscode.window.showErrorMessage(`Error creating Owl component: ${error.message}`);
     }
 }
 function registerCommands(context) {
@@ -484,20 +484,20 @@ function registerCommands(context) {
             handler: handleAddToInit
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosCommonComponent',
-            handler: (uri) => handleCreatePosComponentCreation(uri, 'commonComponent')
+            command: 'cybrosys-assista-odoo-helper.createOwlCommonComponent',
+            handler: (uri) => handleCreateOwlComponentCreation(uri, 'commonComponent')
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosFieldWidgetComponent',
-            handler: (uri) => handleCreatePosComponentCreation(uri, 'fieldWidgetComponent')
+            command: 'cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent',
+            handler: (uri) => handleCreateOwlComponentCreation(uri, 'fieldWidgetComponent')
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createPosPublicComponent',
-            handler: (uri) => handleCreatePosComponentCreation(uri, 'publicComponent')
+            command: 'cybrosys-assista-odoo-helper.createOwlPublicComponent',
+            handler: (uri) => handleCreateOwlComponentCreation(uri, 'publicComponent')
         },
         {
-            command: 'cybrosys-assista-odoo-helper.createOdooService',
-            handler: (uri) => handleCreatePosComponentCreation(uri, 'serviceTemplate')
+            command: 'cybrosys-assista-odoo-helper.createOwlOdooService',
+            handler: (uri) => handleCreateOwlComponentCreation(uri, 'serviceTemplate')
         }
     ];
     commands.forEach(({ command, handler }) => {

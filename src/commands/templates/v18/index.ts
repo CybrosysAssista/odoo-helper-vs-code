@@ -9,7 +9,7 @@ export * from './sequenceView';
 export * from './settingsView';
 export * from './cronView';
 
-export const getPosComponentTemplate = (componentName: string, moduleName: string, type: string) => {
+export const getOwlComponentTemplate = (componentName: string, moduleName: string, type: string) => {
     if (type === 'commonComponent') {
         return new commonComponent(componentName, moduleName);
     }

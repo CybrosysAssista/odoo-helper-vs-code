@@ -20,4 +20,4 @@ export const getSecurityRuleViewTemplate = async (...args: any[]): Promise<strin
 export const getSequenceViewTemplate = async (...args: any[]): Promise<string> => (await getTemplates()).getSequenceViewTemplate(...args);
 export const getSettingsViewTemplate = async (...args: any[]): Promise<string> => (await getTemplates()).getSettingsViewTemplate(...args);
 export const getCronViewTemplate = async (...args: any[]): Promise<string> => (await getTemplates()).getCronViewTemplate(...args);
-export const getPosComponentTemplate = async (...args: any[]): Promise<any> => (await getTemplates()).getPosComponentTemplate(...args);
+export const getOwlComponentTemplate = async (...args: any[]): Promise<any> => (await getTemplates()).getOwlComponentTemplate(...args);

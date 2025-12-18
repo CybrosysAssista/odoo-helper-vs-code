@@ -113,20 +113,20 @@
         "title": "Add File to Manifest (Tree-sitter)"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.createPosCommonComponent",
+        "command": "cybrosys-assista-odoo-helper.createOwlCommonComponent",
         "title": "Common Component"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.createPosFieldWidgetComponent",
+        "command": "cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent",
         "title": "Field Widget Component"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.createPosPublicComponent",
+        "command": "cybrosys-assista-odoo-helper.createOwlPublicComponent",
         "title": "Public Component"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.createOdooService",
-        "title": "Odoo Service"
+        "command": "cybrosys-assista-odoo-helper.createOwlOdooService",
+        "title": "Owl Service"
       }
     ],
     "menus": {
@@ -149,27 +149,27 @@
           "title": "Create Odoo Module"
         },
         {
-          "submenu": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
-          "group": "3_pos",
-          "title": "Create POS Components"
+          "submenu": "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu",
+          "group": "3_owl",
+          "title": "Create OWL Components"
         }
       ],
-      "cybrosys-assista-odoo-helper.createPosComponentsSubmenu": [
+      "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [
         {
-          "command": "cybrosys-assista-odoo-helper.createPosCommonComponent",
-          "group": "pos@1"
+          "command": "cybrosys-assista-odoo-helper.createOwlCommonComponent",
+          "group": "owl@1"
         },
         {
-          "command": "cybrosys-assista-odoo-helper.createPosFieldWidgetComponent",
-          "group": "pos@2"
+          "command": "cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent",
+          "group": "owl@2"
         },
         {
-          "command": "cybrosys-assista-odoo-helper.createPosPublicComponent",
-          "group": "pos@3"
+          "command": "cybrosys-assista-odoo-helper.createOwlPublicComponent",
+          "group": "owl@3"
         },
         {
-          "command": "cybrosys-assista-odoo-helper.createOdooService",
-          "group": "pos@4"
+          "command": "cybrosys-assista-odoo-helper.createOwlOdooService",
+          "group": "owl@4"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [
@@ -245,8 +245,8 @@
         "label": "Create Report"
       },
       {
-        "id": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
-        "label": "Create POS Components"
+        "id": "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu",
+        "label": "Create Owl Components"
       }
     ],
     "snippets": [],

@@ -10,7 +10,7 @@ export * from './owlTemplates';
 
 import { commonComponent, fieldWidgetComponent, publicComponent, serviceTemplate } from './owlTemplates';
 
-export const getPosComponentTemplate = (componentName: string, moduleName: string, type: string) => {
+export const getOwlComponentTemplate = (componentName: string, moduleName: string, type: string) => {
     if (type === 'commonComponent') {
         return new commonComponent(componentName, moduleName);
     }
