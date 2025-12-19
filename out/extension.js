@@ -56,6 +56,7 @@ const versionService_1 = require("./services/versionService");
 const pythonParserService_1 = require("./services/pythonParserService");
 const testTreeSitter_1 = require("./commands/testTreeSitter");
 const addToManifest_1 = require("./commands/addToManifest");
+const manifestPathCompletionProvider_1 = require("./providers/manifestPathCompletionProvider");
 async function activate(context) {
     // Initialize Tree-sitter Python Parser
     console.log('[Extension] Initializing Python Parser Service...');
@@ -91,6 +92,9 @@ async function activate(context) {
         { scheme: 'file', language: '*', pattern: '**/__manifest__.py' },
         { scheme: 'file', language: '*', pattern: '**/__manifest__.json' }
     ], manifestDependsProvider, "'", '"', ',', '[', ' '));
+    // Register manifest path completion provider
+    const manifestPathProvider = new manifestPathCompletionProvider_1.ManifestPathCompletionProvider();
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', pattern: '**/__manifest__.py' }, manifestPathProvider, "'", '"', '/', ',', '[', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '-', '.'));
     // Register versioned snippet providers for XML and Python
     registerVersionedSnippets(context);
     // Register Odoo definition provider

@@ -16,6 +16,7 @@ import { getOdooVersion, clearCache } from './services/versionService';
 import { getPythonParserService } from './services/pythonParserService';
 import { testTreeSitterParser } from './commands/testTreeSitter';
 import { addCurrentFileToManifest } from './commands/addToManifest';
+import { ManifestPathCompletionProvider } from './providers/manifestPathCompletionProvider';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Initialize Tree-sitter Python Parser
@@ -78,6 +79,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             ],
             manifestDependsProvider,
             "'", '"', ',', '[', ' '
+        )
+    );
+
+    // Register manifest path completion provider
+    const manifestPathProvider = new ManifestPathCompletionProvider();
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            { scheme: 'file', pattern: '**/__manifest__.py' },
+            manifestPathProvider,
+            "'", '"', '/', ',', '[', ' ',
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '-', '.'
         )
     );
 
