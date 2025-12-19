@@ -139,6 +139,14 @@
       {
         "command": "cybrosys-assista-odoo-helper.extendPosPaymentScreen",
         "title": "Payment Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosReceiptScreen",
+        "title": "Receipt Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosTicketScreen",
+        "title": "Order Management Screen"
       }
     ],
     "menus": {
@@ -262,6 +270,14 @@
         {
           "command": "cybrosys-assista-odoo-helper.extendPosPaymentScreen",
           "group": "extend@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosReceiptScreen",
+          "group": "extend@4"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosTicketScreen",
+          "group": "extend@5"
         }
       ]
     },

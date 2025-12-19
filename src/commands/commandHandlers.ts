@@ -552,6 +552,14 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.extendPosPaymentScreen',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendPaymentScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosReceiptScreen',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendReceiptScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.extendPosTicketScreen',
+            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendTicketScreen')
         }
     ];
 

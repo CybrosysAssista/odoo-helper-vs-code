@@ -51,6 +51,12 @@ const getPosComponentTemplate = (moduleName, type) => {
     if (type === 'extendPaymentScreen') {
         return new posTemplate_1.extendPaymentScreen(moduleName);
     }
+    if (type === 'extendReceiptScreen') {
+        return new posTemplate_1.extendReceiptScreen(moduleName);
+    }
+    if (type === 'extendTicketScreen') {
+        return new posTemplate_1.extendTicketScreen(moduleName);
+    }
     return null;
 };
 exports.getPosComponentTemplate = getPosComponentTemplate;

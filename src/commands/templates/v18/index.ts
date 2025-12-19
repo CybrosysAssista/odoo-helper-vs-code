@@ -1,5 +1,5 @@
 import { commonComponent, fieldWidgetComponent, publicComponent, serviceTemplate } from './owlTemplates';
-import { extendProductScreen, extendPartnerListScreen, extendPaymentScreen } from './posTemplate';
+import { extendProductScreen, extendPartnerListScreen, extendPaymentScreen, extendReceiptScreen, extendTicketScreen } from './posTemplate';
 
 export * from './basicView';
 export * from './advancedView';
@@ -35,6 +35,12 @@ export const getPosComponentTemplate = (moduleName: string, type: string) => {
     }
     if (type === 'extendPaymentScreen') {
         return new extendPaymentScreen(moduleName);
+    }
+    if (type === 'extendReceiptScreen') {
+        return new extendReceiptScreen(moduleName);
+    }
+    if (type === 'extendTicketScreen') {
+        return new extendTicketScreen(moduleName);
     }
     return null;
 };
