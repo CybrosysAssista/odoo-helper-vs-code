@@ -32,10 +32,16 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OdooDefinitionProvider = void 0;
 const vscode = __importStar(require("vscode"));
 const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const moduleIndexService_1 = __importDefault(require("../services/moduleIndexService"));
+const pythonParserService_1 = require("../services/pythonParserService");
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -123,6 +129,52 @@ class OdooDefinitionProvider {
             }
         }
         if (languageId === 'python') {
+            // Manifest 'depends' key navigation (using Tree-sitter)
+            if (document.fileName.endsWith('__manifest__.py') || document.fileName.endsWith('__openerp__.py')) {
+                console.log('[OdooDefinitionProvider] Manifest file detected');
+                const pythonParser = (0, pythonParserService_1.getPythonParserService)();
+                if (pythonParser.isInitialized()) {
+                    const manifestParser = pythonParser.getManifestParser();
+                    if (manifestParser) {
+                        const parsed = manifestParser.parseManifest(document.getText());
+                        if (parsed && parsed.data.has('depends')) {
+                            console.log('[OdooDefinitionProvider] Found depends key');
+                            const depends = parsed.data.get('depends');
+                            if (depends && depends.type === 'list' && depends.items) {
+                                for (const item of depends.items) {
+                                    if (typeof item.value === 'string') {
+                                        const range = new vscode.Range(item.range.start.line, item.range.start.character, item.range.end.line, item.range.end.character);
+                                        // Check if cursor is contained in the string range
+                                        if (range.contains(position)) {
+                                            const moduleName = item.value;
+                                            console.log(`[OdooDefinitionProvider] Clicked on module: ${moduleName}`);
+                                            await moduleIndexService_1.default.getModules();
+                                            const modulePath = moduleIndexService_1.default.getModulePath(moduleName);
+                                            console.log(`[OdooDefinitionProvider] Resolved path: ${modulePath}`);
+                                            if (modulePath) {
+                                                const possibleManifests = ['__manifest__.py', '__openerp__.py'];
+                                                for (const man of possibleManifests) {
+                                                    const manPath = path.join(modulePath, man);
+                                                    if (fs.existsSync(manPath)) {
+                                                        console.log(`[OdooDefinitionProvider] Opening manifest: ${manPath}`);
+                                                        return new vscode.Location(vscode.Uri.file(manPath), new vscode.Position(0, 0));
+                                                    }
+                                                }
+                                            }
+                                            else {
+                                                console.log(`[OdooDefinitionProvider] Module ${moduleName} not found in index`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else {
+                    console.log('[OdooDefinitionProvider] Parser not initialized');
+                }
+            }
             // self.field_name
             if (/self\.(\w+)/.test(line) && line.includes(word)) {
                 const modelName = this.getPythonModelContext(documentText, position.line);

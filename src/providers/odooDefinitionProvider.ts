@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
+import moduleIndexService from '../services/moduleIndexService';
+import { getPythonParserService } from '../services/pythonParserService';
+import { ManifestParser, ParsedManifest } from '../services/manifestParser';
 
 function escapeRegExp(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -86,6 +90,50 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
             }
         }
         if (languageId === 'python') {
+            // Manifest 'depends' key navigation (using Tree-sitter)
+            if (document.fileName.endsWith('__manifest__.py') || document.fileName.endsWith('__openerp__.py')) {
+                const pythonParser = getPythonParserService();
+                if (pythonParser.isInitialized()) {
+                    const manifestParser = pythonParser.getManifestParser();
+                    if (manifestParser) {
+                        const parsed: ParsedManifest | null = manifestParser.parseManifest(document.getText());
+                        if (parsed && parsed.data.has('depends')) {
+                            const depends = parsed.data.get('depends');
+                            if (depends && depends.type === 'list' && depends.items) {
+                                for (const item of depends.items) {
+                                    if (typeof item.value === 'string') {
+                                        const range = new vscode.Range(
+                                            item.range.start.line,
+                                            item.range.start.character,
+                                            item.range.end.line,
+                                            item.range.end.character
+                                        );
+                                        // Check if cursor is contained in the string range
+                                        if (range.contains(position)) {
+                                            const moduleName = item.value;
+
+                                            // Ensure index is ready
+                                            await moduleIndexService.getModules();
+                                            const modulePath = moduleIndexService.getModulePath(moduleName);
+
+                                            if (modulePath) {
+                                                const possibleManifests = ['__manifest__.py', '__openerp__.py'];
+                                                for (const man of possibleManifests) {
+                                                    const manPath = path.join(modulePath, man);
+                                                    if (fs.existsSync(manPath)) {
+                                                        return new vscode.Location(vscode.Uri.file(manPath), new vscode.Position(0, 0));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // self.field_name
             if (/self\.(\w+)/.test(line) && line.includes(word)) {
                 const modelName = this.getPythonModelContext(documentText, position.line);
