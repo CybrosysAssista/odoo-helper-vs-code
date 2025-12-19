@@ -105,9 +105,6 @@ export class ImportCompletionProvider implements vscode.CompletionItemProvider {
     }
 
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] {
-        if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-            return [];
-        }
         return this.imports.map(imp => {
             const item = new vscode.CompletionItem(imp.label, vscode.CompletionItemKind.Snippet);
             item.detail = imp.detail;

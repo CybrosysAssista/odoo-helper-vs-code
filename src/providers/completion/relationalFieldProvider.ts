@@ -9,9 +9,6 @@ export class RelationalFieldCompletionProvider implements vscode.CompletionItemP
     }
 
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] {
-        if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-            return [];
-        }
         const textUntilPosition = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
         const currentLine = document.lineAt(position).text;
 

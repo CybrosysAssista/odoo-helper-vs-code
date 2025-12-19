@@ -47,7 +47,6 @@ const commandHandlers_1 = require("./commands/commandHandlers");
 const odooLinter_1 = require("./services/odooLinter");
 const modelIndexService_1 = __importDefault(require("./services/modelIndexService"));
 const templateIndexService_1 = __importDefault(require("./services/templateIndexService"));
-const moduleIndexService_1 = __importDefault(require("./services/moduleIndexService"));
 const xmlCompletionProvider_1 = require("./providers/xml/xmlCompletionProvider");
 const relationalFieldProvider_1 = require("./providers/completion/relationalFieldProvider");
 const importCompletionProvider_1 = require("./providers/completion/importCompletionProvider");
@@ -64,17 +63,16 @@ async function activate(context) {
     const pythonParser = (0, pythonParserService_1.getPythonParserService)();
     try {
         await pythonParser.init(context);
-        console.log('[Extension] Python Parser Service initialized');
+        console.log('[Extension] ✅ Python Parser Service initialized');
     }
     catch (error) {
-        console.error('[Extension] Failed to initialize Python Parser:', error);
+        console.error('[Extension] ❌ Failed to initialize Python Parser:', error);
         vscode.window.showWarningMessage('Tree-sitter parser failed to initialize. Some features may be limited.');
     }
     // Initialize index services
     modelIndexService_1.default.initialize();
     modelIndexService_1.default.buildCache();
     templateIndexService_1.default.initialize();
-    moduleIndexService_1.default.initialize();
     // Register model providers
     (0, odooModelProvider_1.registerModelProviders)(context);
     // Register field providers
@@ -92,7 +90,8 @@ async function activate(context) {
     const manifestDependsProvider = new manifestDependsCompletionProvider_1.ManifestDependsCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider([
         { scheme: 'file', language: '*', pattern: '**/__manifest__.py' },
-    ], manifestDependsProvider, "'", '"', ',', '[', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'));
+        { scheme: 'file', language: '*', pattern: '**/__manifest__.json' }
+    ], manifestDependsProvider, "'", '"', ',', '[', ' '));
     // Register manifest path completion provider
     const manifestPathProvider = new manifestPathCompletionProvider_1.ManifestPathCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', pattern: '**/__manifest__.py' }, manifestPathProvider, "'", '"', '/', ',', '[', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '-', '.'));
@@ -197,10 +196,7 @@ async function registerVersionedSnippets(context) {
         context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, xmlProvider));
         // Python snippets provider - reads version dynamically
         const pyProvider = {
-            async provideCompletionItems(document) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
+            async provideCompletionItems() {
                 try {
                     const version = await (0, versionService_1.getOdooVersion)();
                     const pyFile = version === '18' ? 'snippets/python18.json' : 'snippets/python19.json';
@@ -235,6 +231,5 @@ async function registerVersionedSnippets(context) {
 }
 function deactivate() {
     modelIndexService_1.default.dispose();
-    moduleIndexService_1.default.dispose();
 }
 //# sourceMappingURL=extension.js.map

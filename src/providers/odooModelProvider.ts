@@ -251,9 +251,6 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
         'python',
         {
             provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const line = document.lineAt(position);
                 const textBefore = line.text.substring(0, position.character);
 
@@ -287,9 +284,6 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
         'python',
         {
             provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const lineText = document.lineAt(position.line).text;
                 const textBefore = lineText.substring(0, position.character);
                 const fullText = document.getText();
@@ -395,9 +389,6 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
         'python',
         {
             provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const fullText = document.getText();
                 const lines = fullText.split('\n');
                 const aliasMap: { [key: string]: string | null } = { self: null }; // Track alias to chain
@@ -466,9 +457,6 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
         'python',
         {
             provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const line = document.lineAt(position.line).text;
                 const textBefore = line.substring(0, position.character);
                 const fullText = document.getText();

@@ -230,9 +230,6 @@ function registerModelProviders(context) {
     // Python: model names for _inherit or env[...] 
     const ModelProvider = vscode.languages.registerCompletionItemProvider('python', {
         provideCompletionItems(document, position) {
-            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                return undefined;
-            }
             const line = document.lineAt(position);
             const textBefore = line.text.substring(0, position.character);
             const inheritContextRegex = /_inherit\s*=\s*(\[.*)?['"]?[^'"]*$/;
@@ -256,9 +253,6 @@ function registerModelProviders(context) {
     }, "'", '"');
     const InverseNameProvider = vscode.languages.registerCompletionItemProvider('python', {
         provideCompletionItems(document, position) {
-            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                return undefined;
-            }
             const lineText = document.lineAt(position.line).text;
             const textBefore = lineText.substring(0, position.character);
             const fullText = document.getText();
@@ -347,9 +341,6 @@ function registerModelProviders(context) {
     }, '"');
     const RelatedFieldProvider = vscode.languages.registerCompletionItemProvider('python', {
         provideCompletionItems(document, position) {
-            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                return undefined;
-            }
             const fullText = document.getText();
             const lines = fullText.split('\n');
             const aliasMap = { self: null }; // Track alias to chain
@@ -410,9 +401,6 @@ function registerModelProviders(context) {
     // Field name auto-suggestion for @api.onchange and @api.depends
     const ApiDecoratorFieldProvider = vscode.languages.registerCompletionItemProvider('python', {
         provideCompletionItems(document, position) {
-            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                return undefined;
-            }
             const line = document.lineAt(position.line).text;
             const textBefore = line.substring(0, position.character);
             const fullText = document.getText();

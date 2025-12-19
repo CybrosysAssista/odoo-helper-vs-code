@@ -12,9 +12,6 @@ export function registerFieldProviders(context: vscode.ExtensionContext) {
         'python',
         {
             async provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const line = document.lineAt(position).text;
                 const textBefore = line.substring(0, position.character);
 
@@ -44,9 +41,6 @@ export function registerFieldProviders(context: vscode.ExtensionContext) {
         'python',
         {
             async provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const line = document.lineAt(position);
                 const textBefore = line.text.substring(0, position.character);
                 if (!textBefore.trim().endsWith("@")) return undefined;
@@ -68,9 +62,6 @@ export function registerFieldProviders(context: vscode.ExtensionContext) {
         'python',
         {
             async provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const line = document.lineAt(position);
                 const textBefore = line.text.substring(0, position.character);
                 if (!textBefore.includes('fields.')) return undefined;
@@ -147,9 +138,6 @@ export function registerFieldProviders(context: vscode.ExtensionContext) {
         'python',
         {
             async provideCompletionItems(document, position) {
-                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
-                    return undefined;
-                }
                 const line = document.lineAt(position);
                 line.text.substring(0, position.character);
 
