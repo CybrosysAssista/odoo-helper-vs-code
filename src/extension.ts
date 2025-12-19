@@ -7,6 +7,7 @@ import { registerCommands } from './commands/commandHandlers';
 import { runOdooLint } from './services/odooLinter';
 import modelIndexService from './services/modelIndexService';
 import templateIndexService from './services/templateIndexService';
+import moduleIndexService from './services/moduleIndexService';
 import { OdooXmlCompletionProvider } from './providers/xml/xmlCompletionProvider';
 import { RelationalFieldCompletionProvider } from './providers/completion/relationalFieldProvider';
 import { ImportCompletionProvider } from './providers/completion/importCompletionProvider';
@@ -24,9 +25,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const pythonParser = getPythonParserService();
     try {
         await pythonParser.init(context);
-        console.log('[Extension] ✅ Python Parser Service initialized');
+        console.log('[Extension] Python Parser Service initialized');
     } catch (error) {
-        console.error('[Extension] ❌ Failed to initialize Python Parser:', error);
+        console.error('[Extension] Failed to initialize Python Parser:', error);
         vscode.window.showWarningMessage('Tree-sitter parser failed to initialize. Some features may be limited.');
     }
 
@@ -34,6 +35,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     modelIndexService.initialize();
     modelIndexService.buildCache();
     templateIndexService.initialize();
+    moduleIndexService.initialize();
 
     // Register model providers
     registerModelProviders(context);
@@ -75,10 +77,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.languages.registerCompletionItemProvider(
             [
                 { scheme: 'file', language: '*', pattern: '**/__manifest__.py' },
-                { scheme: 'file', language: '*', pattern: '**/__manifest__.json' }
             ],
             manifestDependsProvider,
-            "'", '"', ',', '[', ' '
+            "'", '"', ',', '[', ' ',
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
         )
     );
 
@@ -248,7 +251,10 @@ async function registerVersionedSnippets(context: vscode.ExtensionContext): Prom
 
         // Python snippets provider - reads version dynamically
         const pyProvider = {
-            async provideCompletionItems() {
+            async provideCompletionItems(document: vscode.TextDocument) {
+                if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
+                    return undefined;
+                }
                 try {
                     const version = await getOdooVersion();
                     const pyFile = version === '18' ? 'snippets/python18.json' : 'snippets/python19.json';
@@ -286,4 +292,5 @@ async function registerVersionedSnippets(context: vscode.ExtensionContext): Prom
 
 export function deactivate(): void {
     modelIndexService.dispose();
+    moduleIndexService.dispose();
 }

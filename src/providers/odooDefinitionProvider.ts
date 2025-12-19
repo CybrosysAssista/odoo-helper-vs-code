@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
+import { moduleIndexService } from '../services/moduleIndexService';
+import { getPythonParserService } from '../services/pythonParserService';
 
 function escapeRegExp(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -7,12 +10,70 @@ function escapeRegExp(str: string): string {
 
 export class OdooDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Location | vscode.Location[] | null | undefined> {
-        const wordRange = document.getWordRangeAtPosition(position, /[\w.\-_]+/);
+        // Improve word range to include slashes and dots for paths
+        const wordRange = document.getWordRangeAtPosition(position, /['"][^'"]+['"]/);
         if (!wordRange) return null;
-        const word = document.getText(wordRange);
+        const wordWithQuotes = document.getText(wordRange);
+        const word = wordWithQuotes.replace(/['"]/g, '');
         const line = document.lineAt(position.line).text;
         const documentText = document.getText();
         const languageId = document.languageId;
+        const fileName = path.basename(document.fileName);
+
+        // 0. Manifest navigation
+        if (fileName === '__manifest__.py' || fileName === '__openerp__.py') {
+            const parserService = getPythonParserService();
+            if (parserService.isInitialized()) {
+                const tree = parserService.parse(documentText);
+                if (tree) {
+                    let node = tree.rootNode.descendantForPosition({
+                        row: position.line,
+                        column: position.character
+                    });
+
+                    // Walk up to find the key context
+                    let key: string | null = null;
+                    let current = node;
+                    while (current) {
+                        if (current.type === 'pair') {
+                            const k = current.childForFieldName('key')?.text.replace(/['"]/g, '');
+                            if (['data', 'demo', 'depends', 'assets'].includes(k || "")) {
+                                key = k || null;
+                                break;
+                            }
+                        }
+                        // Nested assets case
+                        if (current.type === 'dictionary') {
+                            const parent = current.parent;
+                            if (parent && parent.type === 'pair') {
+                                const k = parent.childForFieldName('key')?.text.replace(/['"]/g, '');
+                                if (k === 'assets') {
+                                    key = 'assets';
+                                    break;
+                                }
+                            }
+                        }
+                        current = current.parent;
+                    }
+
+                    if (key === 'depends') {
+                        const module = moduleIndexService.getModule(word);
+                        if (module) {
+                            const manifestPath = path.join(module.path, '__manifest__.py');
+                            if (fs.existsSync(manifestPath)) {
+                                return new vscode.Location(vscode.Uri.file(manifestPath), new vscode.Position(0, 0));
+                            }
+                        }
+                    } else if (key === 'data' || key === 'demo' || key === 'assets') {
+                        const moduleRoot = path.dirname(document.fileName);
+                        const filePath = path.join(moduleRoot, word);
+                        if (fs.existsSync(filePath)) {
+                            return new vscode.Location(vscode.Uri.file(filePath), new vscode.Position(0, 0));
+                        }
+                    }
+                }
+            }
+        }
 
         if (languageId === 'xml') {
             // 1. Button action navigation: <button name="...">

@@ -45,6 +45,9 @@ const modelSnippets_1 = require("./data/modelSnippets");
 function registerFieldProviders(context) {
     const fieldTypeProvider = vscode.languages.registerCompletionItemProvider('python', {
         async provideCompletionItems(document, position) {
+            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
+                return undefined;
+            }
             const line = document.lineAt(position).text;
             const textBefore = line.substring(0, position.character);
             // Match fields.SomeText, extract "SomeText"
@@ -67,6 +70,9 @@ function registerFieldProviders(context) {
     context.subscriptions.push(fieldTypeProvider);
     const methodDecoratorProvider = vscode.languages.registerCompletionItemProvider('python', {
         async provideCompletionItems(document, position) {
+            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
+                return undefined;
+            }
             const line = document.lineAt(position);
             const textBefore = line.text.substring(0, position.character);
             if (!textBefore.trim().endsWith("@"))
@@ -84,6 +90,9 @@ function registerFieldProviders(context) {
     context.subscriptions.push(methodDecoratorProvider);
     const fieldAttributesProvider = vscode.languages.registerCompletionItemProvider('python', {
         async provideCompletionItems(document, position) {
+            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
+                return undefined;
+            }
             const line = document.lineAt(position);
             const textBefore = line.text.substring(0, position.character);
             if (!textBefore.includes('fields.'))
@@ -148,6 +157,9 @@ function registerFieldProviders(context) {
     // context.subscriptions.push(MethodProvider);
     const odooKeywordProvider = vscode.languages.registerCompletionItemProvider('python', {
         async provideCompletionItems(document, position) {
+            if (document.fileName.endsWith('__init__.py') || document.fileName.endsWith('__manifest__.py')) {
+                return undefined;
+            }
             const line = document.lineAt(position);
             line.text.substring(0, position.character);
             const suggestions = [];

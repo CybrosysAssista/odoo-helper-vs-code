@@ -36,18 +36,77 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OdooDefinitionProvider = void 0;
 const vscode = __importStar(require("vscode"));
 const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const moduleIndexService_1 = require("../services/moduleIndexService");
+const pythonParserService_1 = require("../services/pythonParserService");
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 class OdooDefinitionProvider {
     async provideDefinition(document, position, token) {
-        const wordRange = document.getWordRangeAtPosition(position, /[\w.\-_]+/);
+        // Improve word range to include slashes and dots for paths
+        const wordRange = document.getWordRangeAtPosition(position, /['"][^'"]+['"]/);
         if (!wordRange)
             return null;
-        const word = document.getText(wordRange);
+        const wordWithQuotes = document.getText(wordRange);
+        const word = wordWithQuotes.replace(/['"]/g, '');
         const line = document.lineAt(position.line).text;
         const documentText = document.getText();
         const languageId = document.languageId;
+        const fileName = path.basename(document.fileName);
+        // 0. Manifest navigation
+        if (fileName === '__manifest__.py' || fileName === '__openerp__.py') {
+            const parserService = (0, pythonParserService_1.getPythonParserService)();
+            if (parserService.isInitialized()) {
+                const tree = parserService.parse(documentText);
+                if (tree) {
+                    let node = tree.rootNode.descendantForPosition({
+                        row: position.line,
+                        column: position.character
+                    });
+                    // Walk up to find the key context
+                    let key = null;
+                    let current = node;
+                    while (current) {
+                        if (current.type === 'pair') {
+                            const k = current.childForFieldName('key')?.text.replace(/['"]/g, '');
+                            if (['data', 'demo', 'depends', 'assets'].includes(k || "")) {
+                                key = k || null;
+                                break;
+                            }
+                        }
+                        // Nested assets case
+                        if (current.type === 'dictionary') {
+                            const parent = current.parent;
+                            if (parent && parent.type === 'pair') {
+                                const k = parent.childForFieldName('key')?.text.replace(/['"]/g, '');
+                                if (k === 'assets') {
+                                    key = 'assets';
+                                    break;
+                                }
+                            }
+                        }
+                        current = current.parent;
+                    }
+                    if (key === 'depends') {
+                        const module = moduleIndexService_1.moduleIndexService.getModule(word);
+                        if (module) {
+                            const manifestPath = path.join(module.path, '__manifest__.py');
+                            if (fs.existsSync(manifestPath)) {
+                                return new vscode.Location(vscode.Uri.file(manifestPath), new vscode.Position(0, 0));
+                            }
+                        }
+                    }
+                    else if (key === 'data' || key === 'demo' || key === 'assets') {
+                        const moduleRoot = path.dirname(document.fileName);
+                        const filePath = path.join(moduleRoot, word);
+                        if (fs.existsSync(filePath)) {
+                            return new vscode.Location(vscode.Uri.file(filePath), new vscode.Position(0, 0));
+                        }
+                    }
+                }
+            }
+        }
         if (languageId === 'xml') {
             // 1. Button action navigation: <button name="...">
             if (/<button[^>]*name\s*=\s*["']([^"']+)["']/.test(line) && word) {

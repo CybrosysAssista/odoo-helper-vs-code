@@ -35,6 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
+const pythonParserService_1 = require("./pythonParserService");
 class ModelIndexService {
     modelCache;
     fieldCache;
@@ -54,38 +56,100 @@ class ModelIndexService {
     async buildCache() {
         const pythonFiles = await vscode.workspace.findFiles('**/*.py');
         for (const file of pythonFiles) {
-            const content = await vscode.workspace.fs.readFile(file);
-            const text = Buffer.from(content).toString('utf8');
-            // Parse Python file for models and fields
-            this.parsePythonFile(text, file.fsPath);
+            try {
+                const content = await vscode.workspace.fs.readFile(file);
+                const text = Buffer.from(content).toString('utf8');
+                await this.parsePythonFile(text, file.fsPath);
+            }
+            catch (err) {
+                console.error(`Error reading ${file.fsPath}:`, err);
+            }
         }
     }
-    parsePythonFile(content, filePath) {
-        // Extract model definitions
-        const modelRegex = /class\s+(\w+)\s*\([^)]*Model[^)]*\)[^{]*{([^}]*)}/gs;
-        let match;
-        while ((match = modelRegex.exec(content)) !== null) {
-            const className = match[1];
-            const classContent = match[2];
-            // Extract model name
-            const nameMatch = /_name\s*=\s*['"]([^'"]+)['"]/.exec(classContent);
-            if (nameMatch) {
-                const modelName = nameMatch[1];
+    getModuleNameForFile(filePath) {
+        let dir = path.dirname(filePath);
+        let lastDir = null;
+        while (dir !== lastDir) {
+            if (fs.existsSync(path.join(dir, '__manifest__.py')) || fs.existsSync(path.join(dir, '__openerp__.py'))) {
+                return path.basename(dir);
+            }
+            lastDir = dir;
+            dir = path.dirname(dir);
+        }
+        return 'unknown';
+    }
+    async parsePythonFile(content, filePath) {
+        const parserService = (0, pythonParserService_1.getPythonParserService)();
+        if (!parserService.isInitialized())
+            return;
+        const tree = parserService.parse(content);
+        if (!tree)
+            return;
+        // Query for class definitions
+        const root = tree.rootNode;
+        const classes = this.findNodesByType(root, 'class_definition');
+        for (const classNode of classes) {
+            const classNameNode = classNode.childForFieldName('name');
+            const className = classNameNode?.text || 'Unknown';
+            const body = classNode.childForFieldName('body');
+            if (!body)
+                continue;
+            // Extract assignments within the class body
+            const assignments = this.findNodesByType(body, 'assignment');
+            let modelName = null;
+            let hasInherit = false;
+            const fields = [];
+            for (const assign of assignments) {
+                const left = assign.childForFieldName('left')?.text;
+                const right = assign.childForFieldName('right');
+                const rightText = right?.text || "";
+                if (left === '_name') {
+                    modelName = rightText.replace(/['"]/g, '');
+                }
+                else if (left === '_inherit') {
+                    hasInherit = true;
+                    // If _name is missing, Odoo uses _inherit as the model name
+                    if (!modelName) {
+                        modelName = rightText.replace(/['"\[\]]/g, '').split(',')[0].trim();
+                    }
+                }
+                else if (rightText.includes('fields.')) {
+                    // Basic check for field assignments
+                    if (left)
+                        fields.push(left);
+                }
+            }
+            if (modelName) {
+                const hasBoth = assignments.some(a => a.childForFieldName('left')?.text === '_name') &&
+                    assignments.some(a => a.childForFieldName('left')?.text === '_inherit');
                 this.modelCache.set(modelName, {
                     name: modelName,
                     className: className,
-                    filePath: filePath
+                    filePath: filePath,
+                    moduleName: moduleName,
+                    isInherited: hasBoth
                 });
-                // Extract fields
-                const fieldRegex = /(\w+)\s*=\s*fields\./g;
-                let fieldMatch;
-                const fields = [];
-                while ((fieldMatch = fieldRegex.exec(classContent)) !== null) {
-                    fields.push(fieldMatch[1]);
+                // Note: The user specifically asked: "is inherited which determine by checking that the model have _name and _inherit"
+                // So we check if both are present in the same class.
+                const hasBoth = assignments.some(a => a.childForFieldName('left')?.text === '_name') &&
+                    assignments.some(a => a.childForFieldName('left')?.text === '_inherit');
+                const modelEntry = this.modelCache.get(modelName);
+                if (modelEntry) {
+                    modelEntry.isInherited = hasBoth;
                 }
                 this.fieldCache.set(modelName, fields);
             }
         }
+    }
+    findNodesByType(node, type) {
+        const results = [];
+        if (node.type === type) {
+            results.push(node);
+        }
+        for (let i = 0; i < node.childCount; i++) {
+            results.push(...this.findNodesByType(node.child(i), type));
+        }
+        return results;
     }
     getModel(modelName) {
         return this.modelCache.get(modelName);
@@ -96,7 +160,6 @@ class ModelIndexService {
     getAllModels() {
         return Array.from(this.modelCache.keys());
     }
-    // New: Get all Odoo module names by scanning for __manifest__.py
     async getAllModuleNames() {
         const moduleNames = new Set();
         const manifestFiles = await vscode.workspace.findFiles('**/__manifest__.py');
@@ -112,12 +175,9 @@ class ModelIndexService {
         this.buildCache();
     }
     dispose() {
-        if (this.watcher) {
-            this.watcher.dispose();
-        }
+        this.watcher?.dispose();
     }
 }
-// Singleton instance
 const modelIndexService = new ModelIndexService();
 exports.default = modelIndexService;
 //# sourceMappingURL=modelIndexService.js.map

@@ -32,34 +32,80 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ManifestDependsCompletionProvider = void 0;
 const vscode = __importStar(require("vscode"));
-const modelIndexService_1 = __importDefault(require("../../services/modelIndexService"));
+const pythonParserService_1 = require("../../services/pythonParserService");
+const moduleIndexService_1 = require("../../services/moduleIndexService");
+/**
+ * Provides Odoo module name suggestions for the 'depends' list in manifest files.
+ */
 class ManifestDependsCompletionProvider {
-    constructor() { }
     async provideCompletionItems(document, position) {
-        const line = document.lineAt(position).text;
-        const textBefore = line.substring(0, position.character);
-        // Only trigger if the line contains 'depends' and we're inside quotes
-        if (!/depends/.test(line) || !/['"]$/.test(textBefore))
-            return undefined;
-        // Extract the partial module name being typed (allow empty string for always suggest)
-        const partialMatch = textBefore.match(/['"]([a-zA-Z0-9_\-]*)$/);
-        const partial = partialMatch ? partialMatch[1] : '';
-        // Get all module names in the workspace
-        const moduleNames = await modelIndexService_1.default.getAllModuleNames();
-        return moduleNames
-            .filter((name) => partial === '' || name.startsWith(partial))
-            .map((name) => {
-            const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Module);
-            item.insertText = name;
-            item.detail = 'Odoo Module';
+        const parserService = (0, pythonParserService_1.getPythonParserService)();
+        if (!parserService.isInitialized()) {
+            return [];
+        }
+        const tree = parserService.parse(document.getText());
+        if (!tree) {
+            return [];
+        }
+        // Get the node at the current cursor position
+        let node = tree.rootNode.descendantForPosition({
+            row: position.line,
+            column: position.character > 0 ? position.character - 1 : position.character
+        });
+        if (!node) {
+            return [];
+        }
+        // 1. Verify we are in a manifest 'depends' list
+        if (!this.isInDependsContext(node)) {
+            return [];
+        }
+        // 2. Extract partial text for filtering
+        const lineText = document.lineAt(position.line).text;
+        const lineToCursor = lineText.substring(0, position.character);
+        const lastQuote = Math.max(lineToCursor.lastIndexOf("'"), lineToCursor.lastIndexOf('"'));
+        if (lastQuote === -1)
+            return [];
+        const prefix = lineToCursor.substring(lastQuote + 1);
+        // 3. Get modules from our new high-speed index
+        const modules = moduleIndexService_1.moduleIndexService.getModules();
+        const replacementRange = new vscode.Range(position.translate(0, -prefix.length), position);
+        return modules
+            .filter(mod => mod.name.toLowerCase().startsWith(prefix.toLowerCase()))
+            .map(mod => {
+            const item = new vscode.CompletionItem(mod.name, vscode.CompletionItemKind.Module);
+            item.detail = 'Odoo Module Name';
+            item.documentation = new vscode.MarkdownString(`Path: \`${mod.path}\``);
+            item.range = replacementRange;
             return item;
         });
+    }
+    /**
+     * Context check: Go up the tree to find if the parent list belongs to 'depends'
+     */
+    isInDependsContext(node) {
+        let current = node;
+        while (current) {
+            // If we are in a list, check the key of its parent pair
+            if (current.type === 'list') {
+                const pair = current.parent;
+                if (pair && pair.type === 'pair') {
+                    const key = pair.childForFieldName('key')?.text.replace(/['"]/g, '');
+                    if (key === 'depends')
+                        return true;
+                }
+            }
+            // Sometimes we are looking directly at a pair if the list is empty
+            if (current.type === 'pair') {
+                const key = current.childForFieldName('key')?.text.replace(/['"]/g, '');
+                if (key === 'depends')
+                    return true;
+            }
+            current = current.parent;
+        }
+        return false;
     }
 }
 exports.ManifestDependsCompletionProvider = ManifestDependsCompletionProvider;
