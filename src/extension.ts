@@ -6,6 +6,7 @@ import { registerFieldProviders } from './providers/odooCompletionProvider';
 import { registerCommands } from './commands/commandHandlers';
 import { runOdooLint } from './services/odooLinter';
 import modelIndexService from './services/modelIndexService';
+import moduleIndexService from './services/moduleIndexService';
 import templateIndexService from './services/templateIndexService';
 import { OdooXmlCompletionProvider } from './providers/xml/xmlCompletionProvider';
 import { RelationalFieldCompletionProvider } from './providers/completion/relationalFieldProvider';
@@ -33,6 +34,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Initialize index services
     modelIndexService.initialize();
     modelIndexService.buildCache();
+    moduleIndexService.initialize();
     templateIndexService.initialize();
 
     // Register model providers
@@ -286,4 +288,5 @@ async function registerVersionedSnippets(context: vscode.ExtensionContext): Prom
 
 export function deactivate(): void {
     modelIndexService.dispose();
+    moduleIndexService.dispose();
 }

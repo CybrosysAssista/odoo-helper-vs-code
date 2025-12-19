@@ -34,7 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = __importStar(require("vscode"));
-const path = __importStar(require("path"));
 class ModelIndexService {
     modelCache;
     fieldCache;
@@ -95,16 +94,6 @@ class ModelIndexService {
     }
     getAllModels() {
         return Array.from(this.modelCache.keys());
-    }
-    // New: Get all Odoo module names by scanning for __manifest__.py
-    async getAllModuleNames() {
-        const moduleNames = new Set();
-        const manifestFiles = await vscode.workspace.findFiles('**/__manifest__.py');
-        for (const file of manifestFiles) {
-            const moduleName = path.basename(path.dirname(file.fsPath));
-            moduleNames.add(moduleName);
-        }
-        return Array.from(moduleNames).sort();
     }
     invalidateCache() {
         this.modelCache.clear();

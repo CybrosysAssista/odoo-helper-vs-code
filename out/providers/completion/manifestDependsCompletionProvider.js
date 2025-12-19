@@ -38,7 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ManifestDependsCompletionProvider = void 0;
 const vscode = __importStar(require("vscode"));
-const modelIndexService_1 = __importDefault(require("../../services/modelIndexService"));
+const moduleIndexService_1 = __importDefault(require("../../services/moduleIndexService"));
 class ManifestDependsCompletionProvider {
     constructor() { }
     async provideCompletionItems(document, position) {
@@ -51,7 +51,7 @@ class ManifestDependsCompletionProvider {
         const partialMatch = textBefore.match(/['"]([a-zA-Z0-9_\-]*)$/);
         const partial = partialMatch ? partialMatch[1] : '';
         // Get all module names in the workspace
-        const moduleNames = await modelIndexService_1.default.getAllModuleNames();
+        const moduleNames = await moduleIndexService_1.default.getModuleNames();
         return moduleNames
             .filter((name) => partial === '' || name.startsWith(partial))
             .map((name) => {

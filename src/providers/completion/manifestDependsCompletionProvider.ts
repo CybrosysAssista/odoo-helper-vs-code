@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import modelIndexService from '../../services/modelIndexService';
+import moduleIndexService from '../../services/moduleIndexService';
 
 export class ManifestDependsCompletionProvider implements vscode.CompletionItemProvider {
     constructor() { }
@@ -16,7 +16,7 @@ export class ManifestDependsCompletionProvider implements vscode.CompletionItemP
         const partial = partialMatch ? partialMatch[1] : '';
 
         // Get all module names in the workspace
-        const moduleNames = await modelIndexService.getAllModuleNames();
+        const moduleNames = await moduleIndexService.getModuleNames();
         return moduleNames
             .filter((name: string) => partial === '' || name.startsWith(partial))
             .map((name: string) => {
