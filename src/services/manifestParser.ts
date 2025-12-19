@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { DataFileMetaDataOptions, AssetFileMetaDataOptions } from '../utils/utils';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const TreeSitter = require('web-tree-sitter');
 
@@ -40,11 +42,17 @@ export interface ParsedManifest {
     range: Range;
 }
 
+export type UpdateManifestOptions =
+    | DataFileMetaDataOptions
+    | AssetFileMetaDataOptions;
+
 /**
  * Helper class to parse Odoo manifest files and extract structure with positions
  */
 export class ManifestParser {
     private language: any;
+    private parsedManifest: ParsedManifest | null = null;
+    private originalContent: string = "";
 
     constructor(language: any) {
         this.language = language;
@@ -54,6 +62,7 @@ export class ManifestParser {
      * Parse a manifest file and return structured data with positions
      */
     parseManifest(text: string): ParsedManifest | null {
+        this.originalContent = text;
         try {
             const TreeSitterModule = require('web-tree-sitter');
             const { Parser } = TreeSitterModule;
@@ -71,10 +80,12 @@ export class ManifestParser {
                 return null;
             }
 
-            return {
+            this.parsedManifest = {
                 data: this.parseDictionary(dictNode),
                 range: this.nodeToRange(dictNode)
             };
+
+            return this.parsedManifest;
         } catch (error) {
             console.error('[ManifestParser] Error parsing manifest:', error);
             return null;
@@ -240,55 +251,171 @@ export class ManifestParser {
      * Get the insertion position for adding an item to a list
      */
     getListInsertPosition(listValue: ManifestValue): Position | null {
-        if (listValue.type !== 'list' || !listValue.items) {
-            return null;
-        }
-
-        if (listValue.items.length === 0) {
-            // Empty list - insert at start
-            return {
-                line: listValue.range.start.line,
-                character: listValue.range.start.character + 1
-            };
-        }
-
-        // Insert after last item
-        const lastItem = listValue.items[listValue.items.length - 1];
+        if (listValue.type !== 'list') return null;
         return {
-            line: lastItem.range.end.line,
-            character: lastItem.range.end.character
+            line: listValue.range.end.line,
+            character: listValue.range.end.character - 1
         };
     }
 
     /**
-     * Get the insertion position for adding a key-value pair to a dict
+     * Get the insertion position for adding a key-value pair to a dictionary
      */
     getDictInsertPosition(dictValue: ManifestValue): Position | null {
-        if (dictValue.type !== 'dict' || !dictValue.children) {
+        if (dictValue.type !== 'dict') {
             return null;
         }
+        return {
+            line: dictValue.range.end.line,
+            character: dictValue.range.end.character - 1
+        };
+    }
 
-        if (dictValue.children.size === 0) {
-            // Empty dict - insert at start
-            return {
-                line: dictValue.range.start.line,
-                character: dictValue.range.start.character + 1
-            };
+    private getIndentation(line: string): string {
+        const match = line.match(/^\s*/);
+        return match ? match[0] : "";
+    }
+
+    public updateManifest(options: UpdateManifestOptions, filePath: string): { success: boolean, message: string, updatedContent?: string } {
+        if (this.parsedManifest === null) {
+            return { success: false, message: 'Manifest not parsed yet.' };
         }
 
-        // Insert after last key-value pair
-        const entries = Array.from(dictValue.children.values());
-        const lastEntry = entries[entries.length - 1];
-        return {
-            line: lastEntry.range.end.line,
-            character: lastEntry.range.end.character
+        if (!this.parsedManifest.data.has('name') || !this.parsedManifest.data.has('version')) {
+            return { success: false, message: 'Manifest is Invalid' };
+        }
+
+        const subCategoryKeyMap: Record<AssetFileMetaDataOptions['assetCategory'], string> = {
+            'web': 'web.assets_frontend',
+            'pos': 'pos.assets_pos',
+            'frontend': 'web.assets_frontend',
+            'backend': 'web.assets_backend'
         };
+
+        let subCategoryKey = '';
+        if (options.manifestCategory === 'asset') {
+            subCategoryKey = subCategoryKeyMap[options.assetCategory];
+        } else {
+            return { success: true, message: 'Data category updates not implemented yet.' };
+        }
+
+        if (!this.parsedManifest.data.has("assets")) {
+            const insertPos = this.getDictInsertPosition({
+                type: 'dict',
+                value: null,
+                range: this.parsedManifest.range,
+                children: this.parsedManifest.data
+            });
+
+            if (insertPos) {
+                const isFirstEntry = this.parsedManifest.data.size === 0;
+                const prefix = (isFirstEntry || !this.isTrailingCommaMissing(insertPos)) ? "" : ",";
+                const assetDictToAdd = `${prefix}\n    'assets': {\n        '${subCategoryKey}': [\n            '${filePath}',\n        ],\n    }`;
+                const updatedContent = this.insertAtPosition(this.originalContent, insertPos, assetDictToAdd);
+                return { success: true, message: 'Manifest updated successfully.', updatedContent };
+            }
+        } else {
+            const assets = this.parsedManifest.data.get("assets");
+            if (assets?.type !== "dict" || !assets.children) {
+                return { success: false, message: 'Invalid manifest format (assets is not a dictionary).' };
+            }
+
+            if (!assets.children.has(subCategoryKey)) {
+                const insertPos = this.getDictInsertPosition(assets);
+                if (insertPos) {
+                    const isFirstEntry = (assets.children.size || 0) === 0;
+                    const prefix = (isFirstEntry || !this.isTrailingCommaMissing(insertPos)) ? "" : ",";
+                    const entryToAdd = `${prefix}\n        '${subCategoryKey}': [\n            '${filePath}',\n        ]`;
+                    const updatedContent = this.insertAtPosition(this.originalContent, insertPos, entryToAdd);
+                    return { success: true, message: 'Manifest updated successfully.', updatedContent };
+                }
+            } else {
+                const subCategoryList = assets.children.get(subCategoryKey);
+                if (subCategoryList?.type !== "list") {
+                    return { success: false, message: 'Invalid manifest format (subcategory is not a list).' };
+                }
+
+                if (subCategoryList.items?.some(item => item.value === filePath)) {
+                    return { success: false, message: 'File already exists in manifest.' };
+                }
+
+                const insertPos = this.getListInsertPosition(subCategoryList);
+                if (insertPos) {
+                    const isFirstItem = (subCategoryList.items?.length || 0) === 0;
+                    const prefix = (isFirstItem || !this.isTrailingCommaMissing(insertPos)) ? "" : ",";
+                    const itemToAdd = `${prefix}\n            '${filePath}',`;
+                    const updatedContent = this.insertAtPosition(this.originalContent, insertPos, itemToAdd);
+                    return { success: true, message: 'Manifest updated successfully.', updatedContent };
+                }
+            }
+        }
+
+        return { success: true, message: 'Manifest updated successfully.' };
+    }
+
+    private isTrailingCommaMissing(pos: Position): boolean {
+        const lines = this.originalContent.split('\n');
+        let currentLine = pos.line;
+        let currentChar = pos.character - 1;
+
+        while (currentLine >= 0) {
+            const line = lines[currentLine];
+            while (currentChar >= 0) {
+                const char = line[currentChar];
+                if (char === ',') return false;
+                if (char === '[' || char === '{') return true;
+                if (!/\s/.test(char)) return true;
+                currentChar--;
+            }
+            currentLine--;
+            if (currentLine >= 0) {
+                currentChar = lines[currentLine].length - 1;
+            }
+        }
+        return true;
+    }
+
+    private insertAtPosition(content: string, pos: Position, text: string): string {
+        const lines = content.split('\n');
+        const line = lines[pos.line];
+
+        let linePrefix = line.slice(0, pos.character).trimEnd();
+        const lineSuffix = line.slice(pos.character).trimStart();
+
+        // If we are adding a comma and it's on a new line, join it with the prefix/previous line
+        if (text.startsWith(',')) {
+            if (linePrefix === "" && pos.line > 0) {
+                // Find last non-empty line
+                let prevLineIdx = pos.line - 1;
+                while (prevLineIdx >= 0 && lines[prevLineIdx].trim() === "") {
+                    prevLineIdx--;
+                }
+                if (prevLineIdx >= 0 && !lines[prevLineIdx].endsWith(',')) {
+                    lines[prevLineIdx] += ',';
+                    text = text.slice(1);
+                }
+            } else if (linePrefix !== "" && !linePrefix.endsWith(',')) {
+                linePrefix += ',';
+                text = text.slice(1);
+            }
+        }
+
+        // Clean up text to avoid redundant blank lines
+        let finalText = text.replace(/\n\s*\n/g, '\n');
+
+        // Handle suffix (closing bracket) move to new line
+        if (lineSuffix !== "") {
+            const indent = this.getIndentation(line);
+            finalText += '\n' + indent + lineSuffix;
+        }
+
+        lines[pos.line] = linePrefix + finalText;
+        return lines.join('\n');
     }
 }
 
 /**
  * Helper function to get a nested value from parsed manifest
- * Example: getValue(manifest, 'assets', 'web.assets_backend')
  */
 export function getNestedValue(manifest: ParsedManifest, ...keys: string[]): ManifestValue | null {
     let current: ManifestValue | undefined;
@@ -296,19 +423,14 @@ export function getNestedValue(manifest: ParsedManifest, ...keys: string[]): Man
 
     for (const key of keys) {
         current = currentMap.get(key);
-
-        if (!current) {
-            return null;
-        }
+        if (!current) return null;
 
         if (current.type === 'dict' && current.children) {
             currentMap = current.children;
         } else {
-            // Not a dict, can't go deeper
             return current;
         }
     }
-
     return current || null;
 }
 
@@ -316,9 +438,6 @@ export function getNestedValue(manifest: ParsedManifest, ...keys: string[]): Man
  * Helper function to check if a value exists in a list
  */
 export function listContains(listValue: ManifestValue, searchValue: string): boolean {
-    if (listValue.type !== 'list' || !listValue.items) {
-        return false;
-    }
-
+    if (listValue.type !== 'list' || !listValue.items) return false;
     return listValue.items.some(item => item.value === searchValue);
 }

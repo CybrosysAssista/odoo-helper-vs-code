@@ -409,8 +409,9 @@ async function handleCreatePosComponentCreation(uri, type) {
         if (componentInstance && componentInstance.getCompleteDirectoryStructure) {
             const structure = componentInstance.getCompleteDirectoryStructure();
             const result = await utils_1.helperUtils.createRecursiveDirectory(moduleRoot, structure);
+            console.log(result);
             if (result.success) {
-                vscode.window.showInformationMessage(`POS Component created successfully.`);
+                vscode.window.showInformationMessage(`POS Component created successfully. \n ${result.message.join('\n')}`);
                 await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
             }
             else {
