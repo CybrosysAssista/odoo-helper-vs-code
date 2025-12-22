@@ -5,6 +5,9 @@ import moduleIndexService from '../services/moduleIndexService';
 import { getPythonParserService } from '../services/pythonParserService';
 import { ManifestParser, ParsedManifest } from '../services/manifestParser';
 
+import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { CssClassIndexer } from '../services/cssClassIndexer';
+
 function escapeRegExp(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -19,6 +22,49 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
         const languageId = document.languageId;
 
         if (languageId === 'xml') {
+
+            // CSS Class Navigation
+            // Check if cursor is inside class="..." or class='...'
+            const linePrefix = document.getText(new vscode.Range(new vscode.Position(position.line, 0), position));
+            const lineSuffix = document.getText(new vscode.Range(position, new vscode.Position(position.line, line.length)));
+
+            // Reconstruct the full attribute context around the cursor
+            // This is a simple regex approach; for robustness, looking at the whole line is often enough for simple attributes
+            const fullLine = document.lineAt(position.line).text;
+            const classAttrRegex = /class\s*=\s*["']([^"']+)["']/;
+            const classMatch = fullLine.match(classAttrRegex);
+
+            if (classMatch) {
+                // Determine if the click was actually *inside* the class string
+                const attrStart = fullLine.indexOf(classMatch[0]);
+                const valueStart = fullLine.indexOf(classMatch[1], attrStart);
+                const valueEnd = valueStart + classMatch[1].length;
+
+                if (position.character >= valueStart && position.character <= valueEnd) {
+                    const moduleRoot = await OdooModuleUtils.getModuleRoot(document.uri);
+                    if (moduleRoot) {
+                        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
+                        const enableAdvanced = config.get<boolean>('indexing.enableAdvanceCSSIndexing', false);
+
+                        if (enableAdvanced) {
+                            const currentModuleName = path.basename(moduleRoot.fsPath);
+                            const indexer = CssClassIndexer.getInstance();
+                            const definitions = indexer.getClassDefinitions(word);
+
+                            const targetModules = [currentModuleName, 'web', 'mail'];
+                            const bestDef = definitions.find(d => targetModules.includes(d.moduleName));
+
+                            if (bestDef) {
+                                return new vscode.Location(
+                                    vscode.Uri.file(bestDef.filePath),
+                                    new vscode.Position(bestDef.lineNumber - 1, 0)
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
             // 1. Button action navigation: <button name="...">
             if (/<button[^>]*name\s*=\s*["']([^"']+)["']/.test(line) && word) {
                 // Find the model context for this view (look for <field name="model">...)
