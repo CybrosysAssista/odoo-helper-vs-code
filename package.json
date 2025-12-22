@@ -334,6 +334,17 @@
           "type": "string",
           "default": "",
           "description": "Optional absolute path to Odoo source root (containing 'odoo/release.py') to help auto-detection."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableCSSIndexing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable scanning of CSS/SCSS files for class completion."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableAdvanceCSSIndexing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable advanced detailed indexing (storing file paths and line numbers) for CSS features like Go-to-Definition. Requires 'Enable CSS Indexing' to be on.",
+          "markdownDescription": "Enable advanced detailed indexing (storing file paths and line numbers) for CSS features like Go-to-Definition. Requires `#cybrosys-assista-odoo-helper.indexing.enableCSSIndexing#` to be on."
         }
       }
     }

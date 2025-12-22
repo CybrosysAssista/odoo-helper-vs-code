@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
+const cssClassIndexer_1 = require("./services/cssClassIndexer");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const odooModelProvider_1 = require("./providers/odooModelProvider");
@@ -46,6 +47,7 @@ const odooCompletionProvider_1 = require("./providers/odooCompletionProvider");
 const commandHandlers_1 = require("./commands/commandHandlers");
 const odooLinter_1 = require("./services/odooLinter");
 const modelIndexService_1 = __importDefault(require("./services/modelIndexService"));
+const moduleIndexService_1 = __importDefault(require("./services/moduleIndexService"));
 const templateIndexService_1 = __importDefault(require("./services/templateIndexService"));
 const xmlCompletionProvider_1 = require("./providers/xml/xmlCompletionProvider");
 const relationalFieldProvider_1 = require("./providers/completion/relationalFieldProvider");
@@ -57,6 +59,7 @@ const pythonParserService_1 = require("./services/pythonParserService");
 const testTreeSitter_1 = require("./commands/testTreeSitter");
 const addToManifest_1 = require("./commands/addToManifest");
 const manifestPathCompletionProvider_1 = require("./providers/manifestPathCompletionProvider");
+const cssClassCompletionProvider_1 = require("./providers/completion/cssClassCompletionProvider");
 async function activate(context) {
     // Initialize Tree-sitter Python Parser
     console.log('[Extension] Initializing Python Parser Service...');
@@ -72,7 +75,9 @@ async function activate(context) {
     // Initialize index services
     modelIndexService_1.default.initialize();
     modelIndexService_1.default.buildCache();
+    moduleIndexService_1.default.initialize();
     templateIndexService_1.default.initialize();
+    cssClassIndexer_1.CssClassIndexer.getInstance().indexWorkspace();
     // Register model providers
     (0, odooModelProvider_1.registerModelProviders)(context);
     // Register field providers
@@ -97,6 +102,9 @@ async function activate(context) {
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', pattern: '**/__manifest__.py' }, manifestPathProvider, "'", '"', '/', ',', '[', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '-', '.'));
     // Register versioned snippet providers for XML and Python
     registerVersionedSnippets(context);
+    // Register CSS Class completion provider
+    const cssClassProvider = new cssClassCompletionProvider_1.CssClassCompletionProvider();
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, cssClassProvider, '"', "'"));
     // Register Odoo definition provider
     const odooDefProvider = new odooDefinitionProvider_1.OdooDefinitionProvider();
     context.subscriptions.push(vscode.languages.registerDefinitionProvider({ scheme: 'file', language: 'xml' }, odooDefProvider));
@@ -231,5 +239,6 @@ async function registerVersionedSnippets(context) {
 }
 function deactivate() {
     modelIndexService_1.default.dispose();
+    moduleIndexService_1.default.dispose();
 }
 //# sourceMappingURL=extension.js.map

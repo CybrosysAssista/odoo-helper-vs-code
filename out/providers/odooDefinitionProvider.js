@@ -131,14 +131,12 @@ class OdooDefinitionProvider {
         if (languageId === 'python') {
             // Manifest 'depends' key navigation (using Tree-sitter)
             if (document.fileName.endsWith('__manifest__.py') || document.fileName.endsWith('__openerp__.py')) {
-                console.log('[OdooDefinitionProvider] Manifest file detected');
                 const pythonParser = (0, pythonParserService_1.getPythonParserService)();
                 if (pythonParser.isInitialized()) {
                     const manifestParser = pythonParser.getManifestParser();
                     if (manifestParser) {
                         const parsed = manifestParser.parseManifest(document.getText());
                         if (parsed && parsed.data.has('depends')) {
-                            console.log('[OdooDefinitionProvider] Found depends key');
                             const depends = parsed.data.get('depends');
                             if (depends && depends.type === 'list' && depends.items) {
                                 for (const item of depends.items) {
@@ -147,22 +145,17 @@ class OdooDefinitionProvider {
                                         // Check if cursor is contained in the string range
                                         if (range.contains(position)) {
                                             const moduleName = item.value;
-                                            console.log(`[OdooDefinitionProvider] Clicked on module: ${moduleName}`);
+                                            // Ensure index is ready
                                             await moduleIndexService_1.default.getModules();
                                             const modulePath = moduleIndexService_1.default.getModulePath(moduleName);
-                                            console.log(`[OdooDefinitionProvider] Resolved path: ${modulePath}`);
                                             if (modulePath) {
                                                 const possibleManifests = ['__manifest__.py', '__openerp__.py'];
                                                 for (const man of possibleManifests) {
                                                     const manPath = path.join(modulePath, man);
                                                     if (fs.existsSync(manPath)) {
-                                                        console.log(`[OdooDefinitionProvider] Opening manifest: ${manPath}`);
                                                         return new vscode.Location(vscode.Uri.file(manPath), new vscode.Position(0, 0));
                                                     }
                                                 }
-                                            }
-                                            else {
-                                                console.log(`[OdooDefinitionProvider] Module ${moduleName} not found in index`);
                                             }
                                         }
                                     }
@@ -170,9 +163,6 @@ class OdooDefinitionProvider {
                             }
                         }
                     }
-                }
-                else {
-                    console.log('[OdooDefinitionProvider] Parser not initialized');
                 }
             }
             // self.field_name

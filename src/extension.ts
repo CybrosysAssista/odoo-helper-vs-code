@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { CssClassIndexer } from './services/cssClassIndexer';
 import * as fs from 'fs';
 import * as path from 'path';
 import { registerModelProviders } from './providers/odooModelProvider';
@@ -18,6 +19,7 @@ import { getPythonParserService } from './services/pythonParserService';
 import { testTreeSitterParser } from './commands/testTreeSitter';
 import { addCurrentFileToManifest } from './commands/addToManifest';
 import { ManifestPathCompletionProvider } from './providers/manifestPathCompletionProvider';
+import { CssClassCompletionProvider } from './providers/completion/cssClassCompletionProvider';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Initialize Tree-sitter Python Parser
@@ -36,6 +38,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     modelIndexService.buildCache();
     moduleIndexService.initialize();
     templateIndexService.initialize();
+    CssClassIndexer.getInstance().indexWorkspace();
 
     // Register model providers
     registerModelProviders(context);
@@ -99,6 +102,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // Register versioned snippet providers for XML and Python
     registerVersionedSnippets(context);
+
+    // Register CSS Class completion provider
+    const cssClassProvider = new CssClassCompletionProvider();
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            { scheme: 'file', language: 'xml' },
+            cssClassProvider,
+            '"', "'"
+        )
+    );
 
     // Register Odoo definition provider
     const odooDefProvider = new OdooDefinitionProvider();
