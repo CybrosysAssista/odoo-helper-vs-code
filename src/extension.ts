@@ -7,6 +7,7 @@ import { registerFieldProviders } from './providers/odooCompletionProvider';
 import { registerCommands } from './commands/commandHandlers';
 import { runOdooLint } from './services/odooLinter';
 import modelIndexService from './services/modelIndexService';
+import fieldIndexService from './services/fieldIndexService';
 import moduleIndexService from './services/moduleIndexService';
 import templateIndexService from './services/templateIndexService';
 import { OdooXmlCompletionProvider } from './providers/xml/xmlCompletionProvider';
@@ -60,6 +61,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }, async (progress) => {
         progress.report({ message: "Indexing Odoo Models..." });
         await modelIndexService.buildCache();
+
+        progress.report({ message: "Indexing Odoo Fields..." });
+        await fieldIndexService.buildCache();
 
         progress.report({ message: "Indexing Odoo Modules..." });
         await moduleIndexService.reindex();

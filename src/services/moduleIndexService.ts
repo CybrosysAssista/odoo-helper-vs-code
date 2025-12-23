@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 export interface ModuleInfo {
+    id: number;
     name: string;
     path: string;
 }
@@ -24,6 +25,7 @@ class ModuleIndexService {
 
         // Find all manifest files
         const manifestFiles = await vscode.workspace.findFiles('**/{__manifest__.py,__openerp__.py}', '**/node_modules/**');
+        let counter = 1;
 
         for (const manifestUri of manifestFiles) {
             const moduleDir = path.dirname(manifestUri.fsPath);
@@ -34,6 +36,7 @@ class ModuleIndexService {
                 await vscode.workspace.fs.stat(initFileUri);
                 const moduleName = path.basename(moduleDir);
                 this.moduleCache.set(moduleName, {
+                    id: counter++,
                     name: moduleName,
                     path: moduleDir
                 });

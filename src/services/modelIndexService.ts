@@ -205,6 +205,26 @@ class ModelIndexService {
         return Array.from(this.modelCache.keys());
     }
 
+    public getAllModels(): ModelInfo[] {
+        const all: ModelInfo[] = [];
+        for (const models of this.modelCache.values()) {
+            all.push(...models);
+        }
+        return all;
+    }
+
+    public getModelsByFile(filePath: string): ModelInfo[] {
+        const results: ModelInfo[] = [];
+        for (const models of this.modelCache.values()) {
+            for (const model of models) {
+                if (model.filePath === filePath) {
+                    results.push(model);
+                }
+            }
+        }
+        return results;
+    }
+
     public dispose() {
         if (this.watcher) {
             this.watcher.dispose();
