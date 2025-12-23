@@ -41,6 +41,10 @@ const vscode = __importStar(require("vscode"));
 const templateIndexService_1 = __importDefault(require("../../services/templateIndexService"));
 const data_1 = require("./data");
 const odooRegistryIndexer_1 = require("../../services/odooRegistryIndexer");
+const xmlParserService_1 = require("../../services/xmlParserService");
+const fieldIndexService_1 = __importDefault(require("../../services/fieldIndexService"));
+const odooModuleUtils_1 = require("../../utils/odooModuleUtils");
+const path = __importStar(require("path"));
 class OdooXmlCompletionProvider {
     xmlTags = [];
     attributes = {};
@@ -51,6 +55,87 @@ class OdooXmlCompletionProvider {
         this.attributes = meta.attributes;
         const text = document.getText();
         const offset = document.offsetAt(position);
+        // XML Parser based suggestions
+        const xmlParser = (0, xmlParserService_1.getXmlParserService)();
+        const node = xmlParser.findNodeAtOffset(text, offset);
+        console.log(`Node: ${node}`);
+        if (node && node.tag === 'field') {
+            const textUntilCursor = text.slice(node.start, offset);
+            // Check if offset is inside name attribute value
+            console.log(`Text until cursor: ${textUntilCursor}`);
+            const nameAttrMatch = textUntilCursor.match(/name\s*=\s*(['"])([^'"]*)$/);
+            console.log(`Name attr match: ${nameAttrMatch}`);
+            let modelData = null;
+            if (nameAttrMatch) {
+                let parentNode = node;
+                while (parentNode.parent) {
+                    if (parentNode.tag === 'record') {
+                        const attrs = xmlParser.getAttributes(text, parentNode);
+                        modelData = {
+                            name: attrs['model'],
+                            isUnique: true
+                        };
+                        break;
+                    }
+                    if (parentNode.tag && [
+                        'form', 'tree', 'list', 'kanban', 'pivot', 'search'
+                    ].includes(parentNode.tag)) {
+                        const archField = parentNode.parent;
+                        if (archField && archField.parent) {
+                            const recordNode = archField.parent;
+                            const modelField = recordNode.children?.find(c => {
+                                if (c.tag === 'field') {
+                                    const attrs = xmlParser.getAttributes(text, c);
+                                    return attrs['name'] === 'model';
+                                }
+                                return false;
+                            });
+                            if (modelField && modelField.startTagEnd !== undefined && modelField.endTagStart !== undefined) {
+                                const modelName = text.slice(modelField.startTagEnd, modelField.endTagStart).trim();
+                                modelData = {
+                                    name: modelName,
+                                    isUnique: true
+                                };
+                                break;
+                            }
+                        }
+                    }
+                    parentNode = parentNode.parent;
+                }
+                if (!modelData) {
+                    return [];
+                }
+                if (!modelData) {
+                    return [];
+                }
+                const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                const currentModule = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                let fields = fieldIndexService_1.default.getFieldsForModel(modelData.name);
+                if (modelData.isUnique) {
+                    // if isunique true search for fields with same model and not inherited
+                    fields = fields.filter(f => !f.isInherited);
+                }
+                else {
+                    // if false search for the fields with same model and not inherited, 
+                    // also fields are with same model, if inherited then the module name should match
+                    fields = fields.filter(f => !f.isInherited || (f.isInherited && f.moduleName === currentModule));
+                }
+                console.log(`Found ${fields.length} matching fields for model ${modelData.name}`);
+                // Remove duplicates by field name
+                const uniqueFields = new Map();
+                for (const f of fields) {
+                    if (!uniqueFields.has(f.fieldName)) {
+                        uniqueFields.set(f.fieldName, f);
+                    }
+                }
+                return Array.from(uniqueFields.values()).map(f => {
+                    const item = new vscode.CompletionItem(f.fieldName, vscode.CompletionItemKind.Field);
+                    item.detail = `${f.fieldType} (${f.moduleName})`;
+                    item.documentation = new vscode.MarkdownString(`**Type:** ${f.fieldType}\n\n**Module:** ${f.moduleName}`);
+                    return item;
+                });
+            }
+        }
         // Xpath position attribute value suggestions
         const before = text.slice(0, offset);
         // Check if we're editing position attribute in an xpath tag

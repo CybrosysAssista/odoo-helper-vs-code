@@ -303,42 +303,6 @@ function registerModelProviders(context) {
         }
     }, "'", '"' // Trigger completion inside quotes
     );
-    // XML: model name inside <field name="model">
-    const XmlModelProvider = vscode.languages.registerCompletionItemProvider('xml', {
-        provideCompletionItems(document, position) {
-            const line = document.lineAt(position);
-            const textBefore = line.text.substring(0, position.character);
-            const insideModelFieldRegex = /<field\s+[^>]*name\s*=\s*["']model["']\s*>([^<]*)$/;
-            if (!insideModelFieldRegex.test(textBefore))
-                return;
-            return modelNamesCache.map(name => {
-                const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Value);
-                item.insertText = name;
-                item.detail = 'Odoo Model';
-                return item;
-            });
-        }
-    }, '>');
-    // XML: field name suggestion for <field name="...">
-    const XmlFieldProvider = vscode.languages.registerCompletionItemProvider('xml', {
-        provideCompletionItems(document, position) {
-            const text = document.getText();
-            document.getText(new vscode.Range(new vscode.Position(0, 0), position));
-            const modelMatch = text.match(/<field\s+name=["']model["']\s*>([\w.]+)<\/field>/);
-            if (!modelMatch)
-                return;
-            const modelName = modelMatch[1];
-            const fieldsMap = modelDataCache[modelName];
-            if (!fieldsMap)
-                return;
-            return Object.entries(fieldsMap).map(([fieldName, meta]) => {
-                const item = new vscode.CompletionItem(fieldName, vscode.CompletionItemKind.Field);
-                item.insertText = fieldName;
-                item.detail = `Type: ${meta.type}` + (meta.related ? ` → ${meta.related}` : '');
-                return item;
-            });
-        }
-    }, '"');
     const RelatedFieldProvider = vscode.languages.registerCompletionItemProvider('python', {
         provideCompletionItems(document, position) {
             const fullText = document.getText();
@@ -436,8 +400,6 @@ function registerModelProviders(context) {
     );
     context.subscriptions.push(RelatedFieldProvider);
     context.subscriptions.push(ModelProvider);
-    context.subscriptions.push(XmlModelProvider);
-    context.subscriptions.push(XmlFieldProvider);
     context.subscriptions.push(InverseNameProvider);
     //    context.subscriptions.push(One2manyInverseProvider);
     context.subscriptions.push(ApiDecoratorFieldProvider);
