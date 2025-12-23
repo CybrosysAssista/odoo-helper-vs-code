@@ -370,6 +370,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "tree-sitter-javascript": "^0.25.0",
     "web-tree-sitter": "^0.26.3"
   }
 }

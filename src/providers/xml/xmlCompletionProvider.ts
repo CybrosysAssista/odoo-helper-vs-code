@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import templateIndexService from '../../services/templateIndexService';
 import { getXmlMeta } from './data';
+import { getOdooRegistryIndexer, RegistryEntry } from '../../services/odooRegistryIndexer';
 
 export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider {
     private xmlTags: string[] = [];
@@ -46,6 +47,21 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
                 });
         }
 
+        // Find if we're inside widget="..." (must have opening quote)
+        const widgetMatch = before.match(/<[^>]*\bwidget\s*=\s*(['"])([^'"]*)$/);
+        if (widgetMatch) {
+            const partial = widgetMatch[2] || '';
+            const registryIndexer = getOdooRegistryIndexer();
+            return registryIndexer.getEntriesByCategory('fields')
+                .filter((entry: RegistryEntry) => entry.id.startsWith(partial))
+                .map((entry: RegistryEntry) => {
+                    const item = new vscode.CompletionItem(entry.id, vscode.CompletionItemKind.Value);
+                    item.detail = `Module: ${entry.moduleName}`;
+                    item.documentation = new vscode.MarkdownString(`**Component:** ${entry.component}\n\n**File:** ${entry.filePath}:${entry.line}`);
+                    return item;
+                });
+        }
+
         // Check if we're inside a tag
         const currentLine = document.lineAt(position).text;
         const tagMatch = /<([^>]*)$/.exec(currentLine);
@@ -74,11 +90,26 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
 
     provideAttributeCompletions(tagName: string, partialAttribute: string): vscode.CompletionItem[] {
         const attributes = this.attributes[tagName] || [];
+
+        // Always ensure 'widget' is available as it's very common
+        if (!attributes.includes('widget')) {
+            attributes.push('widget');
+        }
+
         return attributes
             .filter(attr => attr.startsWith(partialAttribute))
             .map(attr => {
                 const item = new vscode.CompletionItem(attr, vscode.CompletionItemKind.Property);
                 item.insertText = new vscode.SnippetString(`${attr}="$1"`);
+
+                // If it's the widget attribute, trigger suggestions for its values immediately after insertion
+                if (attr === 'widget') {
+                    item.command = {
+                        command: 'editor.action.triggerSuggest',
+                        title: 'Suggest Widgets'
+                    };
+                }
+
                 return item;
             });
     }

@@ -20,6 +20,8 @@ import { testTreeSitterParser } from './commands/testTreeSitter';
 import { addCurrentFileToManifest } from './commands/addToManifest';
 import { ManifestPathCompletionProvider } from './providers/manifestPathCompletionProvider';
 import { CssClassCompletionProvider } from './providers/completion/cssClassCompletionProvider';
+import { getJavaScriptParserService } from './services/javascriptParserService';
+import { getOdooRegistryIndexer } from './services/odooRegistryIndexer';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Initialize Tree-sitter Python Parser
@@ -27,10 +29,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const pythonParser = getPythonParserService();
     try {
         await pythonParser.init(context);
-        console.log('[Extension] ✅ Python Parser Service initialized');
+        console.log('[Extension] Python Parser Service initialized');
     } catch (error) {
-        console.error('[Extension] ❌ Failed to initialize Python Parser:', error);
+        console.error('[Extension] Failed to initialize Python Parser:', error);
         vscode.window.showWarningMessage('Tree-sitter parser failed to initialize. Some features may be limited.');
+    }
+
+    // Initialize Tree-sitter JavaScript Parser
+    console.log('[Extension] Initializing JavaScript Parser Service...');
+    const jsParser = getJavaScriptParserService();
+    try {
+        await jsParser.init(context);
+        console.log('[Extension] JavaScript Parser Service initialized');
+    } catch (error) {
+        console.error('[Extension] Failed to initialize JavaScript Parser:', error);
+        vscode.window.showWarningMessage('JavaScript parser failed to initialize. Some features may be limited.');
     }
 
     // Initialize index services
@@ -38,6 +51,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     modelIndexService.buildCache();
     moduleIndexService.initialize();
     templateIndexService.initialize();
+
+    // Start Odoo Registry Indexing
+    const registryIndexer = getOdooRegistryIndexer();
+    registryIndexer.scanWorkspace();
+
+    // Watch for JS file changes to update the registry index
+    const jsWatcher = vscode.workspace.createFileSystemWatcher('**/*.js');
+
+    jsWatcher.onDidChange(uri => registryIndexer.indexFile(uri));
+    jsWatcher.onDidCreate(uri => registryIndexer.indexFile(uri));
+    jsWatcher.onDidDelete(uri => registryIndexer.removeFile(uri));
+
+    context.subscriptions.push(jsWatcher);
     CssClassIndexer.getInstance().indexWorkspace();
 
     // Register model providers
