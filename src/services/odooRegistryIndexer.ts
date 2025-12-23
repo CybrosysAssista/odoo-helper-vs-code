@@ -23,7 +23,7 @@ export class OdooRegistryIndexer {
     /**
      * Start initial background scan of the workspace
      */
-    async scanWorkspace(): Promise<void> {
+    async scanWorkspace(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
         if (this.isScanning) return;
         this.isScanning = true;
         this.registryEntries = [];
@@ -31,10 +31,25 @@ export class OdooRegistryIndexer {
         console.log('[OdooRegistryIndexer] Starting workspace scan...');
 
         try {
-            const jsFiles = await vscode.workspace.findFiles('**/*.js', '**/node_modules/**');
+            // Updated exclusion patterns to avoid indexing venv and other huge/irrelevant folders
+            const jsFiles = await vscode.workspace.findFiles('**/*.js', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
+            const totalFiles = jsFiles.length;
+            let filesProcessed = 0;
 
             for (const file of jsFiles) {
+                filesProcessed++;
+                if (progress) {
+                    progress.report({
+                        message: `Indexing Registry: ${filesProcessed}/${totalFiles} (${path.basename(file.fsPath)})`,
+                        increment: (1 / totalFiles) * 100
+                    });
+                }
                 await this.indexFile(file);
+
+                // Prevent blocking the event loop too long during huge scans
+                if (filesProcessed % 20 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
             }
 
             console.log(`[OdooRegistryIndexer] Scan complete. Indexed ${this.registryEntries.length} registry entries.`);

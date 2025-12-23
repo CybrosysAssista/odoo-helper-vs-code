@@ -53,30 +53,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     moduleIndexService.initialize();
     templateIndexService.initialize();
 
-    // Start Odoo Indexing with progress
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Cybrosys Assista: Odoo Helper",
         cancellable: false
     }, async (progress) => {
-        progress.report({ message: "Indexing Odoo Models..." });
-        await modelIndexService.buildCache();
+        // Individual services will handle their own progress reporting
+        await modelIndexService.buildCache(progress);
+        await fieldIndexService.buildCache(progress);
+        await moduleIndexService.reindex(progress);
+        await templateIndexService.buildCache(progress);
 
-        progress.report({ message: "Indexing Odoo Fields..." });
-        await fieldIndexService.buildCache();
-
-        progress.report({ message: "Indexing Odoo Modules..." });
-        await moduleIndexService.reindex();
-
-        progress.report({ message: "Indexing Odoo Templates..." });
-        await templateIndexService.buildCache();
-
-        progress.report({ message: "Indexing Odoo Registry..." });
         const registryIndexer = getOdooRegistryIndexer();
-        await registryIndexer.scanWorkspace();
+        await registryIndexer.scanWorkspace(progress);
 
-        progress.report({ message: "Indexing CSS Classes..." });
-        await CssClassIndexer.getInstance().indexWorkspace();
+        await CssClassIndexer.getInstance().indexWorkspace(progress);
 
         return Promise.resolve();
     });

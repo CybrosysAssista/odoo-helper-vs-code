@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = __importStar(require("vscode"));
+const path = __importStar(require("path"));
 const pythonParserService_1 = require("./pythonParserService");
 const moduleIndexService_1 = __importDefault(require("./moduleIndexService"));
 class ModelIndexService {
@@ -53,20 +54,38 @@ class ModelIndexService {
         this.watcher.onDidCreate(uri => this.indexFile(uri));
         this.watcher.onDidDelete(uri => this.removeFile(uri));
     }
-    async buildCache() {
+    async buildCache(progress) {
         if (this.isIndexing)
             return;
         this.isIndexing = true;
         console.log('[ModelIndex] Building model cache...');
         this.modelCache.clear();
-        const modules = await moduleIndexService_1.default.getModules();
+        if (progress) {
+            progress.report({ message: "Finding Odoo Modules..." });
+        }
+        const modules = await moduleIndexService_1.default.getModules(progress);
+        const totalModules = modules.length;
+        let modulesProcessed = 0;
         for (const module of modules) {
+            modulesProcessed++;
             // Find all python files in this module
             const pattern = new vscode.RelativePattern(module.path, '**/*.py');
-            const pythonFiles = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
+            const pythonFiles = await vscode.workspace.findFiles(pattern, '**/{node_modules,venv,.venv,__pycache__}/**');
+            const totalFiles = pythonFiles.length;
+            let filesProcessed = 0;
             for (const file of pythonFiles) {
+                filesProcessed++;
+                if (progress) {
+                    const fileName = path.basename(file.fsPath);
+                    progress.report({
+                        message: `Indexing Models: [${modulesProcessed}/${totalModules}] ${module.name} - File ${filesProcessed}/${totalFiles} (${fileName})`,
+                        increment: (1 / (totalModules * (totalFiles || 1))) * 100
+                    });
+                }
                 await this.indexFile(file, module.name);
             }
+            // Yield to main thread occasionally
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
         this.isIndexing = false;
         console.log(`[ModelIndex] Finished: Indexed ${this.modelCache.size} models across ${modules.length} modules.`);

@@ -32,7 +32,7 @@ export class CssClassIndexer {
     /**
      * Index all CSS/SCSS files in the workspace.
      */
-    public async indexWorkspace(): Promise<void> {
+    public async indexWorkspace(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
         // Check 'enableCSSIndexing' (default true)
         if (!config.get<boolean>('indexing.enableCSSIndexing', true)) {
@@ -44,10 +44,24 @@ export class CssClassIndexer {
 
         this.cssClasses.clear();
         this.classesByModule.clear();
-        const files = await vscode.workspace.findFiles('**/*.{css,scss}', '**/node_modules/**');
+        const files = await vscode.workspace.findFiles('**/*.{css,scss}', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
+        const totalFiles = files.length;
+        let filesProcessed = 0;
 
         for (const uri of files) {
+            filesProcessed++;
+            if (progress) {
+                progress.report({
+                    message: `Indexing CSS: ${filesProcessed}/${totalFiles} (${path.basename(uri.fsPath)})`,
+                    increment: (1 / totalFiles) * 100
+                });
+            }
             await this.indexFile(uri);
+
+            // Yield occasionally to maintain UI responsiveness
+            if (filesProcessed % 20 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 5));
+            }
         }
     }
 

@@ -104,6 +104,7 @@ export class JavaScriptParserService {
             }
         }
 
+        tree.delete();
         return results;
     }
 
@@ -134,6 +135,7 @@ export class JavaScriptParserService {
             }
         }
 
+        tree.delete();
         return classes;
     }
 
@@ -175,6 +177,7 @@ export class JavaScriptParserService {
             }
         }
 
+        tree.delete();
         return functions;
     }
 

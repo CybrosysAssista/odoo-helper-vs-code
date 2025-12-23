@@ -95,6 +95,7 @@ export class PythonParserService {
             models.push(currentModel);
         }
 
+        tree.delete();
         return models;
     }
 
@@ -133,6 +134,7 @@ export class PythonParserService {
                 }
             }
         }
+        tree.delete();
         return results;
     }
 
@@ -178,6 +180,7 @@ export class PythonParserService {
             }
         }
 
+        tree.delete();
         return null;
     }
 
@@ -234,6 +237,7 @@ export class PythonParserService {
             }
         }
 
+        tree.delete();
         return fields;
     }
 

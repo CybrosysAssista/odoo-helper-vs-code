@@ -46,14 +46,24 @@ class TemplateIndexService {
     initialize() {
         // Watch for XML file changes to invalidate cache
         this.watcher = vscode.workspace.createFileSystemWatcher('**/*.xml');
-        this.watcher.onDidChange(this.buildCache.bind(this));
-        this.watcher.onDidCreate(this.buildCache.bind(this));
-        this.watcher.onDidDelete(this.buildCache.bind(this));
+        this.watcher.onDidChange(() => this.buildCache());
+        this.watcher.onDidCreate(() => this.buildCache());
+        this.watcher.onDidDelete(() => this.buildCache());
     }
-    async buildCache() {
+    async buildCache(progress) {
         this.templateCache.clear();
-        const xmlFiles = await vscode.workspace.findFiles('**/*.xml');
+        // Exclude common non-Odoo directories
+        const xmlFiles = await vscode.workspace.findFiles('**/*.xml', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
+        const totalFiles = xmlFiles.length;
+        let filesProcessed = 0;
         for (const file of xmlFiles) {
+            filesProcessed++;
+            if (progress) {
+                progress.report({
+                    message: `Indexing Templates: ${filesProcessed}/${totalFiles} (${path.basename(file.fsPath)})`,
+                    increment: (1 / totalFiles) * 100
+                });
+            }
             try {
                 const content = await vscode.workspace.fs.readFile(file);
                 const text = Buffer.from(content).toString('utf8');
@@ -62,6 +72,9 @@ class TemplateIndexService {
             }
             catch (err) {
                 // Ignore file read errors
+            }
+            if (filesProcessed % 50 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 5));
             }
         }
     }

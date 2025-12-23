@@ -20,14 +20,22 @@ class ModuleIndexService {
         this.watcher.onDidDelete(() => this.reindex());
     }
 
-    public async reindex() {
+    public async reindex(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         this.moduleCache.clear();
 
-        // Find all manifest files
-        const manifestFiles = await vscode.workspace.findFiles('**/{__manifest__.py,__openerp__.py}', '**/node_modules/**');
+        // Find all manifest files, excluding common non-Odoo directories
+        const manifestFiles = await vscode.workspace.findFiles('**/{__manifest__.py,__openerp__.py}', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
+        const totalManifests = manifestFiles.length;
         let counter = 1;
 
         for (const manifestUri of manifestFiles) {
+            if (progress) {
+                progress.report({
+                    message: `Checking Modules: ${counter}/${totalManifests} (${path.basename(path.dirname(manifestUri.fsPath))})`,
+                    increment: (1 / totalManifests) * 100
+                });
+            }
+            counter++;
             const moduleDir = path.dirname(manifestUri.fsPath);
             const initFileUri = vscode.Uri.file(path.join(moduleDir, '__init__.py'));
 
@@ -47,9 +55,9 @@ class ModuleIndexService {
         console.log(`[ModuleIndex] Indexed ${this.moduleCache.size} Odoo modules.`);
     }
 
-    public async getModules(): Promise<ModuleInfo[]> {
+    public async getModules(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<ModuleInfo[]> {
         if (this.moduleCache.size === 0) {
-            await this.reindex();
+            await this.reindex(progress);
         }
         return Array.from(this.moduleCache.values());
     }

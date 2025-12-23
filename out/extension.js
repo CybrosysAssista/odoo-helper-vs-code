@@ -47,6 +47,7 @@ const odooCompletionProvider_1 = require("./providers/odooCompletionProvider");
 const commandHandlers_1 = require("./commands/commandHandlers");
 const odooLinter_1 = require("./services/odooLinter");
 const modelIndexService_1 = __importDefault(require("./services/modelIndexService"));
+const fieldIndexService_1 = __importDefault(require("./services/fieldIndexService"));
 const moduleIndexService_1 = __importDefault(require("./services/moduleIndexService"));
 const templateIndexService_1 = __importDefault(require("./services/templateIndexService"));
 const xmlCompletionProvider_1 = require("./providers/xml/xmlCompletionProvider");
@@ -54,6 +55,7 @@ const relationalFieldProvider_1 = require("./providers/completion/relationalFiel
 const importCompletionProvider_1 = require("./providers/completion/importCompletionProvider");
 const manifestDependsCompletionProvider_1 = require("./providers/completion/manifestDependsCompletionProvider");
 const odooDefinitionProvider_1 = require("./providers/odooDefinitionProvider");
+const modelInheritCompletionProvider_1 = require("./providers/completion/modelInheritCompletionProvider");
 const versionService_1 = require("./services/versionService");
 const pythonParserService_1 = require("./services/pythonParserService");
 const testTreeSitter_1 = require("./commands/testTreeSitter");
@@ -89,23 +91,19 @@ async function activate(context) {
     modelIndexService_1.default.initialize();
     moduleIndexService_1.default.initialize();
     templateIndexService_1.default.initialize();
-    // Start Odoo Indexing with progress
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Cybrosys Assista: Odoo Helper",
         cancellable: false
     }, async (progress) => {
-        progress.report({ message: "Indexing Odoo Models..." });
-        await modelIndexService_1.default.buildCache();
-        progress.report({ message: "Indexing Odoo Modules..." });
-        await moduleIndexService_1.default.reindex();
-        progress.report({ message: "Indexing Odoo Templates..." });
-        await templateIndexService_1.default.buildCache();
-        progress.report({ message: "Indexing Odoo Registry..." });
+        // Individual services will handle their own progress reporting
+        await modelIndexService_1.default.buildCache(progress);
+        await fieldIndexService_1.default.buildCache(progress);
+        await moduleIndexService_1.default.reindex(progress);
+        await templateIndexService_1.default.buildCache(progress);
         const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
-        await registryIndexer.scanWorkspace();
-        progress.report({ message: "Indexing CSS Classes..." });
-        await cssClassIndexer_1.CssClassIndexer.getInstance().indexWorkspace();
+        await registryIndexer.scanWorkspace(progress);
+        await cssClassIndexer_1.CssClassIndexer.getInstance().indexWorkspace(progress);
         return Promise.resolve();
     });
     // Start Odoo Registry Indexing helper for watchers
@@ -140,6 +138,9 @@ async function activate(context) {
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', pattern: '**/__manifest__.py' }, manifestPathProvider, "'", '"', '/', ',', '[', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '-', '.'));
     // Register versioned snippet providers for XML and Python
     registerVersionedSnippets(context);
+    // Register Odoo Model Inherit completion provider
+    const modelInheritProvider = new modelInheritCompletionProvider_1.ModelInheritCompletionProvider();
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'python' }, modelInheritProvider, '"', "'"));
     // Register CSS Class completion provider
     const cssClassProvider = new cssClassCompletionProvider_1.CssClassCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, cssClassProvider, '"', "'"));

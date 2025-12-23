@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 import { getPythonParserService } from './pythonParserService';
 import modelIndexService, { ModelInfo } from './modelIndexService';
 
@@ -21,7 +22,7 @@ class FieldIndexService {
 
     constructor() { }
 
-    async buildCache() {
+    async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;
 
@@ -43,15 +44,35 @@ class FieldIndexService {
             return;
         }
 
+        const totalFiles = modelsByFile.size;
+        let filesProcessed = 0;
+
         for (const [filePath, models] of modelsByFile.entries()) {
+            filesProcessed++;
+            if (progress) {
+                const fileName = path.basename(filePath);
+                progress.report({
+                    message: `Indexing Fields: ${filesProcessed}/${totalFiles} (${fileName})`,
+                    increment: (1 / totalFiles) * 100
+                });
+            }
+
             try {
                 const text = fs.readFileSync(filePath, 'utf8');
                 const tree = pythonParser.parse(text);
                 if (!tree) continue;
 
                 this.parseFieldsFromFile(tree, models);
+
+                // CRITICAL: Prevent memory access out of bounds by explicitly deleting the tree
+                tree.delete();
             } catch (error) {
                 console.error(`[FieldIndex] Error parsing file ${filePath}:`, error);
+            }
+
+            // Yield occasionally
+            if (filesProcessed % 10 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 10));
             }
         }
 
