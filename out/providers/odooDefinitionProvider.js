@@ -41,6 +41,7 @@ const vscode = __importStar(require("vscode"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const moduleIndexService_1 = __importDefault(require("../services/moduleIndexService"));
+const modelIndexService_1 = __importDefault(require("../services/modelIndexService"));
 const pythonParserService_1 = require("../services/pythonParserService");
 const odooModuleUtils_1 = require("../utils/odooModuleUtils");
 const cssClassIndexer_1 = require("../services/cssClassIndexer");
@@ -399,17 +400,11 @@ class OdooDefinitionProvider {
         return null;
     }
     async findModelDefinition(modelName) {
-        const files = await vscode.workspace.findFiles('**/*.py');
-        for (const file of files) {
-            const content = fs.readFileSync(file.fsPath, 'utf8');
-            const regex = new RegExp('_name\\s*=\\s*[\'\"]' + escapeRegExp(modelName) + '[\'\"]');
-            const match = regex.exec(content);
-            if (match) {
-                const idx = content.indexOf(match[0]);
-                const lines = content.slice(0, idx).split('\n');
-                // Place cursor at start of matched line
-                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-            }
+        const modelInfos = modelIndexService_1.default.getModelsByName(modelName);
+        if (modelInfos.length > 0) {
+            // Prefer the base definition (isInherited = false)
+            const baseModel = modelInfos.find(m => !m.isInherited) || modelInfos[0];
+            return new vscode.Location(vscode.Uri.file(baseModel.filePath), new vscode.Position(baseModel.line, baseModel.character));
         }
         return null;
     }

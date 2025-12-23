@@ -32,73 +32,185 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = __importStar(require("vscode"));
+const pythonParserService_1 = require("./pythonParserService");
+const moduleIndexService_1 = __importDefault(require("./moduleIndexService"));
 class ModelIndexService {
-    modelCache;
-    fieldCache;
+    modelCache; // modelName -> ModelInfo[] (since multiple modules can inherit/define)
     watcher;
+    isIndexing = false;
     constructor() {
         this.modelCache = new Map();
-        this.fieldCache = new Map();
         this.watcher = null;
     }
     initialize() {
-        // Watch for file changes to invalidate cache
         this.watcher = vscode.workspace.createFileSystemWatcher('**/*.py');
-        this.watcher.onDidChange(this.invalidateCache.bind(this));
-        this.watcher.onDidCreate(this.invalidateCache.bind(this));
-        this.watcher.onDidDelete(this.invalidateCache.bind(this));
+        this.watcher.onDidChange(uri => this.indexFile(uri));
+        this.watcher.onDidCreate(uri => this.indexFile(uri));
+        this.watcher.onDidDelete(uri => this.removeFile(uri));
     }
     async buildCache() {
-        const pythonFiles = await vscode.workspace.findFiles('**/*.py');
-        for (const file of pythonFiles) {
-            const content = await vscode.workspace.fs.readFile(file);
+        if (this.isIndexing)
+            return;
+        this.isIndexing = true;
+        console.log('[ModelIndex] Building model cache...');
+        this.modelCache.clear();
+        const modules = await moduleIndexService_1.default.getModules();
+        for (const module of modules) {
+            // Find all python files in this module
+            const pattern = new vscode.RelativePattern(module.path, '**/*.py');
+            const pythonFiles = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
+            for (const file of pythonFiles) {
+                await this.indexFile(file, module.name);
+            }
+        }
+        this.isIndexing = false;
+        console.log(`[ModelIndex] Finished: Indexed ${this.modelCache.size} models across ${modules.length} modules.`);
+    }
+    async indexFile(uri, moduleName) {
+        try {
+            if (!moduleName) {
+                // Try to find module name if not provided
+                const modules = await moduleIndexService_1.default.getModules();
+                const module = modules.find(m => uri.fsPath.startsWith(m.path));
+                if (!module)
+                    return; // Not in a valid Odoo module
+                moduleName = module.name;
+            }
+            const content = await vscode.workspace.fs.readFile(uri);
             const text = Buffer.from(content).toString('utf8');
-            // Parse Python file for models and fields
-            this.parsePythonFile(text, file.fsPath);
+            const pythonParser = (0, pythonParserService_1.getPythonParserService)();
+            if (!pythonParser.isInitialized())
+                return;
+            const tree = pythonParser.parse(text);
+            if (!tree)
+                return;
+            // Remove old entries for this file
+            this.removeFileEntries(uri.fsPath);
+            // Parse classes
+            this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+        }
+        catch (error) {
+            console.error(`[ModelIndex] Error indexing file ${uri.fsPath}:`, error);
         }
     }
-    parsePythonFile(content, filePath) {
-        // Extract model definitions
-        const modelRegex = /class\s+(\w+)\s*\([^)]*Model[^)]*\)[^{]*{([^}]*)}/gs;
-        let match;
-        while ((match = modelRegex.exec(content)) !== null) {
-            const className = match[1];
-            const classContent = match[2];
-            // Extract model name
-            const nameMatch = /_name\s*=\s*['"]([^'"]+)['"]/.exec(classContent);
-            if (nameMatch) {
-                const modelName = nameMatch[1];
-                this.modelCache.set(modelName, {
-                    name: modelName,
-                    className: className,
-                    filePath: filePath
-                });
-                // Extract fields
-                const fieldRegex = /(\w+)\s*=\s*fields\./g;
-                let fieldMatch;
-                const fields = [];
-                while ((fieldMatch = fieldRegex.exec(classContent)) !== null) {
-                    fields.push(fieldMatch[1]);
+    parseModelsFromTree(tree, filePath, moduleName) {
+        const rootNode = tree.rootNode;
+        const pythonParser = (0, pythonParserService_1.getPythonParserService)();
+        const language = pythonParser.getLanguage();
+        if (!language)
+            return;
+        // Query to find classes
+        const classQuery = new (require('web-tree-sitter')).Query(language, `
+            (class_definition
+                name: (identifier) @class_name
+                body: (block) @body
+            )
+        `);
+        const matches = classQuery.matches(rootNode);
+        for (const match of matches) {
+            const classNameNode = match.captures.find((c) => c.name === 'class_name')?.node;
+            const bodyNode = match.captures.find((c) => c.name === 'body')?.node;
+            if (classNameNode && bodyNode) {
+                const className = classNameNode.text;
+                let modelNameValue = null;
+                let inheritValue = null;
+                let hasName = false;
+                // Look for _name and _inherit assignments in the class body
+                for (const child of bodyNode.children) {
+                    if (child.type === 'expression_statement') {
+                        const assignment = child.firstChild;
+                        if (assignment?.type === 'assignment') {
+                            const left = assignment.childForFieldName('left');
+                            const right = assignment.childForFieldName('right');
+                            if (left?.text === '_name') {
+                                hasName = true;
+                                modelNameValue = this.extractString(right);
+                            }
+                            else if (left?.text === '_inherit') {
+                                inheritValue = this.extractValue(right);
+                            }
+                        }
+                    }
                 }
-                this.fieldCache.set(modelName, fields);
+                // Logic to determine model name as requested
+                let finalModelName = null;
+                if (hasName) {
+                    finalModelName = modelNameValue;
+                }
+                else if (inheritValue) {
+                    if (Array.isArray(inheritValue)) {
+                        finalModelName = inheritValue[0];
+                    }
+                    else {
+                        finalModelName = inheritValue;
+                    }
+                }
+                if (finalModelName) {
+                    const modelInfo = {
+                        modelName: finalModelName,
+                        moduleName: moduleName,
+                        className: className,
+                        filePath: filePath,
+                        line: classNameNode.startPosition.row,
+                        character: classNameNode.startPosition.column,
+                        isInherited: !hasName
+                    };
+                    const existing = this.modelCache.get(finalModelName) || [];
+                    existing.push(modelInfo);
+                    this.modelCache.set(finalModelName, existing);
+                }
             }
         }
     }
-    getModel(modelName) {
-        return this.modelCache.get(modelName);
+    extractString(node) {
+        if (!node)
+            return null;
+        if (node.type === 'string') {
+            return node.text.slice(1, -1);
+        }
+        return null;
     }
-    getFields(modelName) {
-        return this.fieldCache.get(modelName) || [];
+    extractValue(node) {
+        if (!node)
+            return null;
+        if (node.type === 'string') {
+            return node.text.slice(1, -1);
+        }
+        if (node.type === 'list' || node.type === 'tuple') {
+            const values = [];
+            for (const child of node.namedChildren) {
+                if (child.type === 'string') {
+                    values.push(child.text.slice(1, -1));
+                }
+            }
+            return values;
+        }
+        return null;
     }
-    getAllModels() {
+    removeFile(uri) {
+        this.removeFileEntries(uri.fsPath);
+    }
+    removeFileEntries(filePath) {
+        for (const [key, list] of this.modelCache.entries()) {
+            const filtered = list.filter(m => m.filePath !== filePath);
+            if (filtered.length === 0) {
+                this.modelCache.delete(key);
+            }
+            else {
+                this.modelCache.set(key, filtered);
+            }
+        }
+    }
+    getModelsByName(modelName) {
+        return this.modelCache.get(modelName) || [];
+    }
+    getAllModelNames() {
         return Array.from(this.modelCache.keys());
-    }
-    invalidateCache() {
-        this.modelCache.clear();
-        this.fieldCache.clear();
-        this.buildCache();
     }
     dispose() {
         if (this.watcher) {
@@ -106,7 +218,6 @@ class ModelIndexService {
         }
     }
 }
-// Singleton instance
 const modelIndexService = new ModelIndexService();
 exports.default = modelIndexService;
 //# sourceMappingURL=modelIndexService.js.map

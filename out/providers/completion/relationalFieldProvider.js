@@ -64,7 +64,7 @@ class RelationalFieldCompletionProvider {
         return [];
     }
     provideModelCompletions(partialModel) {
-        const models = modelIndexService_1.default.getAllModels();
+        const models = modelIndexService_1.default.getAllModelNames();
         return models
             .filter(model => model.startsWith(partialModel))
             .map(model => {

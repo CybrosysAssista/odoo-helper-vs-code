@@ -32,7 +32,7 @@ export class RelationalFieldCompletionProvider implements vscode.CompletionItemP
     }
 
     provideModelCompletions(partialModel: string): vscode.CompletionItem[] {
-        const models = modelIndexService.getAllModels();
+        const models = modelIndexService.getAllModelNames();
         return models
             .filter(model => model.startsWith(partialModel))
             .map(model => {

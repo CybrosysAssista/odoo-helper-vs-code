@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import moduleIndexService from '../services/moduleIndexService';
+import modelIndexService from '../services/modelIndexService';
 import { getPythonParserService } from '../services/pythonParserService';
 import { ManifestParser, ParsedManifest } from '../services/manifestParser';
 
@@ -395,17 +396,14 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
         return null;
     }
     async findModelDefinition(modelName: string): Promise<vscode.Location | null> {
-        const files = await vscode.workspace.findFiles('**/*.py');
-        for (const file of files) {
-            const content = fs.readFileSync(file.fsPath, 'utf8');
-            const regex = new RegExp('_name\\s*=\\s*[\'\"]' + escapeRegExp(modelName) + '[\'\"]');
-            const match = regex.exec(content);
-            if (match) {
-                const idx = content.indexOf(match[0]);
-                const lines = content.slice(0, idx).split('\n');
-                // Place cursor at start of matched line
-                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-            }
+        const modelInfos = modelIndexService.getModelsByName(modelName);
+        if (modelInfos.length > 0) {
+            // Prefer the base definition (isInherited = false)
+            const baseModel = modelInfos.find(m => !m.isInherited) || modelInfos[0];
+            return new vscode.Location(
+                vscode.Uri.file(baseModel.filePath),
+                new vscode.Position(baseModel.line, baseModel.character)
+            );
         }
         return null;
     }

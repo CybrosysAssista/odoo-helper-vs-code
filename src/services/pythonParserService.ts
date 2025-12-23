@@ -254,6 +254,20 @@ export class PythonParserService {
         const { ManifestParser } = require('./manifestParser');
         return new ManifestParser(this.language);
     }
+
+    /**
+     * Get the Tree-sitter language instance
+     */
+    getLanguage(): any {
+        return this.language;
+    }
+
+    /**
+     * Get the Tree-sitter parser instance
+     */
+    getParser(): any {
+        return this.parser;
+    }
 }
 
 // Singleton instance
