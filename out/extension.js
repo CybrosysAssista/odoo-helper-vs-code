@@ -54,6 +54,7 @@ const relationalFieldProvider_1 = require("./providers/completion/relationalFiel
 const importCompletionProvider_1 = require("./providers/completion/importCompletionProvider");
 const manifestDependsCompletionProvider_1 = require("./providers/completion/manifestDependsCompletionProvider");
 const odooDefinitionProvider_1 = require("./providers/odooDefinitionProvider");
+const modelInheritCompletionProvider_1 = require("./providers/completion/modelInheritCompletionProvider");
 const versionService_1 = require("./services/versionService");
 const pythonParserService_1 = require("./services/pythonParserService");
 const testTreeSitter_1 = require("./commands/testTreeSitter");
@@ -140,6 +141,9 @@ async function activate(context) {
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', pattern: '**/__manifest__.py' }, manifestPathProvider, "'", '"', '/', ',', '[', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '-', '.'));
     // Register versioned snippet providers for XML and Python
     registerVersionedSnippets(context);
+    // Register Odoo Model Inherit completion provider
+    const modelInheritProvider = new modelInheritCompletionProvider_1.ModelInheritCompletionProvider();
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'python' }, modelInheritProvider, '"', "'"));
     // Register CSS Class completion provider
     const cssClassProvider = new cssClassCompletionProvider_1.CssClassCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, cssClassProvider, '"', "'"));
