@@ -48,13 +48,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // Initialize index services
     modelIndexService.initialize();
-    modelIndexService.buildCache();
     moduleIndexService.initialize();
     templateIndexService.initialize();
 
-    // Start Odoo Registry Indexing
+    // Start Odoo Indexing with progress
+    vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Cybrosys Assista: Odoo Helper",
+        cancellable: false
+    }, async (progress) => {
+        progress.report({ message: "Indexing Odoo Models..." });
+        await modelIndexService.buildCache();
+
+        progress.report({ message: "Indexing Odoo Modules..." });
+        await moduleIndexService.reindex();
+
+        progress.report({ message: "Indexing Odoo Templates..." });
+        await templateIndexService.buildCache();
+
+        progress.report({ message: "Indexing Odoo Registry..." });
+        const registryIndexer = getOdooRegistryIndexer();
+        await registryIndexer.scanWorkspace();
+
+        progress.report({ message: "Indexing CSS Classes..." });
+        await CssClassIndexer.getInstance().indexWorkspace();
+
+        return Promise.resolve();
+    });
+
+    // Start Odoo Registry Indexing helper for watchers
     const registryIndexer = getOdooRegistryIndexer();
-    registryIndexer.scanWorkspace();
 
     // Watch for JS file changes to update the registry index
     const jsWatcher = vscode.workspace.createFileSystemWatcher('**/*.js');
@@ -64,7 +87,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     jsWatcher.onDidDelete(uri => registryIndexer.removeFile(uri));
 
     context.subscriptions.push(jsWatcher);
-    CssClassIndexer.getInstance().indexWorkspace();
 
     // Register model providers
     registerModelProviders(context);

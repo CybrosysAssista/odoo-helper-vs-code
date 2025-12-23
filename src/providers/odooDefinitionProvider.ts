@@ -7,6 +7,7 @@ import { ManifestParser, ParsedManifest } from '../services/manifestParser';
 
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
 import { CssClassIndexer } from '../services/cssClassIndexer';
+import { getOdooRegistryIndexer } from '../services/odooRegistryIndexer';
 
 function escapeRegExp(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -61,6 +62,27 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                                 );
                             }
                         }
+                    }
+                }
+            }
+
+            // Widget Navigation
+            const widgetAttrRegex = /widget\s*=\s*["']([^"']+)["']/;
+            const widgetMatch = fullLine.match(widgetAttrRegex);
+
+            if (widgetMatch) {
+                const attrStart = fullLine.indexOf(widgetMatch[0]);
+                const valueStart = fullLine.indexOf(widgetMatch[1], attrStart);
+                const valueEnd = valueStart + widgetMatch[1].length;
+
+                if (position.character >= valueStart && position.character <= valueEnd && widgetMatch[1] === word) {
+                    const registryIndexer = getOdooRegistryIndexer();
+                    const entry = registryIndexer.getEntryById(word);
+                    if (entry) {
+                        return new vscode.Location(
+                            vscode.Uri.file(entry.filePath),
+                            new vscode.Position(entry.line, 0)
+                        );
                     }
                 }
             }

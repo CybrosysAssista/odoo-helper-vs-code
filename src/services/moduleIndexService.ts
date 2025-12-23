@@ -17,8 +17,6 @@ class ModuleIndexService {
         this.watcher.onDidChange(() => this.reindex());
         this.watcher.onDidCreate(() => this.reindex());
         this.watcher.onDidDelete(() => this.reindex());
-
-        this.reindex();
     }
 
     public async reindex() {

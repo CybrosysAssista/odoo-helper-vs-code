@@ -44,6 +44,7 @@ const moduleIndexService_1 = __importDefault(require("../services/moduleIndexSer
 const pythonParserService_1 = require("../services/pythonParserService");
 const odooModuleUtils_1 = require("../utils/odooModuleUtils");
 const cssClassIndexer_1 = require("../services/cssClassIndexer");
+const odooRegistryIndexer_1 = require("../services/odooRegistryIndexer");
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -86,6 +87,21 @@ class OdooDefinitionProvider {
                                 return new vscode.Location(vscode.Uri.file(bestDef.filePath), new vscode.Position(bestDef.lineNumber - 1, 0));
                             }
                         }
+                    }
+                }
+            }
+            // Widget Navigation
+            const widgetAttrRegex = /widget\s*=\s*["']([^"']+)["']/;
+            const widgetMatch = fullLine.match(widgetAttrRegex);
+            if (widgetMatch) {
+                const attrStart = fullLine.indexOf(widgetMatch[0]);
+                const valueStart = fullLine.indexOf(widgetMatch[1], attrStart);
+                const valueEnd = valueStart + widgetMatch[1].length;
+                if (position.character >= valueStart && position.character <= valueEnd && widgetMatch[1] === word) {
+                    const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
+                    const entry = registryIndexer.getEntryById(word);
+                    if (entry) {
+                        return new vscode.Location(vscode.Uri.file(entry.filePath), new vscode.Position(entry.line, 0));
                     }
                 }
             }

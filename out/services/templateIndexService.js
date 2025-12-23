@@ -49,7 +49,6 @@ class TemplateIndexService {
         this.watcher.onDidChange(this.buildCache.bind(this));
         this.watcher.onDidCreate(this.buildCache.bind(this));
         this.watcher.onDidDelete(this.buildCache.bind(this));
-        this.buildCache();
     }
     async buildCache() {
         this.templateCache.clear();

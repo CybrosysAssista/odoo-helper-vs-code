@@ -87,19 +87,35 @@ async function activate(context) {
     }
     // Initialize index services
     modelIndexService_1.default.initialize();
-    modelIndexService_1.default.buildCache();
     moduleIndexService_1.default.initialize();
     templateIndexService_1.default.initialize();
-    // Start Odoo Registry Indexing
+    // Start Odoo Indexing with progress
+    vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Cybrosys Assista: Odoo Helper",
+        cancellable: false
+    }, async (progress) => {
+        progress.report({ message: "Indexing Odoo Models..." });
+        await modelIndexService_1.default.buildCache();
+        progress.report({ message: "Indexing Odoo Modules..." });
+        await moduleIndexService_1.default.reindex();
+        progress.report({ message: "Indexing Odoo Templates..." });
+        await templateIndexService_1.default.buildCache();
+        progress.report({ message: "Indexing Odoo Registry..." });
+        const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
+        await registryIndexer.scanWorkspace();
+        progress.report({ message: "Indexing CSS Classes..." });
+        await cssClassIndexer_1.CssClassIndexer.getInstance().indexWorkspace();
+        return Promise.resolve();
+    });
+    // Start Odoo Registry Indexing helper for watchers
     const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
-    registryIndexer.scanWorkspace();
     // Watch for JS file changes to update the registry index
     const jsWatcher = vscode.workspace.createFileSystemWatcher('**/*.js');
     jsWatcher.onDidChange(uri => registryIndexer.indexFile(uri));
     jsWatcher.onDidCreate(uri => registryIndexer.indexFile(uri));
     jsWatcher.onDidDelete(uri => registryIndexer.removeFile(uri));
     context.subscriptions.push(jsWatcher);
-    cssClassIndexer_1.CssClassIndexer.getInstance().indexWorkspace();
     // Register model providers
     (0, odooModelProvider_1.registerModelProviders)(context);
     // Register field providers
