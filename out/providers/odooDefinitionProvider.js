@@ -180,6 +180,26 @@ class OdooDefinitionProvider {
             }
         }
         if (languageId === 'python') {
+            // Check if it's a valid Odoo module
+            const modules = await moduleIndexService_1.default.getModules();
+            const module = modules.find(m => document.uri.fsPath.startsWith(m.path));
+            if (!module)
+                return null;
+            // Handle _inherit navigation using Tree-sitter
+            const pythonParser = (0, pythonParserService_1.getPythonParserService)();
+            if (pythonParser.isInitialized()) {
+                const tree = pythonParser.parse(document.getText());
+                if (tree) {
+                    const offset = document.offsetAt(position);
+                    const node = tree.rootNode.descendantForIndex(Math.max(0, offset - 1));
+                    if (node && this.isModelInheritContext(node)) {
+                        const modelName = node.text.replace(/['"]/g, '');
+                        if (modelName) {
+                            return await this.handleModelDefinitionMultiLookup(modelName);
+                        }
+                    }
+                }
+            }
             // Manifest 'depends' key navigation (using Tree-sitter)
             if (document.fileName.endsWith('__manifest__.py') || document.fileName.endsWith('__openerp__.py')) {
                 const pythonParser = (0, pythonParserService_1.getPythonParserService)();
@@ -436,6 +456,64 @@ class OdooDefinitionProvider {
                 // Place cursor at start of matched line
                 return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
             }
+        }
+        return null;
+    }
+    isModelInheritContext(node) {
+        let current = node;
+        let assignmentNode = null;
+        let temp = current;
+        while (temp) {
+            if (temp.type === 'assignment') {
+                const left = temp.childForFieldName('left');
+                if (left?.text === '_inherit') {
+                    assignmentNode = temp;
+                    break;
+                }
+            }
+            temp = temp.parent;
+        }
+        if (!assignmentNode)
+            return false;
+        let classNode = assignmentNode.parent;
+        while (classNode && classNode.type !== 'class_definition') {
+            classNode = classNode.parent;
+        }
+        if (!classNode)
+            return false;
+        const right = assignmentNode.childForFieldName('right');
+        if (!right)
+            return false;
+        let inSupportedContainer = false;
+        temp = current;
+        while (temp && temp.startIndex >= right.startIndex && temp.endIndex <= right.endIndex) {
+            if (temp.type === 'string' || temp.type === 'list' || temp.type === 'tuple' || temp.type === 'string_content') {
+                inSupportedContainer = true;
+                break;
+            }
+            temp = temp.parent;
+        }
+        return inSupportedContainer;
+    }
+    async handleModelDefinitionMultiLookup(modelName) {
+        const modelInfos = modelIndexService_1.default.getModelsByName(modelName);
+        const baseModels = modelInfos.filter(m => !m.isInherited);
+        if (baseModels.length === 0) {
+            return null;
+        }
+        if (baseModels.length === 1) {
+            const m = baseModels[0];
+            return new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character));
+        }
+        // Multiple base models found, ask user to choose
+        const pick = await vscode.window.showQuickPick(baseModels.map(m => ({
+            label: `${m.modelName} (in ${m.moduleName})`,
+            description: m.filePath,
+            detail: `Class: ${m.className}`,
+            model: m
+        })), { placeHolder: `Select definition for model: ${modelName}` });
+        if (pick) {
+            return new vscode.Location(vscode.Uri.file(pick.model.filePath), new vscode.Position(pick.model.line, pick.model.character));
         }
         return null;
     }
