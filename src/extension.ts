@@ -14,6 +14,7 @@ import { RelationalFieldCompletionProvider } from './providers/completion/relati
 import { ImportCompletionProvider } from './providers/completion/importCompletionProvider';
 import { ManifestDependsCompletionProvider } from './providers/completion/manifestDependsCompletionProvider';
 import { OdooDefinitionProvider } from './providers/odooDefinitionProvider';
+import { ModelInheritCompletionProvider } from './providers/completion/modelInheritCompletionProvider';
 import { getOdooVersion, clearCache } from './services/versionService';
 import { getPythonParserService } from './services/pythonParserService';
 import { testTreeSitterParser } from './commands/testTreeSitter';
@@ -150,6 +151,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // Register versioned snippet providers for XML and Python
     registerVersionedSnippets(context);
+
+    // Register Odoo Model Inherit completion provider
+    const modelInheritProvider = new ModelInheritCompletionProvider();
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            { scheme: 'file', language: 'python' },
+            modelInheritProvider,
+            '"', "'"
+        )
+    );
 
     // Register CSS Class completion provider
     const cssClassProvider = new CssClassCompletionProvider();
