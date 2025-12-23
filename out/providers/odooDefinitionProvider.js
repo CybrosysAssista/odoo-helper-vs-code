@@ -196,35 +196,114 @@ class OdooDefinitionProvider {
                                 }
                             }
                         }
+                        // Manifest file path navigation (data, demo, assets)
+                        const manifestKeys = ['data', 'demo', 'assets'];
+                        for (const keyName of manifestKeys) {
+                            if (parsed && parsed.data.has(keyName)) {
+                                const keyData = parsed.data.get(keyName);
+                                // Handle both simple lists and nested structures (for assets)
+                                const processListItems = async (items) => {
+                                    for (const item of items) {
+                                        if (typeof item.value === 'string') {
+                                            const range = new vscode.Range(item.range.start.line, item.range.start.character, item.range.end.line, item.range.end.character);
+                                            // Check if cursor is contained in the string range
+                                            if (range.contains(position)) {
+                                                const dataPath = item.value;
+                                                const pathItems = dataPath.split('/');
+                                                // Calculate which path segment the cursor is on
+                                                const stringStartChar = item.range.start.character + 1; // +1 to skip opening quote
+                                                const cursorOffsetInString = position.character - stringStartChar;
+                                                // Find which path segment the cursor is in
+                                                let currentOffset = 0;
+                                                let clickedSegmentIndex = -1;
+                                                let clickedSegment = '';
+                                                for (let i = 0; i < pathItems.length; i++) {
+                                                    const segmentLength = pathItems[i].length;
+                                                    const segmentEnd = currentOffset + segmentLength;
+                                                    if (cursorOffsetInString >= currentOffset && cursorOffsetInString < segmentEnd) {
+                                                        clickedSegmentIndex = i;
+                                                        clickedSegment = pathItems[i];
+                                                        break;
+                                                    }
+                                                    // +1 for the '/' separator
+                                                    currentOffset = segmentEnd + 1;
+                                                }
+                                                // Construct the path up to and including the clicked segment
+                                                const pathToSegment = clickedSegmentIndex >= 0
+                                                    ? pathItems.slice(0, clickedSegmentIndex + 1).join('/')
+                                                    : '';
+                                                const moduleRootPath = path.dirname(document.fileName);
+                                                let fullPath = path.join(moduleRootPath, pathToSegment);
+                                                // Check if the path exists
+                                                if (fs.existsSync(fullPath)) {
+                                                    const stats = fs.statSync(fullPath);
+                                                    const uri = vscode.Uri.file(fullPath);
+                                                    if (stats.isDirectory()) {
+                                                        // Focus on the folder in the file explorer
+                                                        await vscode.commands.executeCommand('revealInExplorer', uri);
+                                                        return null; // Don't return a location for folders
+                                                    }
+                                                    else if (stats.isFile()) {
+                                                        // Open the file and return its location
+                                                        return new vscode.Location(uri, new vscode.Position(0, 0));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                };
+                                if (keyData && keyData.type === 'list' && keyData.items) {
+                                    const result = await processListItems(keyData.items);
+                                    if (result)
+                                        return result;
+                                }
+                                else if (keyData && keyData.type === 'dict') {
+                                    // For assets, which is a dict with nested lists
+                                    // The children property contains the dictionary entries as a Map
+                                    const dictData = keyData.children;
+                                    if (dictData && (dictData instanceof Map)) {
+                                        // Iterate over the Map entries
+                                        for (const [assetKey, assetValue] of dictData.entries()) {
+                                            // Each asset value should be a list with items
+                                            if (assetValue && typeof assetValue === 'object' && 'type' in assetValue && assetValue.type === 'list' && 'items' in assetValue) {
+                                                const result = await processListItems(assetValue.items);
+                                                if (result)
+                                                    return result;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-            // self.field_name
-            if (/self\.(\w+)/.test(line) && line.includes(word)) {
-                const modelName = this.getPythonModelContext(documentText, position.line);
-                if (modelName) {
-                    return await this.findFieldDefinition(document, word, modelName);
-                }
+        }
+        // self.field_name
+        if (/self\.(\w+)/.test(line) && line.includes(word)) {
+            const modelName = this.getPythonModelContext(documentText, position.line);
+            if (modelName) {
+                return await this.findFieldDefinition(document, word, modelName);
             }
-            // self.method_name()
-            if (/self\.(\w+)\s*\(/.test(line) && line.includes(word)) {
-                const modelName = this.getPythonModelContext(documentText, position.line);
-                if (modelName) {
-                    return await this.findPythonMethodInModel(modelName, word);
-                }
+        }
+        // self.method_name()
+        if (/self\.(\w+)\s*\(/.test(line) && line.includes(word)) {
+            const modelName = this.getPythonModelContext(documentText, position.line);
+            if (modelName) {
+                return await this.findPythonMethodInModel(modelName, word);
             }
-            // env['model.name']
-            if (/env\[['"]([^'"]+)['"]\]/.test(line) && line.includes(word)) {
-                return await this.findModelDefinition(word);
-            }
-            // related='model.field'
-            if (/related\s*=\s*['"]([^'"]+)['"]/.test(line)) {
-                const rel = line.match(/related\s*=\s*['"]([^'"]+)['"]/);
-                if (rel) {
-                    const [modelName, fieldName] = rel[1].split('.');
-                    if (fieldName === word) {
-                        return await this.findFieldDefinition(null, fieldName, modelName);
-                    }
+        }
+        // env['model.name']
+        if (/env\[['"]([^'"]+)['"]\]/.test(line) && line.includes(word)) {
+            return await this.findModelDefinition(word);
+        }
+        // related='model.field'
+        if (/related\s*=\s*['"]([^'"]+)['"]/.test(line)) {
+            const rel = line.match(/related\s*=\s*['"]([^'"]+)['"]/);
+            if (rel) {
+                const [modelName, fieldName] = rel[1].split('.');
+                if (fieldName === word) {
+                    return await this.findFieldDefinition(null, fieldName, modelName);
                 }
             }
         }
