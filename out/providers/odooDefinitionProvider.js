@@ -42,6 +42,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const moduleIndexService_1 = __importDefault(require("../services/moduleIndexService"));
 const modelIndexService_1 = __importDefault(require("../services/modelIndexService"));
+const fieldIndexService_1 = __importDefault(require("../services/fieldIndexService"));
 const pythonParserService_1 = require("../services/pythonParserService");
 const odooModuleUtils_1 = require("../utils/odooModuleUtils");
 const cssClassIndexer_1 = require("../services/cssClassIndexer");
@@ -178,6 +179,33 @@ class OdooDefinitionProvider {
                 }
             }
             if (node && node.tag === 'field' && word) {
+                const viewModel = odooModuleUtils_1.OdooModuleUtils.findViewModel(node, documentText);
+                if (viewModel) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    const fieldName = attrs['name'];
+                    if (fieldName === word) {
+                        const fields = fieldIndexService_1.default.getFieldsForModel(viewModel);
+                        const candidates = fields.filter(f => f.fieldName === word && (!f.isInherited ||
+                            (currentModuleName && f.moduleName === currentModuleName)));
+                        if (candidates.length > 0) {
+                            if (candidates.length === 1) {
+                                return new vscode.Location(vscode.Uri.file(candidates[0].filePath), new vscode.Position(candidates[0].line, candidates[0].character));
+                            }
+                            const pick = await vscode.window.showQuickPick(candidates.map(f => ({
+                                label: `${f.fieldName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
+                                description: f.filePath,
+                                detail: `Type: ${f.fieldType}`,
+                                field: f
+                            })), { placeHolder: `Select definition for field: ${word}` });
+                            if (pick) {
+                                return new vscode.Location(vscode.Uri.file(pick.field.filePath), new vscode.Position(pick.field.line, pick.field.character));
+                            }
+                            return null;
+                        }
+                    }
+                }
                 // Check if we are in the content area of the field
                 if (node.startTagEnd !== undefined && offset >= node.startTagEnd && (node.endTagStart === undefined || offset <= node.endTagStart)) {
                     const attrs = xmlParser.getAttributes(documentText, node);

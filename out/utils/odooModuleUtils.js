@@ -124,6 +124,37 @@ class OdooModuleUtils {
         }
         return null;
     }
+    static findViewModel(node, text) {
+        const xmlParser = (0, xmlParserService_1.getXmlParserService)();
+        let parentNode = node;
+        let archNode = node;
+        while (parentNode) {
+            if (parentNode.tag &&
+                ['form', 'tree', 'list', 'kanban', 'pivot', 'search'].includes(parentNode.tag)) {
+                archNode = parentNode.parent;
+            }
+            parentNode = parentNode.parent;
+        }
+        if (archNode) {
+            const recordNode = archNode.parent;
+            if (recordNode && recordNode.tag === 'record') {
+                const children = recordNode.children;
+                if (children) {
+                    for (const child of children) {
+                        if (child.tag === 'field') {
+                            const attrs = xmlParser.getAttributes(text, child);
+                            if (attrs['name'] === 'model') {
+                                if (child.startTagEnd !== undefined && child.endTagStart !== undefined) {
+                                    return text.slice(child.startTagEnd, child.endTagStart).trim();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }
 exports.OdooModuleUtils = OdooModuleUtils;
 //# sourceMappingURL=odooModuleUtils.js.map

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import moduleIndexService from '../services/moduleIndexService';
 import modelIndexService from '../services/modelIndexService';
+import fieldIndexService from '../services/fieldIndexService';
 import { getPythonParserService } from '../services/pythonParserService';
 import { ManifestParser, ParsedManifest } from '../services/manifestParser';
 
@@ -159,6 +160,51 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
             }
 
             if (node && node.tag === 'field' && word) {
+
+                const viewModel = OdooModuleUtils.findViewModel(node, documentText);
+                if (viewModel) {
+                    const moduleRoot = await OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    const fieldName = attrs['name'];
+                    if (fieldName === word) {
+                        const fields = fieldIndexService.getFieldsForModel(viewModel);
+                        const candidates = fields.filter(f =>
+                            f.fieldName === word && (
+                                !f.isInherited ||
+                                (currentModuleName && f.moduleName === currentModuleName)
+                            )
+                        );
+
+                        if (candidates.length > 0) {
+                            if (candidates.length === 1) {
+                                return new vscode.Location(
+                                    vscode.Uri.file(candidates[0].filePath),
+                                    new vscode.Position(candidates[0].line, candidates[0].character)
+                                );
+                            }
+
+                            const pick = await vscode.window.showQuickPick(
+                                candidates.map(f => ({
+                                    label: `${f.fieldName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
+                                    description: f.filePath,
+                                    detail: `Type: ${f.fieldType}`,
+                                    field: f
+                                })),
+                                { placeHolder: `Select definition for field: ${word}` }
+                            );
+
+                            if (pick) {
+                                return new vscode.Location(
+                                    vscode.Uri.file(pick.field.filePath),
+                                    new vscode.Position(pick.field.line, pick.field.character)
+                                );
+                            }
+                            return null;
+                        }
+                    }
+                }
+
                 // Check if we are in the content area of the field
                 if (node.startTagEnd !== undefined && offset >= node.startTagEnd && (node.endTagStart === undefined || offset <= node.endTagStart)) {
                     const attrs = xmlParser.getAttributes(documentText, node);
@@ -170,6 +216,8 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                             return await this.handleModelDefinitionMultiLookup(word, currentModuleName);
                         }
                     }
+
+
 
                     if (attrs['name'] === 'tag') {
                         const recordModel = OdooModuleUtils.getRecordModel(node, documentText);
