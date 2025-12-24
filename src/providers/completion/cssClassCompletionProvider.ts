@@ -8,12 +8,14 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
     async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
 
-        // Check if the cursor is properly positioned after class=" or class='
-        // We look for class= followed by a quote at the very end of the linePrefix
-        const match = linePrefix.match(/class=["']$/);
+        // Check if the cursor is properly positioned inside class="..." or class='...'
+        const match = linePrefix.match(/class=["']([^"']*)$/);
         if (!match) {
             return undefined;
         }
+
+        const attrValue = match[1];
+        const typedClasses = new Set(attrValue.split(/\s+/).filter(Boolean));
 
         const moduleRoot = await OdooModuleUtils.getModuleRoot(document.uri);
         if (!moduleRoot) {
@@ -34,7 +36,7 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
         for (const mod of relevantModules) {
             const classNames = indexer.getClassesInModule(mod);
             for (const className of classNames) {
-                if (usedClasses.has(className)) {
+                if (usedClasses.has(className) || typedClasses.has(className)) {
                     continue;
                 }
                 usedClasses.add(className);

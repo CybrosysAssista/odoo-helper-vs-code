@@ -201,7 +201,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.languages.registerCompletionItemProvider(
             { scheme: 'file', language: 'xml' },
             cssClassProvider,
-            '"', "'"
+            '"', "'", " "
         )
     );
 

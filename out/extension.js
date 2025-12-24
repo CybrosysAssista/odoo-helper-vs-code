@@ -171,7 +171,7 @@ async function activate(context) {
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'python' }, pythonInheritedFuncProvider, ' '));
     // Register CSS Class completion provider
     const cssClassProvider = new cssClassCompletionProvider_1.CssClassCompletionProvider();
-    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, cssClassProvider, '"', "'"));
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, cssClassProvider, '"', "'", " "));
     // Register Odoo definition provider
     const odooDefProvider = new odooDefinitionProvider_1.OdooDefinitionProvider();
     context.subscriptions.push(vscode.languages.registerDefinitionProvider({ scheme: 'file', language: 'xml' }, odooDefProvider));
