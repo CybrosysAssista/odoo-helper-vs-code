@@ -5,6 +5,7 @@ import { getOdooRegistryIndexer, RegistryEntry } from '../../services/odooRegist
 import { getXmlParserService } from '../../services/xmlParserService';
 import fieldIndexService from '../../services/fieldIndexService';
 import modelIndexService from '../../services/modelIndexService';
+import functionIndexService from '../../services/functionIndexService';
 import { OdooModuleUtils } from '../../utils/odooModuleUtils';
 import * as path from 'path';
 
@@ -27,6 +28,42 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
 
         if (node) {
             const textUntilCursor = text.slice(node.start, offset);
+
+            if (node.tag === 'button') {
+                const nameAttrMatch = textUntilCursor.match(/name\s*=\s*(['"])([^'"]*)$/);
+                if (nameAttrMatch) {
+                    const modelData = OdooModuleUtils.getModelMetadata(node, text);
+                    if (modelData) {
+                        const attributes = xmlParser.getAttributes(text, node);
+                        // Use a more relaxed check for button type
+                        const isObjectButton = attributes["type"]?.toLowerCase() === "object";
+                        if (isObjectButton) {
+                            const moduleRoot = await OdooModuleUtils.getModuleRoot(document.uri);
+                            const currentModule = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+
+                            let functions = functionIndexService.getFunctionsForModel(modelData.name);
+
+                            // Align with field logic: base functions + functions defined in current module
+                            functions = functions.filter(f => !f.isInherited || (f.isInherited && f.moduleName === currentModule));
+
+                            // Remove duplicates
+                            const uniqueFuncs = new Map<string, any>();
+                            for (const f of functions) {
+                                if (!uniqueFuncs.has(f.functionName)) {
+                                    uniqueFuncs.set(f.functionName, f);
+                                }
+                            }
+
+                            return Array.from(uniqueFuncs.values()).map(f => {
+                                const item = new vscode.CompletionItem(f.functionName, vscode.CompletionItemKind.Method);
+                                item.detail = `Method (${f.moduleName})`;
+                                item.documentation = new vscode.MarkdownString(`**Model:** ${f.modelName}\n\n**Parameters:** (${f.parameters.join(', ')})\n\n**Module:** ${f.moduleName}`);
+                                return item;
+                            });
+                        }
+                    }
+                }
+            }
 
             // 1. Suggestions inside <field name="...">
             if (node.tag === 'field') {

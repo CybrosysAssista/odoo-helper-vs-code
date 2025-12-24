@@ -44,6 +44,7 @@ const odooRegistryIndexer_1 = require("../../services/odooRegistryIndexer");
 const xmlParserService_1 = require("../../services/xmlParserService");
 const fieldIndexService_1 = __importDefault(require("../../services/fieldIndexService"));
 const modelIndexService_1 = __importDefault(require("../../services/modelIndexService"));
+const functionIndexService_1 = __importDefault(require("../../services/functionIndexService"));
 const odooModuleUtils_1 = require("../../utils/odooModuleUtils");
 const path = __importStar(require("path"));
 class OdooXmlCompletionProvider {
@@ -61,6 +62,37 @@ class OdooXmlCompletionProvider {
         const node = xmlParser.findNodeAtOffset(text, offset);
         if (node) {
             const textUntilCursor = text.slice(node.start, offset);
+            if (node.tag === 'button') {
+                const nameAttrMatch = textUntilCursor.match(/name\s*=\s*(['"])([^'"]*)$/);
+                if (nameAttrMatch) {
+                    const modelData = odooModuleUtils_1.OdooModuleUtils.getModelMetadata(node, text);
+                    if (modelData) {
+                        const attributes = xmlParser.getAttributes(text, node);
+                        // Use a more relaxed check for button type
+                        const isObjectButton = attributes["type"]?.toLowerCase() === "object";
+                        if (isObjectButton) {
+                            const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                            const currentModule = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                            let functions = functionIndexService_1.default.getFunctionsForModel(modelData.name);
+                            // Align with field logic: base functions + functions defined in current module
+                            functions = functions.filter(f => !f.isInherited || (f.isInherited && f.moduleName === currentModule));
+                            // Remove duplicates
+                            const uniqueFuncs = new Map();
+                            for (const f of functions) {
+                                if (!uniqueFuncs.has(f.functionName)) {
+                                    uniqueFuncs.set(f.functionName, f);
+                                }
+                            }
+                            return Array.from(uniqueFuncs.values()).map(f => {
+                                const item = new vscode.CompletionItem(f.functionName, vscode.CompletionItemKind.Method);
+                                item.detail = `Method (${f.moduleName})`;
+                                item.documentation = new vscode.MarkdownString(`**Model:** ${f.modelName}\n\n**Parameters:** (${f.parameters.join(', ')})\n\n**Module:** ${f.moduleName}`);
+                                return item;
+                            });
+                        }
+                    }
+                }
+            }
             // 1. Suggestions inside <field name="...">
             if (node.tag === 'field') {
                 const nameAttrMatch = textUntilCursor.match(/name\s*=\s*(['"])([^'"]*)$/);

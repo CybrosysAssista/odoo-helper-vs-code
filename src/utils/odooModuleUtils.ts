@@ -42,7 +42,7 @@ export class OdooModuleUtils {
                 if (attrs['model']) {
                     return {
                         name: attrs['model'],
-                        isUnique: !attrs['inherit_id']
+                        isUnique: true
                     };
                 }
             }
@@ -59,19 +59,11 @@ export class OdooModuleUtils {
                         return false;
                     });
 
-                    const hasInherit = recordNode.children?.some(c => {
-                        if (c.tag === 'field') {
-                            const attrs = xmlParser.getAttributes(text, c);
-                            return attrs['name'] === 'inherit_id';
-                        }
-                        return false;
-                    });
-
                     if (modelField && modelField.startTagEnd !== undefined && modelField.endTagStart !== undefined) {
                         const modelName = text.slice(modelField.startTagEnd, modelField.endTagStart).trim();
                         return {
                             name: modelName,
-                            isUnique: !hasInherit
+                            isUnique: false
                         };
                     }
                 }
