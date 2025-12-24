@@ -52,6 +52,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // Initialize index services
     modelIndexService.initialize();
+    fieldIndexService.initialize();
     functionIndexService.initialize();
     moduleIndexService.initialize();
     templateIndexService.initialize();

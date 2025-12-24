@@ -22,6 +22,52 @@ class FieldIndexService {
 
     constructor() { }
 
+    initialize() {
+        // Listen to model index changes to stay in sync
+        modelIndexService.onDidIndexFile(uri => this.indexFile(uri));
+        modelIndexService.onDidDeleteFile(uri => this.removeFile(uri));
+    }
+
+    async indexFile(uri: vscode.Uri) {
+        try {
+            const text = fs.readFileSync(uri.fsPath, 'utf8');
+            const pythonParser = getPythonParserService();
+            if (!pythonParser.isInitialized()) return;
+
+            const tree = pythonParser.parse(text);
+            if (!tree) return;
+
+            const models = modelIndexService.getModelsByFile(uri.fsPath);
+            if (models.length === 0) {
+                tree.delete();
+                return;
+            }
+
+            // Remove old entries for this file
+            this.removeFileEntries(uri.fsPath);
+
+            this.parseFieldsFromFile(tree, models);
+            tree.delete();
+        } catch (error) {
+            console.error(`[FieldIndex] Error indexing file ${uri.fsPath}:`, error);
+        }
+    }
+
+    private removeFile(uri: vscode.Uri) {
+        this.removeFileEntries(uri.fsPath);
+    }
+
+    private removeFileEntries(filePath: string) {
+        for (const [key, list] of this.fieldCache.entries()) {
+            const filtered = list.filter(f => f.filePath !== filePath);
+            if (filtered.length === 0) {
+                this.fieldCache.delete(key);
+            } else {
+                this.fieldCache.set(key, filtered);
+            }
+        }
+    }
+
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;

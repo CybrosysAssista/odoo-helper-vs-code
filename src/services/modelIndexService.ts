@@ -17,6 +17,10 @@ class ModelIndexService {
     private modelCache: Map<string, ModelInfo[]>; // modelName -> ModelInfo[] (since multiple modules can inherit/define)
     private watcher: vscode.FileSystemWatcher | null;
     private isIndexing: boolean = false;
+    private _onDidIndexFile = new vscode.EventEmitter<vscode.Uri>();
+    public readonly onDidIndexFile = this._onDidIndexFile.event;
+    private _onDidDeleteFile = new vscode.EventEmitter<vscode.Uri>();
+    public readonly onDidDeleteFile = this._onDidDeleteFile.event;
 
     constructor() {
         this.modelCache = new Map();
@@ -97,6 +101,8 @@ class ModelIndexService {
 
             // Parse classes
             this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+
+            this._onDidIndexFile.fire(uri);
 
         } catch (error) {
             console.error(`[ModelIndex] Error indexing file ${uri.fsPath}:`, error);
@@ -205,6 +211,7 @@ class ModelIndexService {
 
     private removeFile(uri: vscode.Uri) {
         this.removeFileEntries(uri.fsPath);
+        this._onDidDeleteFile.fire(uri);
     }
 
     private removeFileEntries(filePath: string) {

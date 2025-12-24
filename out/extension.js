@@ -91,6 +91,7 @@ async function activate(context) {
     }
     // Initialize index services
     modelIndexService_1.default.initialize();
+    fieldIndexService_1.default.initialize();
     functionIndexService_1.default.initialize();
     moduleIndexService_1.default.initialize();
     templateIndexService_1.default.initialize();

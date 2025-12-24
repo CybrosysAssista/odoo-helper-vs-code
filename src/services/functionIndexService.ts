@@ -24,10 +24,9 @@ class FunctionIndexService {
     constructor() { }
 
     initialize() {
-        this.watcher = vscode.workspace.createFileSystemWatcher('**/*.py');
-        this.watcher.onDidChange(uri => this.indexFile(uri));
-        this.watcher.onDidCreate(uri => this.indexFile(uri));
-        this.watcher.onDidDelete(uri => this.removeFile(uri));
+        // Listen to model index changes to stay in sync
+        modelIndexService.onDidIndexFile(uri => this.indexFile(uri));
+        modelIndexService.onDidDeleteFile(uri => this.removeFile(uri));
     }
 
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
