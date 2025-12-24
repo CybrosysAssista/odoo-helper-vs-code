@@ -349,6 +349,16 @@
           "default": false,
           "description": "Enable advanced detailed indexing (storing file paths and line numbers) for CSS features like Go-to-Definition. Requires 'Enable CSS Indexing' to be on.",
           "markdownDescription": "Enable advanced detailed indexing (storing file paths and line numbers) for CSS features like Go-to-Definition. Requires `#cybrosys-assista-odoo-helper.indexing.enableCSSIndexing#` to be on."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableRegistryIndexing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable scanning of JavaScript/OWL files for Odoo registry entry completion (widgets, components, etc.)."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableCoreIndexing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable scanning of Python files for Odoo Models, Fields, and Functions. Highly recommended for full functionality."
         }
       }
     }

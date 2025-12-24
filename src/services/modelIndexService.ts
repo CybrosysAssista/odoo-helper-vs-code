@@ -87,6 +87,11 @@ class ModelIndexService {
     }
 
     async indexFile(uri: vscode.Uri, moduleName?: string) {
+        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
+        if (!config.get<boolean>('indexing.enableCoreIndexing', true)) {
+            return;
+        }
+
         try {
             if (!moduleName) {
                 // Try to find module name if not provided

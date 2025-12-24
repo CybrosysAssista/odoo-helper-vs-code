@@ -57,37 +57,57 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     moduleIndexService.initialize();
     templateIndexService.initialize();
 
+    const registryIndexer = getOdooRegistryIndexer();
+
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Cybrosys Assista: Odoo Helper",
         cancellable: false
     }, async (progress) => {
-        // Reset caches
-        await fieldIndexService.buildCache(progress);
-        await functionIndexService.buildCache(progress);
+        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
+        const enableCore = config.get<boolean>('indexing.enableCoreIndexing', true);
+        const enableRegistry = config.get<boolean>('indexing.enableRegistryIndexing', true);
+
+        // Reset caches for Python services if core is enabled
+        if (enableCore) {
+            await fieldIndexService.buildCache(progress);
+            await functionIndexService.buildCache(progress);
+        }
+
+        // Templates are generally safe and fast enough
         await templateIndexService.buildCache(progress);
 
         // Orchestrate unified indexing pass
-        // ModelIndex will trigger Fields and Functions indexing for each file
-        await modelIndexService.buildCache(progress);
-        await moduleIndexService.reindex(progress);
+        if (enableCore) {
+            // ModelIndex will trigger Fields and Functions indexing for each file
+            await modelIndexService.buildCache(progress);
+            await moduleIndexService.reindex(progress);
+        }
 
-        const registryIndexer = getOdooRegistryIndexer();
-        await registryIndexer.scanWorkspace(progress);
+        if (enableRegistry) {
+            await registryIndexer.scanWorkspace(progress);
+        }
 
         await CssClassIndexer.getInstance().indexWorkspace(progress);
 
         return Promise.resolve();
     });
 
-    // Start Odoo Registry Indexing helper for watchers
-    const registryIndexer = getOdooRegistryIndexer();
-
     // Watch for JS file changes to update the registry index
     const jsWatcher = vscode.workspace.createFileSystemWatcher('**/*.js');
 
-    jsWatcher.onDidChange(uri => registryIndexer.indexFile(uri));
-    jsWatcher.onDidCreate(uri => registryIndexer.indexFile(uri));
+    jsWatcher.onDidChange(uri => {
+        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
+        if (config.get<boolean>('indexing.enableRegistryIndexing', true)) {
+            registryIndexer.indexFile(uri);
+        }
+    });
+    jsWatcher.onDidCreate(uri => {
+        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
+        if (config.get<boolean>('indexing.enableRegistryIndexing', true)) {
+            registryIndexer.indexFile(uri);
+        }
+    });
     jsWatcher.onDidDelete(uri => registryIndexer.removeFile(uri));
 
     context.subscriptions.push(jsWatcher);
