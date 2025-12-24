@@ -177,6 +177,41 @@ class OdooDefinitionProvider {
                     return await this.handleModelDefinitionMultiLookup(word, currentModuleName);
                 }
             }
+            if (node && node.tag === 'field' && word) {
+                // Check if we are in the content area of the field
+                if (node.startTagEnd !== undefined && offset >= node.startTagEnd && (node.endTagStart === undefined || offset <= node.endTagStart)) {
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    if (attrs['name'] === 'model' || attrs['name'] === 'res_model') {
+                        const recordModel = odooModuleUtils_1.OdooModuleUtils.getRecordModel(node, documentText);
+                        if (recordModel === 'ir.ui.view' || recordModel === 'ir.actions.act_window') {
+                            const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                            const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                            return await this.handleModelDefinitionMultiLookup(word, currentModuleName);
+                        }
+                    }
+                    if (attrs['name'] === 'tag') {
+                        const recordModel = odooModuleUtils_1.OdooModuleUtils.getRecordModel(node, documentText);
+                        if (recordModel === 'ir.actions.client') {
+                            const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
+                            const entries = registryIndexer.getEntriesByCategory('actions').filter(e => e.id === word);
+                            if (entries.length === 0)
+                                return null;
+                            if (entries.length === 1) {
+                                return new vscode.Location(vscode.Uri.file(entries[0].filePath), new vscode.Position(entries[0].line, 0));
+                            }
+                            const pick = await vscode.window.showQuickPick(entries.map(e => ({
+                                label: `${e.id} (in ${e.moduleName})`,
+                                description: e.filePath,
+                                detail: `Component: ${e.component}`,
+                                entry: e
+                            })), { placeHolder: `Select definition for action tag: ${word}` });
+                            if (pick) {
+                                return new vscode.Location(vscode.Uri.file(pick.entry.filePath), new vscode.Position(pick.entry.line, 0));
+                            }
+                        }
+                    }
+                }
+            }
             if ((/model\s*=\s*["']([^"']+)["']/.test(line) || /res_model\s*=\s*["']([^"']+)["']/.test(line)) && word) {
                 return await this.findModelDefinition(word);
             }
