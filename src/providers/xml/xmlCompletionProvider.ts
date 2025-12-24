@@ -119,41 +119,37 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
             }
 
             // 4. Xpath position attribute value suggestions
-            if (node.tag === 'xpath') {
-                const xpathPositionMatch = textUntilCursor.match(/position\s*=\s*['"]([^'"]*)$/);
-                if (xpathPositionMatch) {
-                    const partial = xpathPositionMatch[1] || '';
-                    const positions = ['after', 'before', 'inside', 'replace', 'attributes'];
-                    return positions
-                        .filter(pos => pos.startsWith(partial))
-                        .map(pos => {
-                            const item = new vscode.CompletionItem(pos, vscode.CompletionItemKind.EnumMember);
-                            item.insertText = pos;
-                            item.detail = 'Odoo Xpath Position';
-                            return item;
-                        });
-                }
+            const xpathPositionMatch = textUntilCursor.match(/position\s*=\s*['"]([^'"]*)$/);
+            if (node.tag === 'xpath' && xpathPositionMatch) {
+                const partial = xpathPositionMatch[1] || '';
+                const positions = ['after', 'before', 'inside', 'replace', 'attributes'];
+                return positions
+                    .filter(pos => pos.startsWith(partial))
+                    .map(pos => {
+                        const item = new vscode.CompletionItem(pos, vscode.CompletionItemKind.EnumMember);
+                        item.insertText = pos;
+                        item.detail = 'Odoo Xpath Position';
+                        return item;
+                    });
             }
 
             // 5. Find if we're inside t-call="..."
-            if (node.tag === 't') {
-                const tcallMatch = textUntilCursor.match(/t-call\s*=\s*['"]([^'"]*)$/);
-                if (tcallMatch) {
-                    const partial = tcallMatch[1] || '';
-                    return templateIndexService.getAllTemplates()
-                        .filter(tpl => tpl.startsWith(partial))
-                        .map(tpl => {
-                            const item = new vscode.CompletionItem(tpl, vscode.CompletionItemKind.Reference);
-                            item.insertText = tpl;
-                            item.detail = 'Odoo QWeb Template';
-                            return item;
-                        });
-                }
+            const tcallMatch = textUntilCursor.match(/t-call\s*=\s*['"]([^'"]*)$/);
+            if (node.tag === 't' && tcallMatch) {
+                const partial = tcallMatch[1] || '';
+                return templateIndexService.getAllTemplates()
+                    .filter(tpl => tpl.startsWith(partial))
+                    .map(tpl => {
+                        const item = new vscode.CompletionItem(tpl, vscode.CompletionItemKind.Reference);
+                        item.insertText = tpl;
+                        item.detail = 'Odoo QWeb Template';
+                        return item;
+                    });
             }
 
             // 6. Find if we're inside widget="..." (any tag)
             const widgetMatch = textUntilCursor.match(/\bwidget\s*=\s*(['"])([^'"]*)$/);
-            if (widgetMatch) {
+            if (node.tag == 'field' && widgetMatch) {
                 const partial = widgetMatch[2] || '';
                 const registryIndexer = getOdooRegistryIndexer();
                 return registryIndexer.getEntriesByCategory('fields')
