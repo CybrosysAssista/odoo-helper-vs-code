@@ -57,6 +57,7 @@ const importCompletionProvider_1 = require("./providers/completion/importComplet
 const manifestDependsCompletionProvider_1 = require("./providers/completion/manifestDependsCompletionProvider");
 const odooDefinitionProvider_1 = require("./providers/odooDefinitionProvider");
 const modelInheritCompletionProvider_1 = require("./providers/completion/modelInheritCompletionProvider");
+const pythonInheritedFunctionProvider_1 = require("./providers/completion/pythonInheritedFunctionProvider");
 const versionService_1 = require("./services/versionService");
 const pythonParserService_1 = require("./services/pythonParserService");
 const testTreeSitter_1 = require("./commands/testTreeSitter");
@@ -144,6 +145,9 @@ async function activate(context) {
     // Register Odoo Model Inherit completion provider
     const modelInheritProvider = new modelInheritCompletionProvider_1.ModelInheritCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'python' }, modelInheritProvider, '"', "'"));
+    // Register Python Inherited Function completion provider
+    const pythonInheritedFuncProvider = new pythonInheritedFunctionProvider_1.PythonInheritedFunctionProvider();
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'python' }, pythonInheritedFuncProvider, ' '));
     // Register CSS Class completion provider
     const cssClassProvider = new cssClassCompletionProvider_1.CssClassCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: 'xml' }, cssClassProvider, '"', "'"));

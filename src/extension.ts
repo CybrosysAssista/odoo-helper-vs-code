@@ -17,6 +17,7 @@ import { ImportCompletionProvider } from './providers/completion/importCompletio
 import { ManifestDependsCompletionProvider } from './providers/completion/manifestDependsCompletionProvider';
 import { OdooDefinitionProvider } from './providers/odooDefinitionProvider';
 import { ModelInheritCompletionProvider } from './providers/completion/modelInheritCompletionProvider';
+import { PythonInheritedFunctionProvider } from './providers/completion/pythonInheritedFunctionProvider';
 import { getOdooVersion, clearCache } from './services/versionService';
 import { getPythonParserService } from './services/pythonParserService';
 import { testTreeSitterParser } from './commands/testTreeSitter';
@@ -157,6 +158,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             { scheme: 'file', language: 'python' },
             modelInheritProvider,
             '"', "'"
+        )
+    );
+
+    // Register Python Inherited Function completion provider
+    const pythonInheritedFuncProvider = new PythonInheritedFunctionProvider();
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            { scheme: 'file', language: 'python' },
+            pythonInheritedFuncProvider,
+            ' '
         )
     );
 
