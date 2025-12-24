@@ -143,39 +143,35 @@ class OdooXmlCompletionProvider {
                 }
             }
             // 4. Xpath position attribute value suggestions
-            if (node.tag === 'xpath') {
-                const xpathPositionMatch = textUntilCursor.match(/position\s*=\s*['"]([^'"]*)$/);
-                if (xpathPositionMatch) {
-                    const partial = xpathPositionMatch[1] || '';
-                    const positions = ['after', 'before', 'inside', 'replace', 'attributes'];
-                    return positions
-                        .filter(pos => pos.startsWith(partial))
-                        .map(pos => {
-                        const item = new vscode.CompletionItem(pos, vscode.CompletionItemKind.EnumMember);
-                        item.insertText = pos;
-                        item.detail = 'Odoo Xpath Position';
-                        return item;
-                    });
-                }
+            const xpathPositionMatch = textUntilCursor.match(/position\s*=\s*['"]([^'"]*)$/);
+            if (node.tag === 'xpath' && xpathPositionMatch) {
+                const partial = xpathPositionMatch[1] || '';
+                const positions = ['after', 'before', 'inside', 'replace', 'attributes'];
+                return positions
+                    .filter(pos => pos.startsWith(partial))
+                    .map(pos => {
+                    const item = new vscode.CompletionItem(pos, vscode.CompletionItemKind.EnumMember);
+                    item.insertText = pos;
+                    item.detail = 'Odoo Xpath Position';
+                    return item;
+                });
             }
             // 5. Find if we're inside t-call="..."
-            if (node.tag === 't') {
-                const tcallMatch = textUntilCursor.match(/t-call\s*=\s*['"]([^'"]*)$/);
-                if (tcallMatch) {
-                    const partial = tcallMatch[1] || '';
-                    return templateIndexService_1.default.getAllTemplates()
-                        .filter(tpl => tpl.startsWith(partial))
-                        .map(tpl => {
-                        const item = new vscode.CompletionItem(tpl, vscode.CompletionItemKind.Reference);
-                        item.insertText = tpl;
-                        item.detail = 'Odoo QWeb Template';
-                        return item;
-                    });
-                }
+            const tcallMatch = textUntilCursor.match(/t-call\s*=\s*['"]([^'"]*)$/);
+            if (node.tag === 't' && tcallMatch) {
+                const partial = tcallMatch[1] || '';
+                return templateIndexService_1.default.getAllTemplates()
+                    .filter(tpl => tpl.startsWith(partial))
+                    .map(tpl => {
+                    const item = new vscode.CompletionItem(tpl, vscode.CompletionItemKind.Reference);
+                    item.insertText = tpl;
+                    item.detail = 'Odoo QWeb Template';
+                    return item;
+                });
             }
             // 6. Find if we're inside widget="..." (any tag)
             const widgetMatch = textUntilCursor.match(/\bwidget\s*=\s*(['"])([^'"]*)$/);
-            if (widgetMatch) {
+            if (node.tag == 'field' && widgetMatch) {
                 const partial = widgetMatch[2] || '';
                 const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
                 return registryIndexer.getEntriesByCategory('fields')
@@ -186,6 +182,21 @@ class OdooXmlCompletionProvider {
                     item.documentation = new vscode.MarkdownString(`**Component:** ${entry.component}\n\n**File:** ${entry.filePath}:${entry.line}`);
                     return item;
                 });
+            }
+            if (node.tag === 't') {
+                const tComponentMatch = textUntilCursor.match(/t-component\s*=\s*(['"])([^'"]*)$/);
+                if (tComponentMatch) {
+                    const partial = tComponentMatch[2] || '';
+                    const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
+                    return registryIndexer.getEntriesByCategory('public_components')
+                        .filter((entry) => entry.id.startsWith(partial))
+                        .map((entry) => {
+                        const item = new vscode.CompletionItem(entry.id, vscode.CompletionItemKind.Value);
+                        item.detail = `Module: ${entry.moduleName}`;
+                        item.documentation = new vscode.MarkdownString(`**Component:** ${entry.component}\n\n**File:** ${entry.filePath}:${entry.line}`);
+                        return item;
+                    });
+                }
             }
         }
         // Generic tag and attribute completions
