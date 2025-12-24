@@ -180,6 +180,7 @@ class OdooDefinitionProvider {
             }
             if (node && node.tag === 'field' && word) {
                 const viewModel = odooModuleUtils_1.OdooModuleUtils.findViewModel(node, documentText);
+                console.log(viewModel);
                 if (viewModel) {
                     const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
                     const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';

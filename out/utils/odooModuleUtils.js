@@ -127,31 +127,39 @@ class OdooModuleUtils {
     static findViewModel(node, text) {
         const xmlParser = (0, xmlParserService_1.getXmlParserService)();
         let parentNode = node;
-        let archNode = node;
+        let foundViewTag = false;
         while (parentNode) {
-            if (parentNode.tag &&
-                ['form', 'tree', 'list', 'kanban', 'pivot', 'search'].includes(parentNode.tag)) {
-                archNode = parentNode.parent;
-            }
-            parentNode = parentNode.parent;
-        }
-        if (archNode) {
-            const recordNode = archNode.parent;
-            if (recordNode && recordNode.tag === 'record') {
-                const children = recordNode.children;
-                if (children) {
-                    for (const child of children) {
-                        if (child.tag === 'field') {
-                            const attrs = xmlParser.getAttributes(text, child);
-                            if (attrs['name'] === 'model') {
-                                if (child.startTagEnd !== undefined && child.endTagStart !== undefined) {
-                                    return text.slice(child.startTagEnd, child.endTagStart).trim();
+            if (parentNode.tag === 'record') {
+                const attrs = xmlParser.getAttributes(text, parentNode);
+                const recordModel = attrs['model'];
+                // If we are in an ir.ui.view or we found a view tag (form, tree, etc.),
+                // we should look for the <field name="model"> content.
+                if (foundViewTag) {
+                    const children = parentNode.children;
+                    if (children) {
+                        for (const child of children) {
+                            if (child.tag === 'field') {
+                                const cAttrs = xmlParser.getAttributes(text, child);
+                                if (cAttrs['name'] === 'model') {
+                                    if (child.startTagEnd !== undefined && child.endTagStart !== undefined) {
+                                        return text.slice(child.startTagEnd, child.endTagStart).trim();
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                // If it's not a view record or the model field wasn't found,
+                // use the record's model attribute itself.
+                if (recordModel) {
+                    return recordModel;
+                }
+                break;
             }
+            if (parentNode.tag && ['form', 'tree', 'list', 'kanban', 'pivot', 'search'].includes(parentNode.tag)) {
+                foundViewTag = true;
+            }
+            parentNode = parentNode.parent;
         }
         return null;
     }

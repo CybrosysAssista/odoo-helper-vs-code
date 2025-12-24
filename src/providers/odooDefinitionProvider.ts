@@ -162,6 +162,7 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
             if (node && node.tag === 'field' && word) {
 
                 const viewModel = OdooModuleUtils.findViewModel(node, documentText);
+                console.log(viewModel);
                 if (viewModel) {
                     const moduleRoot = await OdooModuleUtils.getModuleRoot(document.uri);
                     const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
