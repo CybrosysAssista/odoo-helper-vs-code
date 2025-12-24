@@ -46,6 +46,7 @@ const pythonParserService_1 = require("../services/pythonParserService");
 const odooModuleUtils_1 = require("../utils/odooModuleUtils");
 const cssClassIndexer_1 = require("../services/cssClassIndexer");
 const odooRegistryIndexer_1 = require("../services/odooRegistryIndexer");
+const xmlParserService_1 = require("../services/xmlParserService");
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -163,7 +164,19 @@ class OdooDefinitionProvider {
                     return await this.findQWebTemplate(word);
                 }
             }
-            // model="..." or res_model="..."
+            // model="..." or res_model="..." (Using Parser for model="..." in <record>)
+            const offset = document.offsetAt(position);
+            const xmlParser = (0, xmlParserService_1.getXmlParserService)();
+            const node = xmlParser.findNodeAtOffset(documentText, offset);
+            if (node && node.tag === 'record') {
+                const textUntilCursor = documentText.slice(node.start, offset);
+                const modelMatch = textUntilCursor.match(/model\s*=\s*(['"])([^'"]*)$/);
+                if (modelMatch && word) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    return await this.handleModelDefinitionMultiLookup(word, currentModuleName);
+                }
+            }
             if ((/model\s*=\s*["']([^"']+)["']/.test(line) || /res_model\s*=\s*["']([^"']+)["']/.test(line)) && word) {
                 return await this.findModelDefinition(word);
             }
@@ -495,19 +508,36 @@ class OdooDefinitionProvider {
         }
         return inSupportedContainer;
     }
-    async handleModelDefinitionMultiLookup(modelName) {
+    async handleModelDefinitionMultiLookup(modelName, currentModuleName = '') {
         const modelInfos = modelIndexService_1.default.getModelsByName(modelName);
-        const baseModels = modelInfos.filter(m => !m.isInherited);
-        if (baseModels.length === 0) {
+        // Filter: not inherited OR (inherited AND module is current module)
+        const candidates = modelInfos.filter(m => !m.isInherited || (m.isInherited && currentModuleName && m.moduleName === currentModuleName));
+        if (candidates.length === 0) {
+            // Fallback to all models if no filtered candidates found
+            if (modelInfos.length === 0)
+                return null;
+            if (modelInfos.length === 1) {
+                const m = modelInfos[0];
+                return new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character));
+            }
+            const pick = await vscode.window.showQuickPick(modelInfos.map(m => ({
+                label: `${m.modelName} (in ${m.moduleName}) ${m.isInherited ? '[Inherited]' : '[Base]'}`,
+                description: m.filePath,
+                detail: `Class: ${m.className}`,
+                model: m
+            })), { placeHolder: `Select definition for model: ${modelName}` });
+            if (pick) {
+                return new vscode.Location(vscode.Uri.file(pick.model.filePath), new vscode.Position(pick.model.line, pick.model.character));
+            }
             return null;
         }
-        if (baseModels.length === 1) {
-            const m = baseModels[0];
+        if (candidates.length === 1) {
+            const m = candidates[0];
             return new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character));
         }
-        // Multiple base models found, ask user to choose
-        const pick = await vscode.window.showQuickPick(baseModels.map(m => ({
-            label: `${m.modelName} (in ${m.moduleName})`,
+        // Multiple candidates found, ask user to choose
+        const pick = await vscode.window.showQuickPick(candidates.map(m => ({
+            label: `${m.modelName} (in ${m.moduleName}) ${m.isInherited ? '[Inherited]' : '[Base]'}`,
             description: m.filePath,
             detail: `Class: ${m.className}`,
             model: m
