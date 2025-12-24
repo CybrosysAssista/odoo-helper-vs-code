@@ -43,6 +43,7 @@ const path = __importStar(require("path"));
 const moduleIndexService_1 = __importDefault(require("../services/moduleIndexService"));
 const modelIndexService_1 = __importDefault(require("../services/modelIndexService"));
 const fieldIndexService_1 = __importDefault(require("../services/fieldIndexService"));
+const functionIndexService_1 = __importDefault(require("../services/functionIndexService"));
 const pythonParserService_1 = require("../services/pythonParserService");
 const odooModuleUtils_1 = require("../utils/odooModuleUtils");
 const cssClassIndexer_1 = require("../services/cssClassIndexer");
@@ -237,6 +238,37 @@ class OdooDefinitionProvider {
                             if (pick) {
                                 return new vscode.Location(vscode.Uri.file(pick.entry.filePath), new vscode.Position(pick.entry.line, 0));
                             }
+                        }
+                    }
+                }
+            }
+            if (node?.tag === 'button' && word) {
+                const viewModel = odooModuleUtils_1.OdooModuleUtils.findViewModel(node, documentText);
+                if (viewModel) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    const buttonName = attrs['name'];
+                    const buttonType = attrs['type']?.toLowerCase();
+                    // Methods are used when type="object"
+                    if (buttonName === word && buttonType === 'object') {
+                        const functions = functionIndexService_1.default.getFunctionsForModel(viewModel);
+                        const candidates = functions.filter(f => f.functionName === word && (!f.isInherited ||
+                            (currentModuleName && f.moduleName === currentModuleName)));
+                        if (candidates.length > 0) {
+                            if (candidates.length === 1) {
+                                return new vscode.Location(vscode.Uri.file(candidates[0].filePath), new vscode.Position(candidates[0].line, candidates[0].character));
+                            }
+                            const pick = await vscode.window.showQuickPick(candidates.map(f => ({
+                                label: `${f.functionName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
+                                description: f.filePath,
+                                detail: `Class: ${f.className}, Model: ${f.modelName}`,
+                                func: f
+                            })), { placeHolder: `Select definition for method: ${word}` });
+                            if (pick) {
+                                return new vscode.Location(vscode.Uri.file(pick.func.filePath), new vscode.Position(pick.func.line, pick.func.character));
+                            }
+                            return null;
                         }
                     }
                 }
