@@ -8,6 +8,7 @@ import { registerCommands } from './commands/commandHandlers';
 import { runOdooLint } from './services/odooLinter';
 import modelIndexService from './services/modelIndexService';
 import fieldIndexService from './services/fieldIndexService';
+import functionIndexService from './services/functionIndexService';
 import moduleIndexService from './services/moduleIndexService';
 import templateIndexService from './services/templateIndexService';
 import { OdooXmlCompletionProvider } from './providers/xml/xmlCompletionProvider';
@@ -50,6 +51,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // Initialize index services
     modelIndexService.initialize();
+    functionIndexService.initialize();
     moduleIndexService.initialize();
     templateIndexService.initialize();
 
@@ -61,6 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         // Individual services will handle their own progress reporting
         await modelIndexService.buildCache(progress);
         await fieldIndexService.buildCache(progress);
+        await functionIndexService.buildCache(progress);
         await moduleIndexService.reindex(progress);
         await templateIndexService.buildCache(progress);
 
@@ -355,5 +358,6 @@ async function registerVersionedSnippets(context: vscode.ExtensionContext): Prom
 
 export function deactivate(): void {
     modelIndexService.dispose();
+    functionIndexService.dispose();
     moduleIndexService.dispose();
 }

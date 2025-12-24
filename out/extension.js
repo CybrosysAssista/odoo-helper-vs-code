@@ -48,6 +48,7 @@ const commandHandlers_1 = require("./commands/commandHandlers");
 const odooLinter_1 = require("./services/odooLinter");
 const modelIndexService_1 = __importDefault(require("./services/modelIndexService"));
 const fieldIndexService_1 = __importDefault(require("./services/fieldIndexService"));
+const functionIndexService_1 = __importDefault(require("./services/functionIndexService"));
 const moduleIndexService_1 = __importDefault(require("./services/moduleIndexService"));
 const templateIndexService_1 = __importDefault(require("./services/templateIndexService"));
 const xmlCompletionProvider_1 = require("./providers/xml/xmlCompletionProvider");
@@ -89,6 +90,7 @@ async function activate(context) {
     }
     // Initialize index services
     modelIndexService_1.default.initialize();
+    functionIndexService_1.default.initialize();
     moduleIndexService_1.default.initialize();
     templateIndexService_1.default.initialize();
     vscode.window.withProgress({
@@ -99,6 +101,7 @@ async function activate(context) {
         // Individual services will handle their own progress reporting
         await modelIndexService_1.default.buildCache(progress);
         await fieldIndexService_1.default.buildCache(progress);
+        await functionIndexService_1.default.buildCache(progress);
         await moduleIndexService_1.default.reindex(progress);
         await templateIndexService_1.default.buildCache(progress);
         const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
@@ -278,6 +281,7 @@ async function registerVersionedSnippets(context) {
 }
 function deactivate() {
     modelIndexService_1.default.dispose();
+    functionIndexService_1.default.dispose();
     moduleIndexService_1.default.dispose();
 }
 //# sourceMappingURL=extension.js.map
