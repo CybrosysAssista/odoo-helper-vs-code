@@ -100,12 +100,14 @@ async function activate(context) {
         title: "Cybrosys Assista: Odoo Helper",
         cancellable: false
     }, async (progress) => {
-        // Individual services will handle their own progress reporting
-        await modelIndexService_1.default.buildCache(progress);
+        // Reset caches
         await fieldIndexService_1.default.buildCache(progress);
         await functionIndexService_1.default.buildCache(progress);
-        await moduleIndexService_1.default.reindex(progress);
         await templateIndexService_1.default.buildCache(progress);
+        // Orchestrate unified indexing pass
+        // ModelIndex will trigger Fields and Functions indexing for each file
+        await modelIndexService_1.default.buildCache(progress);
+        await moduleIndexService_1.default.reindex(progress);
         const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
         await registryIndexer.scanWorkspace(progress);
         await cssClassIndexer_1.CssClassIndexer.getInstance().indexWorkspace(progress);

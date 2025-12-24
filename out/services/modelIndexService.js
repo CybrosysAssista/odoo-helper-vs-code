@@ -48,6 +48,8 @@ class ModelIndexService {
     onDidIndexFile = this._onDidIndexFile.event;
     _onDidDeleteFile = new vscode.EventEmitter();
     onDidDeleteFile = this._onDidDeleteFile.event;
+    _onDidIndexRichFile = new vscode.EventEmitter();
+    onDidIndexRichFile = this._onDidIndexRichFile.event;
     constructor() {
         this.modelCache = new Map();
         this.watcher = null;
@@ -115,8 +117,12 @@ class ModelIndexService {
             // Remove old entries for this file
             this.removeFileEntries(uri.fsPath);
             // Parse classes
-            this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+            const models = this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+            // Notify others with the parsed tree
+            this._onDidIndexRichFile.fire({ uri, tree, models });
             this._onDidIndexFile.fire(uri);
+            // CRITICAL: Delete tree only after everyone is done
+            tree.delete();
         }
         catch (error) {
             console.error(`[ModelIndex] Error indexing file ${uri.fsPath}:`, error);
@@ -126,8 +132,9 @@ class ModelIndexService {
         const rootNode = tree.rootNode;
         const pythonParser = (0, pythonParserService_1.getPythonParserService)();
         const language = pythonParser.getLanguage();
+        const foundModels = [];
         if (!language)
-            return;
+            return [];
         // Query to find classes
         const classQuery = new (require('web-tree-sitter')).Query(language, `
             (class_definition
@@ -187,9 +194,11 @@ class ModelIndexService {
                     const existing = this.modelCache.get(finalModelName) || [];
                     existing.push(modelInfo);
                     this.modelCache.set(finalModelName, existing);
+                    foundModels.push(modelInfo);
                 }
             }
         }
+        return foundModels;
     }
     extractString(node) {
         if (!node)

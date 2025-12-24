@@ -13,6 +13,12 @@ export interface ModelInfo {
     isInherited: boolean;
 }
 
+export interface RichIndexEvent {
+    uri: vscode.Uri;
+    tree: any;
+    models: ModelInfo[];
+}
+
 class ModelIndexService {
     private modelCache: Map<string, ModelInfo[]>; // modelName -> ModelInfo[] (since multiple modules can inherit/define)
     private watcher: vscode.FileSystemWatcher | null;
@@ -21,6 +27,9 @@ class ModelIndexService {
     public readonly onDidIndexFile = this._onDidIndexFile.event;
     private _onDidDeleteFile = new vscode.EventEmitter<vscode.Uri>();
     public readonly onDidDeleteFile = this._onDidDeleteFile.event;
+
+    private _onDidIndexRichFile = new vscode.EventEmitter<RichIndexEvent>();
+    public readonly onDidIndexRichFile = this._onDidIndexRichFile.event;
 
     constructor() {
         this.modelCache = new Map();
@@ -100,21 +109,27 @@ class ModelIndexService {
             this.removeFileEntries(uri.fsPath);
 
             // Parse classes
-            this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+            const models = this.parseModelsFromTree(tree, uri.fsPath, moduleName);
 
+            // Notify others with the parsed tree
+            this._onDidIndexRichFile.fire({ uri, tree, models });
             this._onDidIndexFile.fire(uri);
+
+            // CRITICAL: Delete tree only after everyone is done
+            tree.delete();
 
         } catch (error) {
             console.error(`[ModelIndex] Error indexing file ${uri.fsPath}:`, error);
         }
     }
 
-    private parseModelsFromTree(tree: any, filePath: string, moduleName: string) {
+    private parseModelsFromTree(tree: any, filePath: string, moduleName: string): ModelInfo[] {
         const rootNode = tree.rootNode;
         const pythonParser = getPythonParserService();
         const language = pythonParser.getLanguage();
+        const foundModels: ModelInfo[] = [];
 
-        if (!language) return;
+        if (!language) return [];
 
         // Query to find classes
         const classQuery = new (require('web-tree-sitter')).Query(language, `
@@ -179,9 +194,11 @@ class ModelIndexService {
                     const existing = this.modelCache.get(finalModelName) || [];
                     existing.push(modelInfo);
                     this.modelCache.set(finalModelName, existing);
+                    foundModels.push(modelInfo);
                 }
             }
         }
+        return foundModels;
     }
 
     private extractString(node: any): string | null {

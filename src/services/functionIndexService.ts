@@ -25,63 +25,24 @@ class FunctionIndexService {
 
     initialize() {
         // Listen to model index changes to stay in sync
-        modelIndexService.onDidIndexFile(uri => this.indexFile(uri));
+        modelIndexService.onDidIndexRichFile(event => this.indexFromTree(event.tree, event.models));
         modelIndexService.onDidDeleteFile(uri => this.removeFile(uri));
+    }
+
+    public indexFromTree(tree: any, models: ModelInfo[]) {
+        if (models.length > 0) {
+            this.removeFileEntries(models[0].filePath);
+            this.parseFunctionsFromFile(tree, models);
+        }
     }
 
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;
 
-        console.log('[FunctionIndex] Building function cache...');
+        console.log('[FunctionIndex] Resetting function cache (building via ModelIndex)...');
         this.functionCache.clear();
-
-        const allModels = modelIndexService.getAllModels();
-        const modelsByFile = new Map<string, ModelInfo[]>();
-        for (const model of allModels) {
-            const list = modelsByFile.get(model.filePath) || [];
-            list.push(model);
-            modelsByFile.set(model.filePath, list);
-        }
-
-        const pythonParser = getPythonParserService();
-        if (!pythonParser.isInitialized()) {
-            this.isIndexing = false;
-            return;
-        }
-
-        const totalFiles = modelsByFile.size;
-        let filesProcessed = 0;
-
-        for (const [filePath, models] of modelsByFile.entries()) {
-            filesProcessed++;
-            if (progress) {
-                const fileName = path.basename(filePath);
-                progress.report({
-                    message: `Indexing Functions: ${filesProcessed}/${totalFiles} (${fileName})`,
-                    increment: (1 / totalFiles) * 100
-                });
-            }
-
-            try {
-                const text = fs.readFileSync(filePath, 'utf8');
-                const tree = pythonParser.parse(text);
-                if (!tree) continue;
-
-                this.parseFunctionsFromFile(tree, models);
-
-                tree.delete();
-            } catch (error) {
-                console.error(`[FunctionIndex] Error parsing file ${filePath}:`, error);
-            }
-
-            if (filesProcessed % 10 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 10));
-            }
-        }
-
         this.isIndexing = false;
-        console.log(`[FunctionIndex] Finished: Indexed functions for ${this.functionCache.size} models.`);
     }
 
     async indexFile(uri: vscode.Uri) {
@@ -94,15 +55,7 @@ class FunctionIndexService {
             if (!tree) return;
 
             const models = modelIndexService.getModelsByFile(uri.fsPath);
-            if (models.length === 0) {
-                tree.delete();
-                return;
-            }
-
-            // Remove old entries for this file
-            this.removeFileEntries(uri.fsPath);
-
-            this.parseFunctionsFromFile(tree, models);
+            this.indexFromTree(tree, models);
             tree.delete();
         } catch (error) {
             console.error(`[FunctionIndex] Error indexing file ${uri.fsPath}:`, error);

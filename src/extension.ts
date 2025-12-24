@@ -62,12 +62,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         title: "Cybrosys Assista: Odoo Helper",
         cancellable: false
     }, async (progress) => {
-        // Individual services will handle their own progress reporting
-        await modelIndexService.buildCache(progress);
+        // Reset caches
         await fieldIndexService.buildCache(progress);
         await functionIndexService.buildCache(progress);
-        await moduleIndexService.reindex(progress);
         await templateIndexService.buildCache(progress);
+
+        // Orchestrate unified indexing pass
+        // ModelIndex will trigger Fields and Functions indexing for each file
+        await modelIndexService.buildCache(progress);
+        await moduleIndexService.reindex(progress);
 
         const registryIndexer = getOdooRegistryIndexer();
         await registryIndexer.scanWorkspace(progress);
