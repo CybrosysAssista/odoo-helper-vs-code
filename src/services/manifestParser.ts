@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { DataFileMetaDataOptions, AssetFileMetaDataOptions } from '../utils/utils';
+import { DataFileMetaDataOptions, AssetFileMetaDataOptions, DependencyMetaDataOptions } from '../utils/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const TreeSitter = require('web-tree-sitter');
@@ -44,7 +44,8 @@ export interface ParsedManifest {
 
 export type UpdateManifestOptions =
     | DataFileMetaDataOptions
-    | AssetFileMetaDataOptions;
+    | AssetFileMetaDataOptions
+    | DependencyMetaDataOptions;
 
 /**
  * Helper class to parse Odoo manifest files and extract structure with positions
@@ -96,14 +97,12 @@ export class ManifestParser {
      * Find the main dictionary node in the manifest
      */
     private findMainDictionary(node: any): any {
-        // The manifest is typically an expression_statement containing a dictionary
-        if (node.type === 'module') {
-            for (const child of node.namedChildren) {
-                if (child.type === 'expression_statement') {
-                    const dict = child.namedChildren.find((n: any) => n.type === 'dictionary');
-                    if (dict) return dict;
-                }
-            }
+        if (node.type === 'dictionary') {
+            return node;
+        }
+        for (let i = 0; i < node.childCount; i++) {
+            const found = this.findMainDictionary(node.child(i));
+            if (found) return found;
         }
         return null;
     }
@@ -127,6 +126,8 @@ export class ManifestParser {
                     const value = this.parseValue(valueNode);
 
                     if (value) {
+                        // Store the range of the entire 'pair' node
+                        value.range = this.nodeToRange(child);
                         result.set(key, value);
                     }
                 }
@@ -258,6 +259,10 @@ export class ManifestParser {
         };
     }
 
+    isSingleLine(range: Range): boolean {
+        return range.start.line === range.end.line;
+    }
+
     /**
      * Get the insertion position for adding a key-value pair to a dictionary
      */
@@ -269,6 +274,25 @@ export class ManifestParser {
             line: dictValue.range.end.line,
             character: dictValue.range.end.character - 1
         };
+    }
+
+    /**
+     * Get position after specific keys in a dictionary
+     */
+    private getPositionAfterKeys(dictValue: ManifestValue, targetKeys: string[]): Position | null {
+        if (dictValue.type !== 'dict' || !dictValue.children) return null;
+
+        for (const targetKey of targetKeys) {
+            const value = dictValue.children.get(targetKey);
+            if (value) {
+                // Return position at the end of this key-value pair's range
+                return {
+                    line: value.range.end.line,
+                    character: value.range.end.character
+                };
+            }
+        }
+        return null;
     }
 
     private getIndentation(line: string): string {
@@ -295,6 +319,63 @@ export class ManifestParser {
         let subCategoryKey = '';
         if (options.manifestCategory === 'asset') {
             subCategoryKey = subCategoryKeyMap[options.assetCategory];
+        } else if (options.manifestCategory === 'dependency') {
+            const moduleName = options.moduleName;
+            const dictValue: ManifestValue = {
+                type: 'dict',
+                value: null,
+                range: this.parsedManifest.range,
+                children: this.parsedManifest.data
+            };
+
+            if (!this.parsedManifest.data.has("depends")) {
+                // Try to find position after website, version, or name
+                let insertPos = this.getPositionAfterKeys(dictValue, ['website', 'version', 'name']);
+                let isAfterExistingKey = !!insertPos;
+
+                if (!insertPos) {
+                    insertPos = this.getDictInsertPosition(dictValue);
+                }
+
+                if (insertPos) {
+                    // Check if the character right before is already a comma to avoid duplicates
+                    // Or let insertAtPosition handle it. 
+                    // But if isAfterExistingKey is true, we ARE after a pair.
+                    // We should add a comma if it's missing.
+                    const prefix = isAfterExistingKey ? "," : "";
+                    const entryToAdd = `${prefix}\n    'depends': ['${moduleName}'],`;
+                    const updatedContent = this.insertAtPosition(this.originalContent, insertPos, entryToAdd);
+                    return { success: true, message: `Added depends list with ${moduleName}.`, updatedContent };
+                }
+                return { success: false, message: 'Could not find insertion position for depends.' };
+            } else {
+                const dependsValue = this.parsedManifest.data.get("depends");
+                if (!dependsValue || dependsValue.type !== 'list') {
+                    return { success: false, message: 'Invalid manifest format (depends is not a list).' };
+                }
+
+                if (listContains(dependsValue, moduleName)) {
+                    return { success: true, message: 'Module already in depends.' };
+                }
+
+                const insertPos = this.getListInsertPosition(dependsValue);
+                if (insertPos) {
+                    const isFirstItem = (dependsValue.items?.length || 0) === 0;
+                    const isSingleLine = this.isSingleLine(dependsValue.range);
+                    const prefix = (isFirstItem || !this.isTrailingCommaMissing(insertPos)) ? "" : ", ";
+
+                    let itemToAdd = "";
+                    if (isSingleLine) {
+                        itemToAdd = `${prefix}'${moduleName}'`;
+                    } else {
+                        itemToAdd = `${prefix}\n        '${moduleName}',`;
+                    }
+
+                    const updatedContent = this.insertAtPosition(this.originalContent, insertPos, itemToAdd);
+                    return { success: true, message: `Added ${moduleName} to depends.`, updatedContent };
+                }
+                return { success: false, message: 'Could not find insertion position in depends list.' };
+            }
         } else {
             return { success: true, message: 'Data category updates not implemented yet.' };
         }
@@ -384,18 +465,23 @@ export class ManifestParser {
 
         // If we are adding a comma and it's on a new line, join it with the prefix/previous line
         if (text.startsWith(',')) {
-            if (linePrefix === "" && pos.line > 0) {
+            if (linePrefix.trim() === "" && pos.line > 0) {
                 // Find last non-empty line
                 let prevLineIdx = pos.line - 1;
                 while (prevLineIdx >= 0 && lines[prevLineIdx].trim() === "") {
                     prevLineIdx--;
                 }
-                if (prevLineIdx >= 0 && !lines[prevLineIdx].endsWith(',')) {
-                    lines[prevLineIdx] += ',';
+                if (prevLineIdx >= 0 && !lines[prevLineIdx].trimEnd().endsWith(',')) {
+                    lines[prevLineIdx] = lines[prevLineIdx].trimEnd() + ',';
+                    text = text.slice(1);
+                } else if (prevLineIdx >= 0 && lines[prevLineIdx].trimEnd().endsWith(',')) {
                     text = text.slice(1);
                 }
-            } else if (linePrefix !== "" && !linePrefix.endsWith(',')) {
-                linePrefix += ',';
+            } else if (linePrefix.trim() !== "" && !linePrefix.trimEnd().endsWith(',')) {
+                linePrefix = linePrefix.trimEnd() + ',';
+                text = text.slice(1);
+            } else if (linePrefix.trim() !== "" && linePrefix.trimEnd().endsWith(',')) {
+                linePrefix = linePrefix.trimEnd();
                 text = text.slice(1);
             }
         }
@@ -403,10 +489,12 @@ export class ManifestParser {
         // Clean up text to avoid redundant blank lines
         let finalText = text.replace(/\n\s*\n/g, '\n');
 
-        // Handle suffix (closing bracket) move to new line
-        if (lineSuffix !== "") {
+        // Handle suffix (closing bracket) move to new line if text contains newlines
+        if (lineSuffix !== "" && text.includes('\n')) {
             const indent = this.getIndentation(line);
             finalText += '\n' + indent + lineSuffix;
+        } else if (lineSuffix !== "") {
+            finalText += lineSuffix;
         }
 
         lines[pos.line] = linePrefix + finalText;

@@ -10,6 +10,7 @@ export type BaseFileMetaData = {
     name: string;
     content: string;
     updateManifest: boolean;
+    depends?: string[];
 };
 
 export type DataFileMetaDataOptions = {
@@ -22,11 +23,17 @@ export type AssetFileMetaDataOptions = {
     assetCategory: 'web' | 'pos' | 'frontend' | 'backend';
 };
 
+export type DependencyMetaDataOptions = {
+    manifestCategory: 'dependency';
+    moduleName: string;
+};
+
 export type DataFileMetaData = BaseFileMetaData & DataFileMetaDataOptions;
 
 export type AssetFileMetaData = BaseFileMetaData & AssetFileMetaDataOptions;
 
-export type FileMetaData = DataFileMetaData | AssetFileMetaData;
+export type FileMetaData = DataFileMetaData | AssetFileMetaData | DependencyFileMetaData;
+export type DependencyFileMetaData = BaseFileMetaData & DependencyMetaDataOptions;
 export type FileSystemNode = FileMetaData | FolderMetaData;
 
 export type FolderMetaData = {
@@ -61,7 +68,6 @@ export class helperUtils {
                     if (!result.success) {
                         return result;
                     }
-                    // Collect messages from recursive calls
                     if (result.message && result.message.length > 0) {
                         messages.push(...result.message);
                     }
@@ -89,23 +95,40 @@ export class helperUtils {
                     const manifestContent = fs.readFileSync(manifestPath, 'utf8');
                     const parser = getPythonParserService().getManifestParser();
                     if (!parser) {
-                        messages.push(`${child.name} created,But manifest update failed.(Python parser not ready)`);
+                        messages.push(`${child.name} created, but manifest update failed. (Python parser not ready)`);
+                        continue;
                     }
 
                     parser.parseManifest(manifestContent);
                     const filePath = path.relative(moduleRoot.fsPath, childPath);
                     const result = parser.updateManifest(child, filePath);
-                    if (!result.success) {
-                        messages.push(`${child.name} created, ${result.message}`);
-                    } else if (result.updatedContent) {
+
+                    if (result.success && result.updatedContent) {
                         fs.writeFileSync(manifestPath, result.updatedContent, 'utf8');
+                    } else if (!result.success) {
+                        messages.push(`${child.name} created, ${result.message}`);
+                    }
+
+                    // Handle dependencies
+                    if (child.depends && child.depends.length > 0) {
+                        for (const dep of child.depends) {
+                            const currentManifestContent = fs.readFileSync(manifestPath, 'utf8');
+                            parser.parseManifest(currentManifestContent);
+                            const depResult = parser.updateManifest({
+                                manifestCategory: 'dependency',
+                                moduleName: dep
+                            }, "");
+                            if (depResult.success && depResult.updatedContent) {
+                                fs.writeFileSync(manifestPath, depResult.updatedContent, 'utf8');
+                            } else if (!depResult.success) {
+                                messages.push(`Manifest update failed for dependency ${dep}: ${depResult.message}`);
+                            }
+                        }
                     }
                 }
             }
         }
 
         return { success: true, message: messages };
-
     }
 }
-

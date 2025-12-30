@@ -162,7 +162,8 @@ patch(TicketScreen.prototype, {
                                                         content: this.getJsContent(),
                                                         updateManifest: true,
                                                         manifestCategory: 'asset',
-                                                        assetCategory: 'pos'
+                                                        assetCategory: 'pos',
+                                                        depends: ['point_of_sale']
                                                     },
                                                     {
                                                         type: 'file',
@@ -170,7 +171,8 @@ patch(TicketScreen.prototype, {
                                                         content: this.getXmlContent(),
                                                         updateManifest: true,
                                                         manifestCategory: 'asset',
-                                                        assetCategory: 'pos'
+                                                        assetCategory: 'pos',
+                                                        depends: ['point_of_sale']
                                                     },
                                                     {
                                                         type: 'file',
@@ -178,7 +180,8 @@ patch(TicketScreen.prototype, {
                                                         content: this.getScssContent(),
                                                         updateManifest: true,
                                                         manifestCategory: 'asset',
-                                                        assetCategory: 'pos'
+                                                        assetCategory: 'pos',
+                                                        depends: ['point_of_sale']
                                                     }
                                                 ]
                                             }
