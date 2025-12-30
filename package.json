@@ -105,10 +105,6 @@
         "title": "Assista: Set Odoo Version"
       },
       {
-        "command": "cybrosys-assista-odoo-helper.testTreeSitter",
-        "title": "Assista: Test Tree-sitter Parser"
-      },
-      {
         "command": "cybrosys-assista-odoo-helper.addFileToManifest",
         "title": "Add File to Manifest (Tree-sitter)"
       },
@@ -147,10 +143,6 @@
       {
         "command": "cybrosys-assista-odoo-helper.extendPosTicketScreen",
         "title": "Order Management Screen"
-      },
-      {
-        "command": "cybrosys-assista-odoo-helper.testXmlParser",
-        "title": "Assista: Test XML Parser"
       }
     ],
     "menus": {
@@ -368,23 +360,20 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "lint": "eslint src --ext ts"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
-    "@types/mocha": "^10.0.6",
     "@types/node": "20.x",
     "@types/vscode": "^1.85.0",
-    "@vscode/test-electron": "^2.3.8",
     "eslint": "^8.54.0",
     "glob": "^10.3.10",
-    "mocha": "^10.2.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-python": "^0.23.6",
+    "tree-sitter-xml": "^0.7.0",
     "vscode-html-languageservice": "^5.6.1",
     "vscode-languageserver-textdocument": "^1.0.12",
     "web-tree-sitter": "^0.26.3"

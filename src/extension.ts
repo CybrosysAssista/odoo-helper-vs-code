@@ -20,7 +20,7 @@ import { ModelInheritCompletionProvider } from './providers/completion/modelInhe
 import { PythonInheritedFunctionProvider } from './providers/completion/pythonInheritedFunctionProvider';
 import { getOdooVersion, clearCache } from './services/versionService';
 import { getPythonParserService } from './services/pythonParserService';
-import { testTreeSitterParser } from './commands/testTreeSitter';
+
 import { addCurrentFileToManifest } from './commands/addToManifest';
 import { ManifestPathCompletionProvider } from './providers/manifestPathCompletionProvider';
 import { CssClassCompletionProvider } from './providers/completion/cssClassCompletionProvider';
@@ -223,10 +223,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Register commands
     registerCommands(context);
 
-    // Register Tree-sitter test command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('cybrosys-assista-odoo-helper.testTreeSitter', testTreeSitterParser)
-    );
+
 
     // Register add file to manifest command
     context.subscriptions.push(

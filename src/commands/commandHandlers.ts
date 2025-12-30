@@ -4,7 +4,7 @@ import * as path from 'path';
 import { createOdooScaffold } from '../modules/scaffold';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
 import { helperUtils } from '../utils/utils';
-import { testXmlParser } from './testXmlParser';
+
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const templates = require('./templates');
@@ -563,10 +563,7 @@ export function registerCommands(context: vscode.ExtensionContext): void {
             command: 'cybrosys-assista-odoo-helper.extendPosTicketScreen',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendTicketScreen')
         },
-        {
-            command: 'cybrosys-assista-odoo-helper.testXmlParser',
-            handler: testXmlParser
-        }
+
     ];
 
     commands.forEach(({ command, handler }) => {
