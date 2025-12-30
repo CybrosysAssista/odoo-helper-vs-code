@@ -100,8 +100,12 @@ export class helperUtils {
                     }
 
                     parser.parseManifest(manifestContent);
-                    const filePath = path.relative(moduleRoot.fsPath, childPath);
-                    const result = parser.updateManifest(child, filePath);
+                    let filePath = path.relative(moduleRoot.fsPath, childPath).split(path.sep).join('/');
+                    if ((child as any).manifestCategory === 'asset') {
+                        const moduleName = path.basename(moduleRoot.fsPath);
+                        filePath = `${moduleName}/${filePath}`;
+                    }
+                    const result = parser.updateManifest(child as any, filePath);
 
                     if (result.success && result.updatedContent) {
                         fs.writeFileSync(manifestPath, result.updatedContent, 'utf8');
