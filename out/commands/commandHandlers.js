@@ -40,7 +40,6 @@ const path = __importStar(require("path"));
 const scaffold_1 = require("../modules/scaffold");
 const odooModuleUtils_1 = require("../utils/odooModuleUtils");
 const utils_1 = require("../utils/utils");
-const testXmlParser_1 = require("./testXmlParser");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const templates = require('./templates');
 function capitalize(text) {
@@ -549,10 +548,6 @@ function registerCommands(context) {
             command: 'cybrosys-assista-odoo-helper.extendPosTicketScreen',
             handler: (uri) => handleCreatePosComponentCreation(uri, 'extendTicketScreen')
         },
-        {
-            command: 'cybrosys-assista-odoo-helper.testXmlParser',
-            handler: testXmlParser_1.testXmlParser
-        }
     ];
     commands.forEach(({ command, handler }) => {
         const disposable = vscode.commands.registerCommand(command, handler);

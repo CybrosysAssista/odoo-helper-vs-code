@@ -60,7 +60,6 @@ const modelInheritCompletionProvider_1 = require("./providers/completion/modelIn
 const pythonInheritedFunctionProvider_1 = require("./providers/completion/pythonInheritedFunctionProvider");
 const versionService_1 = require("./services/versionService");
 const pythonParserService_1 = require("./services/pythonParserService");
-const testTreeSitter_1 = require("./commands/testTreeSitter");
 const addToManifest_1 = require("./commands/addToManifest");
 const manifestPathCompletionProvider_1 = require("./providers/manifestPathCompletionProvider");
 const cssClassCompletionProvider_1 = require("./providers/completion/cssClassCompletionProvider");
@@ -178,8 +177,6 @@ async function activate(context) {
     context.subscriptions.push(vscode.languages.registerDefinitionProvider({ scheme: 'file', language: 'python' }, odooDefProvider));
     // Register commands
     (0, commandHandlers_1.registerCommands)(context);
-    // Register Tree-sitter test command
-    context.subscriptions.push(vscode.commands.registerCommand('cybrosys-assista-odoo-helper.testTreeSitter', testTreeSitter_1.testTreeSitterParser));
     // Register add file to manifest command
     context.subscriptions.push(vscode.commands.registerCommand('cybrosys-assista-odoo-helper.addFileToManifest', addToManifest_1.addCurrentFileToManifest));
     // Status bar: Odoo version indicator and quick switch

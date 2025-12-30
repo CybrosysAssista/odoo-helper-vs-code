@@ -311,7 +311,7 @@ export class ManifestParser {
 
         const subCategoryKeyMap: Record<AssetFileMetaDataOptions['assetCategory'], string> = {
             'web': 'web.assets_frontend',
-            'pos': 'pos.assets_pos',
+            'pos': 'point_of_sale._assets_pos',
             'frontend': 'web.assets_frontend',
             'backend': 'web.assets_backend'
         };
