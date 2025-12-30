@@ -1,0 +1,1 @@
+{"version":3,"file":"fieldTypes.js","sourceRoot":"","sources":["../../../../src/providers/data/v18/fieldTypes.ts"],"names":[],"mappings":";;AAAA,MAAM,UAAU,GAAa;IACzB,MAAM,EAAE,MAAM,EAAE,SAAS,EAAE,OAAO,EAAE,SAAS,EAAE,MAAM,EAAE,UAAU;IACjE,UAAU,EAAE,UAAU,EAAE,WAAW,EAAE,WAAW,EAAE,QAAQ,EAAE,UAAU,EAAE,MAAM;IAC9E,WAAW,EAAE,MAAM,EAAE,OAAO;CAC/B,CAAC;AACF,kBAAe,UAAU,CAAC"}

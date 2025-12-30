@@ -50,7 +50,6 @@
     "onLanguage:python",
     "onLanguage:xml"
   ],
-  "main": "./extension.js",
   "contributes": {
     "commands": [
       {
@@ -90,21 +89,108 @@
         "title": "Create Website Theme"
       },
       {
+        "command": "cybrosys-assista-odoo-helper.createOdooReportPdf",
+        "title": "Create PDF Report"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOdooReportHtml",
+        "title": "Create HTML Report"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.addToInit",
+        "title": "Add to __init__.py"
+      },
+      {
         "command": "cybrosys-assista-odoo-helper.setOdooVersion",
         "title": "Assista: Set Odoo Version"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.addFileToManifest",
+        "title": "Add File to Manifest (Tree-sitter)"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOwlCommonComponent",
+        "title": "Common Component"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent",
+        "title": "Field Widget Component"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOwlPublicComponent",
+        "title": "Public Component"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createOwlOdooService",
+        "title": "Owl Service"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosProductScreen",
+        "title": "Product Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosPartnerListScreen",
+        "title": "Partner List Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosPaymentScreen",
+        "title": "Payment Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosReceiptScreen",
+        "title": "Receipt Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.extendPosTicketScreen",
+        "title": "Order Management Screen"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
+          "submenu": "cybrosys-assista-odoo-helper.mainMenu",
           "group": "navigation@1",
+          "title": "Assista Odoo"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.mainMenu": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createFileSubmenu",
+          "group": "1_file",
           "title": "Create Odoo File"
         },
         {
           "submenu": "cybrosys-assista-odoo-helper.createModuleSubmenu",
-          "group": "navigation@2",
+          "group": "2_module",
           "title": "Create Odoo Module"
+        },
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu",
+          "group": "3_owl",
+          "title": "Create OWL Components"
+        },
+        {
+          "submenu": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
+          "group": "4_pos",
+          "title": "POS Components"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createOwlCommonComponent",
+          "group": "owl@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent",
+          "group": "owl@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOwlPublicComponent",
+          "group": "owl@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOwlOdooService",
+          "group": "owl@4"
         }
       ],
       "cybrosys-assista-odoo-helper.createFileSubmenu": [
@@ -119,6 +205,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.createOdooAccessFile",
           "group": "odoo@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInit",
+          "group": "odoo@4"
         }
       ],
       "cybrosys-assista-odoo-helper.createModuleSubmenu": [
@@ -146,9 +236,52 @@
           "command": "cybrosys-assista-odoo-helper.createModuleWebsiteTheme",
           "group": "odoo@6"
         }
+      ],
+      "cybrosys-assista-odoo-helper.createReportSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooReportPdf",
+          "group": "1_type"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createOdooReportHtml",
+          "group": "1_type"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.createPosComponentsSubmenu": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.extendPosScreenSubmenu",
+          "group": "pos@1",
+          "title": "Extend Screen"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.extendPosScreenSubmenu": [
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosProductScreen",
+          "group": "extend@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosPartnerListScreen",
+          "group": "extend@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosPaymentScreen",
+          "group": "extend@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosReceiptScreen",
+          "group": "extend@4"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.extendPosTicketScreen",
+          "group": "extend@5"
+        }
       ]
     },
     "submenus": [
+      {
+        "id": "cybrosys-assista-odoo-helper.mainMenu",
+        "label": "Assista Odoo"
+      },
       {
         "id": "cybrosys-assista-odoo-helper.createFileSubmenu",
         "label": "Create Odoo File"
@@ -156,6 +289,22 @@
       {
         "id": "cybrosys-assista-odoo-helper.createModuleSubmenu",
         "label": "Create Odoo Module"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createReportSubmenu",
+        "label": "Create Report"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu",
+        "label": "Create Owl Components"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
+        "label": "POS Components"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.extendPosScreenSubmenu",
+        "label": "Extend Screen"
       }
     ],
     "snippets": [],
@@ -181,23 +330,52 @@
           "type": "string",
           "default": "",
           "description": "Optional absolute path to Odoo source root (containing 'odoo/release.py') to help auto-detection."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableCSSIndexing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable scanning of CSS/SCSS files for class completion."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableAdvanceCSSIndexing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable advanced detailed indexing (storing file paths and line numbers) for CSS features like Go-to-Definition. Requires 'Enable CSS Indexing' to be on.",
+          "markdownDescription": "Enable advanced detailed indexing (storing file paths and line numbers) for CSS features like Go-to-Definition. Requires `#cybrosys-assista-odoo-helper.indexing.enableCSSIndexing#` to be on."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableRegistryIndexing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable scanning of JavaScript/OWL files for Odoo registry entry completion (widgets, components, etc.)."
+        },
+        "cybrosys-assista-odoo-helper.indexing.enableCoreIndexing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable scanning of Python files for Odoo Models, Fields, and Functions. Highly recommended for full functionality."
         }
       }
     }
   },
+  "main": "./out/extension.js",
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/glob": "^8.1.0",
-    "@types/mocha": "^10.0.6",
     "@types/node": "20.x",
+    "@types/vscode": "^1.85.0",
     "eslint": "^8.54.0",
     "glob": "^10.3.10",
-    "mocha": "^10.2.0",
-    "typescript": "^5.3.3",
-    "@vscode/test-electron": "^2.3.8"
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-python": "^0.23.6",
+    "tree-sitter-xml": "^0.7.0",
+    "vscode-html-languageservice": "^5.6.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "web-tree-sitter": "^0.26.3"
   }
 }

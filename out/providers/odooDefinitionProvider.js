@@ -1,0 +1,648 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OdooDefinitionProvider = void 0;
+const vscode = __importStar(require("vscode"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const moduleIndexService_1 = __importDefault(require("../services/moduleIndexService"));
+const modelIndexService_1 = __importDefault(require("../services/modelIndexService"));
+const fieldIndexService_1 = __importDefault(require("../services/fieldIndexService"));
+const functionIndexService_1 = __importDefault(require("../services/functionIndexService"));
+const pythonParserService_1 = require("../services/pythonParserService");
+const odooModuleUtils_1 = require("../utils/odooModuleUtils");
+const cssClassIndexer_1 = require("../services/cssClassIndexer");
+const odooRegistryIndexer_1 = require("../services/odooRegistryIndexer");
+const xmlParserService_1 = require("../services/xmlParserService");
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+class OdooDefinitionProvider {
+    async provideDefinition(document, position, token) {
+        const wordRange = document.getWordRangeAtPosition(position, /[\w.\-_]+/);
+        if (!wordRange)
+            return null;
+        const word = document.getText(wordRange);
+        const line = document.lineAt(position.line).text;
+        const documentText = document.getText();
+        const languageId = document.languageId;
+        if (languageId === 'xml') {
+            // CSS Class Navigation
+            // Check if cursor is inside class="..." or class='...'
+            const linePrefix = document.getText(new vscode.Range(new vscode.Position(position.line, 0), position));
+            const lineSuffix = document.getText(new vscode.Range(position, new vscode.Position(position.line, line.length)));
+            // Reconstruct the full attribute context around the cursor
+            // This is a simple regex approach; for robustness, looking at the whole line is often enough for simple attributes
+            const fullLine = document.lineAt(position.line).text;
+            const classAttrRegex = /class\s*=\s*["']([^"']+)["']/;
+            const classMatch = fullLine.match(classAttrRegex);
+            if (classMatch) {
+                // Determine if the click was actually *inside* the class string
+                const attrStart = fullLine.indexOf(classMatch[0]);
+                const valueStart = fullLine.indexOf(classMatch[1], attrStart);
+                const valueEnd = valueStart + classMatch[1].length;
+                if (position.character >= valueStart && position.character <= valueEnd) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    if (moduleRoot) {
+                        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
+                        const enableAdvanced = config.get('indexing.enableAdvanceCSSIndexing', false);
+                        if (enableAdvanced) {
+                            const currentModuleName = path.basename(moduleRoot.fsPath);
+                            const indexer = cssClassIndexer_1.CssClassIndexer.getInstance();
+                            const definitions = indexer.getClassDefinitions(word);
+                            const targetModules = [currentModuleName, 'web', 'mail'];
+                            const bestDef = definitions.find(d => targetModules.includes(d.moduleName));
+                            if (bestDef) {
+                                return new vscode.Location(vscode.Uri.file(bestDef.filePath), new vscode.Position(bestDef.lineNumber - 1, 0));
+                            }
+                        }
+                    }
+                }
+            }
+            // Widget Navigation
+            const widgetAttrRegex = /widget\s*=\s*["']([^"']+)["']/;
+            const widgetMatch = fullLine.match(widgetAttrRegex);
+            if (widgetMatch) {
+                const attrStart = fullLine.indexOf(widgetMatch[0]);
+                const valueStart = fullLine.indexOf(widgetMatch[1], attrStart);
+                const valueEnd = valueStart + widgetMatch[1].length;
+                if (position.character >= valueStart && position.character <= valueEnd && widgetMatch[1] === word) {
+                    const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
+                    const entry = registryIndexer.getEntryById(word);
+                    if (entry) {
+                        return new vscode.Location(vscode.Uri.file(entry.filePath), new vscode.Position(entry.line, 0));
+                    }
+                }
+            }
+            // 1. Button action navigation: <button name="...">
+            if (/<button[^>]*name\s*=\s*["']([^"']+)["']/.test(line) && word) {
+                // Find the model context for this view (look for <field name="model">...)
+                const modelName = this.getXmlModelContext(documentText, position.line);
+                if (modelName) {
+                    // Search all Python files for def <word> in the correct model
+                    const files = await vscode.workspace.findFiles('**/*.py');
+                    for (const file of files) {
+                        const content = fs.readFileSync(file.fsPath, 'utf8');
+                        if (!content.includes(`_name = '${modelName}'`) && !content.includes(`_inherit = '${modelName}'`))
+                            continue;
+                        const regex = new RegExp('def\\s+' + escapeRegExp(word) + '\\s*\\(');
+                        const match = regex.exec(content);
+                        if (match) {
+                            const idx = content.indexOf(match[0]);
+                            const lines = content.slice(0, idx).split('\n');
+                            return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
+                        }
+                    }
+                }
+            }
+            // 2. Menuitem parent navigation: <menuitem parent="..."> (multi-line support)
+            if (/parent\s*=\s*["']([^"']+)["']/.test(line) && word) {
+                // Find the full <menuitem ...> element (may be multi-line)
+                const lines = document.getText().split('\n');
+                let tagStart = position.line;
+                while (tagStart > 0 && !lines[tagStart].includes('<menuitem'))
+                    tagStart--;
+                let tagEnd = position.line;
+                while (tagEnd < lines.length && !lines[tagEnd].includes('/>') && !lines[tagEnd].includes('</menuitem>'))
+                    tagEnd++;
+                const menuitemBlock = lines.slice(tagStart, tagEnd + 1).join(' ');
+                // Extract parent attribute value
+                const parentMatch = menuitemBlock.match(/parent\s*=\s*["']([^"']+)["']/);
+                if (parentMatch && parentMatch[1] === word) {
+                    // Search all XML files for <menuitem id="..."> (multi-line aware)
+                    const files = await vscode.workspace.findFiles('**/*.xml');
+                    for (const file of files) {
+                        const content = fs.readFileSync(file.fsPath, 'utf8');
+                        // Match <menuitem ... id="..." ...> across multiple lines
+                        const regex = new RegExp('<menuitem[^>]*id\s*=\s*["\']' + escapeRegExp(word) + '["\'][^>]*>', 'gms');
+                        const match = regex.exec(content);
+                        if (match) {
+                            const idx = content.indexOf(match[0]);
+                            const linesArr = content.slice(0, idx).split('\n');
+                            return new vscode.Location(file, new vscode.Position(linesArr.length - 1, 0));
+                        }
+                    }
+                }
+            }
+            // QWeb t-call and t-name navigation
+            if (/t-call\s*=\s*["']([^"']+)["']/.test(line) || /t-name\s*=\s*["']([^"']+)["']/.test(line)) {
+                // Only trigger if cursor is on the value
+                if (word) {
+                    return await this.findQWebTemplate(word);
+                }
+            }
+            // model="..." or res_model="..." (Using Parser for model="..." in <record>)
+            const offset = document.offsetAt(position);
+            const xmlParser = (0, xmlParserService_1.getXmlParserService)();
+            const node = xmlParser.findNodeAtOffset(documentText, offset);
+            if (node && node.tag === 'record') {
+                const textUntilCursor = documentText.slice(node.start, offset);
+                const modelMatch = textUntilCursor.match(/model\s*=\s*(['"])([^'"]*)$/);
+                if (modelMatch && word) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    return await this.handleModelDefinitionMultiLookup(word, currentModuleName);
+                }
+            }
+            if (node && node.tag === 'field' && word) {
+                const viewModel = odooModuleUtils_1.OdooModuleUtils.findViewModel(node, documentText);
+                console.log(viewModel);
+                if (viewModel) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    const fieldName = attrs['name'];
+                    if (fieldName === word) {
+                        const fields = fieldIndexService_1.default.getFieldsForModel(viewModel);
+                        const candidates = fields.filter(f => f.fieldName === word && (!f.isInherited ||
+                            (currentModuleName && f.moduleName === currentModuleName)));
+                        if (candidates.length > 0) {
+                            if (candidates.length === 1) {
+                                return new vscode.Location(vscode.Uri.file(candidates[0].filePath), new vscode.Position(candidates[0].line, candidates[0].character));
+                            }
+                            const pick = await vscode.window.showQuickPick(candidates.map(f => ({
+                                label: `${f.fieldName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
+                                description: f.filePath,
+                                detail: `Type: ${f.fieldType}`,
+                                field: f
+                            })), { placeHolder: `Select definition for field: ${word}` });
+                            if (pick) {
+                                return new vscode.Location(vscode.Uri.file(pick.field.filePath), new vscode.Position(pick.field.line, pick.field.character));
+                            }
+                            return null;
+                        }
+                    }
+                }
+                // Check if we are in the content area of the field
+                if (node.startTagEnd !== undefined && offset >= node.startTagEnd && (node.endTagStart === undefined || offset <= node.endTagStart)) {
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    if (attrs['name'] === 'model' || attrs['name'] === 'res_model') {
+                        const recordModel = odooModuleUtils_1.OdooModuleUtils.getRecordModel(node, documentText);
+                        if (recordModel === 'ir.ui.view' || recordModel === 'ir.actions.act_window') {
+                            const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                            const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                            return await this.handleModelDefinitionMultiLookup(word, currentModuleName);
+                        }
+                    }
+                    if (attrs['name'] === 'tag') {
+                        const recordModel = odooModuleUtils_1.OdooModuleUtils.getRecordModel(node, documentText);
+                        if (recordModel === 'ir.actions.client') {
+                            const registryIndexer = (0, odooRegistryIndexer_1.getOdooRegistryIndexer)();
+                            const entries = registryIndexer.getEntriesByCategory('actions').filter(e => e.id === word);
+                            if (entries.length === 0)
+                                return null;
+                            if (entries.length === 1) {
+                                return new vscode.Location(vscode.Uri.file(entries[0].filePath), new vscode.Position(entries[0].line, 0));
+                            }
+                            const pick = await vscode.window.showQuickPick(entries.map(e => ({
+                                label: `${e.id} (in ${e.moduleName})`,
+                                description: e.filePath,
+                                detail: `Component: ${e.component}`,
+                                entry: e
+                            })), { placeHolder: `Select definition for action tag: ${word}` });
+                            if (pick) {
+                                return new vscode.Location(vscode.Uri.file(pick.entry.filePath), new vscode.Position(pick.entry.line, 0));
+                            }
+                        }
+                    }
+                }
+            }
+            if (node?.tag === 'button' && word) {
+                const viewModel = odooModuleUtils_1.OdooModuleUtils.findViewModel(node, documentText);
+                if (viewModel) {
+                    const moduleRoot = await odooModuleUtils_1.OdooModuleUtils.getModuleRoot(document.uri);
+                    const currentModuleName = moduleRoot ? path.basename(moduleRoot.fsPath) : '';
+                    const attrs = xmlParser.getAttributes(documentText, node);
+                    const buttonName = attrs['name'];
+                    const buttonType = attrs['type']?.toLowerCase();
+                    // Methods are used when type="object"
+                    if (buttonName === word && buttonType === 'object') {
+                        const functions = functionIndexService_1.default.getFunctionsForModel(viewModel);
+                        const candidates = functions.filter(f => f.functionName === word && (!f.isInherited ||
+                            (currentModuleName && f.moduleName === currentModuleName)));
+                        if (candidates.length > 0) {
+                            if (candidates.length === 1) {
+                                return new vscode.Location(vscode.Uri.file(candidates[0].filePath), new vscode.Position(candidates[0].line, candidates[0].character));
+                            }
+                            const pick = await vscode.window.showQuickPick(candidates.map(f => ({
+                                label: `${f.functionName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
+                                description: f.filePath,
+                                detail: `Class: ${f.className}, Model: ${f.modelName}`,
+                                func: f
+                            })), { placeHolder: `Select definition for method: ${word}` });
+                            if (pick) {
+                                return new vscode.Location(vscode.Uri.file(pick.func.filePath), new vscode.Position(pick.func.line, pick.func.character));
+                            }
+                            return null;
+                        }
+                    }
+                }
+            }
+            if ((/model\s*=\s*["']([^"']+)["']/.test(line) || /res_model\s*=\s*["']([^"']+)["']/.test(line)) && word) {
+                return await this.findModelDefinition(word);
+            }
+            // ref, inherit_id, parent, action
+            if ((/ref\s*=\s*["']([^"']+)["']/.test(line) || /inherit_id\s*=\s*["']([^"']+)["']/.test(line) || /parent\s*=\s*["']([^"']+)["']/.test(line) || /action\s*=\s*["']([^"']+)["']/.test(line)) && word) {
+                return await this.findXmlRecord(word);
+            }
+            // Field navigation in view: <field name="...">
+            if (/<field[^>]*name\s*=\s*["']([^"']+)["']/.test(line) && word) {
+                const modelName = this.getXmlModelContext(documentText, position.line);
+                if (modelName) {
+                    return await this.findFieldDefinition(null, word, modelName);
+                }
+            }
+        }
+        if (languageId === 'python') {
+            // Check if it's a valid Odoo module
+            const modules = await moduleIndexService_1.default.getModules();
+            const module = modules.find(m => document.uri.fsPath.startsWith(m.path));
+            if (!module)
+                return null;
+            // Handle _inherit navigation using Tree-sitter
+            const pythonParser = (0, pythonParserService_1.getPythonParserService)();
+            if (pythonParser.isInitialized()) {
+                const tree = pythonParser.parse(document.getText());
+                if (tree) {
+                    const offset = document.offsetAt(position);
+                    const node = tree.rootNode.descendantForIndex(Math.max(0, offset - 1));
+                    if (node && this.isModelInheritContext(node)) {
+                        const modelName = node.text.replace(/['"]/g, '');
+                        if (modelName) {
+                            return await this.handleModelDefinitionMultiLookup(modelName);
+                        }
+                    }
+                }
+            }
+            // Manifest 'depends' key navigation (using Tree-sitter)
+            if (document.fileName.endsWith('__manifest__.py') || document.fileName.endsWith('__openerp__.py')) {
+                const pythonParser = (0, pythonParserService_1.getPythonParserService)();
+                if (pythonParser.isInitialized()) {
+                    const manifestParser = pythonParser.getManifestParser();
+                    if (manifestParser) {
+                        const parsed = manifestParser.parseManifest(document.getText());
+                        if (parsed && parsed.data.has('depends')) {
+                            const depends = parsed.data.get('depends');
+                            if (depends && depends.type === 'list' && depends.items) {
+                                for (const item of depends.items) {
+                                    if (typeof item.value === 'string') {
+                                        const range = new vscode.Range(item.range.start.line, item.range.start.character, item.range.end.line, item.range.end.character);
+                                        // Check if cursor is contained in the string range
+                                        if (range.contains(position)) {
+                                            const moduleName = item.value;
+                                            // Ensure index is ready
+                                            await moduleIndexService_1.default.getModules();
+                                            const modulePath = moduleIndexService_1.default.getModulePath(moduleName);
+                                            if (modulePath) {
+                                                const possibleManifests = ['__manifest__.py', '__openerp__.py'];
+                                                for (const man of possibleManifests) {
+                                                    const manPath = path.join(modulePath, man);
+                                                    if (fs.existsSync(manPath)) {
+                                                        return new vscode.Location(vscode.Uri.file(manPath), new vscode.Position(0, 0));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Manifest file path navigation (data, demo, assets)
+                        const manifestKeys = ['data', 'demo', 'assets'];
+                        for (const keyName of manifestKeys) {
+                            if (parsed && parsed.data.has(keyName)) {
+                                const keyData = parsed.data.get(keyName);
+                                // Handle both simple lists and nested structures (for assets)
+                                const processListItems = async (items) => {
+                                    for (const item of items) {
+                                        if (typeof item.value === 'string') {
+                                            const range = new vscode.Range(item.range.start.line, item.range.start.character, item.range.end.line, item.range.end.character);
+                                            // Check if cursor is contained in the string range
+                                            if (range.contains(position)) {
+                                                const dataPath = item.value;
+                                                const pathItems = dataPath.split('/');
+                                                // Calculate which path segment the cursor is on
+                                                const stringStartChar = item.range.start.character + 1; // +1 to skip opening quote
+                                                const cursorOffsetInString = position.character - stringStartChar;
+                                                // Find which path segment the cursor is in
+                                                let currentOffset = 0;
+                                                let clickedSegmentIndex = -1;
+                                                let clickedSegment = '';
+                                                for (let i = 0; i < pathItems.length; i++) {
+                                                    const segmentLength = pathItems[i].length;
+                                                    const segmentEnd = currentOffset + segmentLength;
+                                                    if (cursorOffsetInString >= currentOffset && cursorOffsetInString < segmentEnd) {
+                                                        clickedSegmentIndex = i;
+                                                        clickedSegment = pathItems[i];
+                                                        break;
+                                                    }
+                                                    // +1 for the '/' separator
+                                                    currentOffset = segmentEnd + 1;
+                                                }
+                                                // Construct the path up to and including the clicked segment
+                                                const pathToSegment = clickedSegmentIndex >= 0
+                                                    ? pathItems.slice(0, clickedSegmentIndex + 1).join('/')
+                                                    : '';
+                                                const moduleRootPath = path.dirname(document.fileName);
+                                                let fullPath = path.join(moduleRootPath, pathToSegment);
+                                                if (!fs.existsSync(fullPath)) {
+                                                    const workspaceRoot = path.dirname(moduleRootPath);
+                                                    fullPath = path.join(workspaceRoot, pathToSegment);
+                                                    console.log(`[OdooDefinitionProvider] Resolved path: ${fullPath}`);
+                                                }
+                                                // Check if the path exists
+                                                if (fs.existsSync(fullPath)) {
+                                                    const stats = fs.statSync(fullPath);
+                                                    const uri = vscode.Uri.file(fullPath);
+                                                    if (stats.isDirectory()) {
+                                                        // Focus on the folder in the file explorer
+                                                        await vscode.commands.executeCommand('revealInExplorer', uri);
+                                                        return null; // Don't return a location for folders
+                                                    }
+                                                    else if (stats.isFile()) {
+                                                        // Open the file and return its location
+                                                        return new vscode.Location(uri, new vscode.Position(0, 0));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                };
+                                if (keyData && keyData.type === 'list' && keyData.items) {
+                                    const result = await processListItems(keyData.items);
+                                    if (result)
+                                        return result;
+                                }
+                                else if (keyData && keyData.type === 'dict') {
+                                    // For assets, which is a dict with nested lists
+                                    // The children property contains the dictionary entries as a Map
+                                    const dictData = keyData.children;
+                                    if (dictData && (dictData instanceof Map)) {
+                                        // Iterate over the Map entries
+                                        for (const [assetKey, assetValue] of dictData.entries()) {
+                                            // Each asset value should be a list with items
+                                            if (assetValue && typeof assetValue === 'object' && 'type' in assetValue && assetValue.type === 'list' && 'items' in assetValue) {
+                                                const result = await processListItems(assetValue.items);
+                                                if (result)
+                                                    return result;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // self.field_name
+        if (/self\.(\w+)/.test(line) && line.includes(word)) {
+            const modelName = this.getPythonModelContext(documentText, position.line);
+            if (modelName) {
+                return await this.findFieldDefinition(document, word, modelName);
+            }
+        }
+        // self.method_name()
+        if (/self\.(\w+)\s*\(/.test(line) && line.includes(word)) {
+            const modelName = this.getPythonModelContext(documentText, position.line);
+            if (modelName) {
+                return await this.findPythonMethodInModel(modelName, word);
+            }
+        }
+        // env['model.name']
+        if (/env\[['"]([^'"]+)['"]\]/.test(line) && line.includes(word)) {
+            return await this.findModelDefinition(word);
+        }
+        // related='model.field'
+        if (/related\s*=\s*['"]([^'"]+)['"]/.test(line)) {
+            const rel = line.match(/related\s*=\s*['"]([^'"]+)['"]/);
+            if (rel) {
+                const [modelName, fieldName] = rel[1].split('.');
+                if (fieldName === word) {
+                    return await this.findFieldDefinition(null, fieldName, modelName);
+                }
+            }
+        }
+        return null;
+    }
+    // --- Context helpers ---
+    getXmlModelContext(documentText, lineNumber) {
+        // Look upwards for <field name="model"> or <field name="res_model">
+        const lines = documentText.split('\n').slice(0, lineNumber + 1).reverse();
+        for (const line of lines) {
+            let m = line.match(/<field[^>]*name=["']model["']>([\w.]+)/);
+            if (m)
+                return m[1];
+            m = line.match(/<field[^>]*name=["']res_model["']>([\w.]+)/);
+            if (m)
+                return m[1];
+        }
+        return null;
+    }
+    getPythonModelContext(documentText, lineNumber) {
+        // Look upwards for _name = 'model.name' or _inherit = 'model.name'
+        const lines = documentText.split('\n').slice(0, lineNumber + 1).reverse();
+        for (const line of lines) {
+            let m = line.match(/_name\s*=\s*['"]([\w.]+)['"]/);
+            if (m)
+                return m[1];
+            m = line.match(/_inherit\s*=\s*['"]([\w.]+)['"]/);
+            if (m)
+                return m[1];
+        }
+        return null;
+    }
+    // --- Navigation helpers ---
+    async findPythonMethodInModel(modelName, methodName) {
+        const files = await vscode.workspace.findFiles('**/*.py');
+        for (const file of files) {
+            const content = fs.readFileSync(file.fsPath, 'utf8');
+            if (!content.includes(`_name = '${modelName}'`) && !content.includes(`_inherit = '${modelName}'`))
+                continue;
+            const regex = new RegExp('def\\s+' + escapeRegExp(methodName) + '\\s*\\(', 'm');
+            const match = regex.exec(content);
+            if (match) {
+                const idx = content.indexOf(match[0]);
+                const lines = content.slice(0, idx).split('\n');
+                // Place cursor at start of matched line
+                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
+            }
+        }
+        return null;
+    }
+    async findFieldDefinition(document, fieldName, modelName = null) {
+        if (!modelName && document) {
+            modelName = this.getPythonModelContext(document.getText(), document.lineCount - 1);
+        }
+        if (!modelName)
+            return null;
+        const files = await vscode.workspace.findFiles('**/*.py');
+        for (const file of files) {
+            const content = fs.readFileSync(file.fsPath, 'utf8');
+            if (!content.includes(`_name = '${modelName}'`) && !content.includes(`_inherit = '${modelName}'`))
+                continue;
+            // Use a simple, robust regex for field assignment
+            const regex = new RegExp('^\\s*' + escapeRegExp(fieldName) + '\\s*=\\s*fields\\.[A-Z][a-zA-Z0-9_]*\\s*\\(', 'm');
+            const match = regex.exec(content);
+            if (match) {
+                const idx = content.indexOf(match[0]);
+                const lines = content.slice(0, idx).split('\n');
+                // Place cursor at start of matched line
+                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
+            }
+        }
+        return null;
+    }
+    async findModelDefinition(modelName) {
+        const modelInfos = modelIndexService_1.default.getModelsByName(modelName);
+        if (modelInfos.length > 0) {
+            // Prefer the base definition (isInherited = false)
+            const baseModel = modelInfos.find(m => !m.isInherited) || modelInfos[0];
+            return new vscode.Location(vscode.Uri.file(baseModel.filePath), new vscode.Position(baseModel.line, baseModel.character));
+        }
+        return null;
+    }
+    async findXmlRecord(recordId) {
+        const files = await vscode.workspace.findFiles('**/*.xml');
+        for (const file of files) {
+            const content = fs.readFileSync(file.fsPath, 'utf8');
+            const regex = new RegExp('<record[^>]+id\\s*=\\s*[\'\"]' + escapeRegExp(recordId) + '[\'\"]', 'g');
+            const match = regex.exec(content);
+            if (match) {
+                const idx = content.indexOf(match[0]);
+                const lines = content.slice(0, idx).split('\n');
+                // Place cursor at start of matched line
+                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
+            }
+        }
+        return null;
+    }
+    async findQWebTemplate(templateName) {
+        const files = await vscode.workspace.findFiles('**/*.xml');
+        for (const file of files) {
+            const content = fs.readFileSync(file.fsPath, 'utf8');
+            // Match <t t-name="...">
+            const regex = new RegExp('<t\\s+t-name\\s*=\\s*[\'\"]' + escapeRegExp(templateName) + '[\'\"]', 'g');
+            const match = regex.exec(content);
+            if (match) {
+                const idx = content.indexOf(match[0]);
+                const lines = content.slice(0, idx).split('\n');
+                // Place cursor at start of matched line
+                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
+            }
+        }
+        return null;
+    }
+    isModelInheritContext(node) {
+        let current = node;
+        let assignmentNode = null;
+        let temp = current;
+        while (temp) {
+            if (temp.type === 'assignment') {
+                const left = temp.childForFieldName('left');
+                if (left?.text === '_inherit') {
+                    assignmentNode = temp;
+                    break;
+                }
+            }
+            temp = temp.parent;
+        }
+        if (!assignmentNode)
+            return false;
+        let classNode = assignmentNode.parent;
+        while (classNode && classNode.type !== 'class_definition') {
+            classNode = classNode.parent;
+        }
+        if (!classNode)
+            return false;
+        const right = assignmentNode.childForFieldName('right');
+        if (!right)
+            return false;
+        let inSupportedContainer = false;
+        temp = current;
+        while (temp && temp.startIndex >= right.startIndex && temp.endIndex <= right.endIndex) {
+            if (temp.type === 'string' || temp.type === 'list' || temp.type === 'tuple' || temp.type === 'string_content') {
+                inSupportedContainer = true;
+                break;
+            }
+            temp = temp.parent;
+        }
+        return inSupportedContainer;
+    }
+    async handleModelDefinitionMultiLookup(modelName, currentModuleName = '') {
+        const modelInfos = modelIndexService_1.default.getModelsByName(modelName);
+        // Filter: not inherited OR (inherited AND module is current module)
+        const candidates = modelInfos.filter(m => !m.isInherited || (m.isInherited && currentModuleName && m.moduleName === currentModuleName));
+        if (candidates.length === 0) {
+            // Fallback to all models if no filtered candidates found
+            if (modelInfos.length === 0)
+                return null;
+            if (modelInfos.length === 1) {
+                const m = modelInfos[0];
+                return new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character));
+            }
+            const pick = await vscode.window.showQuickPick(modelInfos.map(m => ({
+                label: `${m.modelName} (in ${m.moduleName}) ${m.isInherited ? '[Inherited]' : '[Base]'}`,
+                description: m.filePath,
+                detail: `Class: ${m.className}`,
+                model: m
+            })), { placeHolder: `Select definition for model: ${modelName}` });
+            if (pick) {
+                return new vscode.Location(vscode.Uri.file(pick.model.filePath), new vscode.Position(pick.model.line, pick.model.character));
+            }
+            return null;
+        }
+        if (candidates.length === 1) {
+            const m = candidates[0];
+            return new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character));
+        }
+        // Multiple candidates found, ask user to choose
+        const pick = await vscode.window.showQuickPick(candidates.map(m => ({
+            label: `${m.modelName} (in ${m.moduleName}) ${m.isInherited ? '[Inherited]' : '[Base]'}`,
+            description: m.filePath,
+            detail: `Class: ${m.className}`,
+            model: m
+        })), { placeHolder: `Select definition for model: ${modelName}` });
+        if (pick) {
+            return new vscode.Location(vscode.Uri.file(pick.model.filePath), new vscode.Position(pick.model.line, pick.model.character));
+        }
+        return null;
+    }
+}
+exports.OdooDefinitionProvider = OdooDefinitionProvider;
+//# sourceMappingURL=odooDefinitionProvider.js.map
