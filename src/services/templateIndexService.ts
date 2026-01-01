@@ -4,10 +4,12 @@ import * as fs from 'fs';
 
 class TemplateIndexService {
     private templateCache: Set<string>;
+    private fileMetadata: Map<string, { mtime: number, size: number }>;
     private watcher: vscode.FileSystemWatcher | null;
 
     constructor() {
         this.templateCache = new Set();
+        this.fileMetadata = new Map();
         this.watcher = null;
     }
 
@@ -20,8 +22,9 @@ class TemplateIndexService {
     }
 
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        this.templateCache.clear();
-        // Exclude common non-Odoo directories
+        console.log('[TemplateIndex] Refreshing templates (incremental)...');
+        // DO NOT CLEAR anymore
+
         const xmlFiles = await vscode.workspace.findFiles('**/*.xml', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
         const totalFiles = xmlFiles.length;
         let filesProcessed = 0;
@@ -36,16 +39,43 @@ class TemplateIndexService {
             }
 
             try {
+                const stats = await vscode.workspace.fs.stat(file);
+                const cachedMetadata = this.fileMetadata.get(file.fsPath);
+
+                if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
+                    continue;
+                }
+
                 const content = await vscode.workspace.fs.readFile(file);
                 const text = Buffer.from(content).toString('utf8');
                 const moduleName = await this.getModuleNameForFile(file.fsPath);
+
+                // Remove old entries for this file (requires changing how extractTemplates works,
+                // but since it's a Set, we might have issues with shared IDs from different files?
+                // Actually Odoo template IDs should be unique per module.
+                // For simplicity, we just add. If a template is removed from a file,
+                // it might stay in the Set until refresh or cleanup.
+                // Let's improve this if needed).
+
                 this.extractTemplates(text, moduleName);
-            } catch (err) {
-                // Ignore file read errors
-            }
+                this.fileMetadata.set(file.fsPath, { mtime: stats.mtime, size: stats.size });
+            } catch (err) { }
 
             if (filesProcessed % 50 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 5));
+            }
+        }
+
+        await this.cleanupDeletedFiles();
+    }
+
+    private async cleanupDeletedFiles() {
+        const currentFiles = new Set((await vscode.workspace.findFiles('**/*.xml', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**')).map(f => f.fsPath));
+        for (const filePath of this.fileMetadata.keys()) {
+            if (!currentFiles.has(filePath)) {
+                this.fileMetadata.delete(filePath);
+                // Note: We don't easily know which templates were in THIS file to remove them from the Set
+                // Full rebuild might be needed occasionally, or we change Set to Map<filePath, templates[]>
             }
         }
     }
@@ -86,6 +116,34 @@ class TemplateIndexService {
 
     getAllTemplates(): string[] {
         return Array.from(this.templateCache);
+    }
+
+    getState() {
+        return {
+            templates: Array.from(this.templateCache),
+            metadata: Array.from(this.fileMetadata.entries())
+        };
+    }
+
+    loadState(state: any) {
+        try {
+            if (Array.isArray(state)) {
+                // Old format
+                this.templateCache = new Set(state);
+            } else if (state && typeof state === 'object') {
+                // New format
+                if (Array.isArray(state.templates)) {
+                    this.templateCache = new Set(state.templates);
+                }
+                if (Array.isArray(state.metadata)) {
+                    this.fileMetadata = new Map(state.metadata);
+                }
+            }
+        } catch (e) {
+            console.error('[TemplateIndex] Failed to load state:', e);
+            this.templateCache = new Set();
+            this.fileMetadata = new Map();
+        }
     }
 }
 

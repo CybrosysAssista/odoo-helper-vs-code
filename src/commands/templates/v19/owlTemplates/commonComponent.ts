@@ -176,7 +176,8 @@ export class commonComponent {
                                                 content: this.getJsContent(),
                                                 updateManifest: true,
                                                 manifestCategory: 'asset',
-                                                assetCategory: 'backend'
+                                                assetCategory: 'backend',
+                                                depends: ['base']
                                             },
                                             {
                                                 type: 'file',
@@ -192,7 +193,7 @@ export class commonComponent {
                                                 content: this.getCssContent(),
                                                 updateManifest: true,
                                                 manifestCategory: 'asset',
-                                                assetCategory: 'backend'
+                                                assetCategory: 'backend',
                                             }
                                         ]
                                     }

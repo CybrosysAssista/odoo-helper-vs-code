@@ -26,14 +26,14 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
 
         const indexer = CssClassIndexer.getInstance();
 
-        // Optimized retrieval: only get classes for relevant modules instead of iterating all 21k+ classes
-        // 'web' usually contains Bootstrap and core styles. 'mail' is also common.
-        const relevantModules = new Set<string>([moduleName, 'web', 'mail']);
+        // High priority modules
+        const priorityModules = new Set<string>([moduleName, 'web', 'base', 'mail', 'portal']);
 
         const items: vscode.CompletionItem[] = [];
         const usedClasses = new Set<string>();
 
-        for (const mod of relevantModules) {
+        // 1. Add classes from priority modules first
+        for (const mod of priorityModules) {
             const classNames = indexer.getClassesInModule(mod);
             for (const className of classNames) {
                 if (usedClasses.has(className) || typedClasses.has(className)) {
@@ -41,14 +41,33 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
                 }
                 usedClasses.add(className);
 
-                const isBootstrapClass = mod === 'web';
+                const isCore = ['web', 'base', 'mail', 'portal'].includes(mod);
                 const item = new vscode.CompletionItem(className, vscode.CompletionItemKind.Constant);
-                item.detail = isBootstrapClass ? "CSS Class From Bootstrap" : `CSS Class From ${mod}`;
+                item.detail = isCore ? `Odoo Core: ${mod}` : `Module: ${mod}`;
+                item.sortText = isCore ? `0_${className}` : `1_${className}`;
                 items.push(item);
             }
         }
 
-        console.log(`[CssClassCompletion] Returning ${items.length} relevant candidates from modules: ${Array.from(relevantModules).join(', ')}.`);
+        // 2. Add ALL other remaining classes (up to a limit for performance)
+        // This ensures that even if we misidentified a module, or it's a 3rd party addon, the class is found.
+        const allUniqueClasses = indexer.getState().cssClasses;
+        for (const [className, defs] of allUniqueClasses) {
+            if (usedClasses.has(className) || typedClasses.has(className)) {
+                continue;
+            }
+            usedClasses.add(className);
+
+            const item = new vscode.CompletionItem(className, vscode.CompletionItemKind.Constant);
+            const mod = defs[0]?.moduleName || 'unknown';
+            item.detail = `Global: ${mod}`;
+            item.sortText = `2_${className}`;
+            items.push(item);
+
+            if (items.length > 3000) break; // Safety limit
+        }
+
+        console.log(`[CssClassCompletion] Returned ${items.length} candidates. (Project total: ${allUniqueClasses.length} unique classes)`);
 
         return items;
     }

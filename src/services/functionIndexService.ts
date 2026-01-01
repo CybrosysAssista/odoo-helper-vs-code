@@ -39,9 +39,8 @@ class FunctionIndexService {
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;
-
-        console.log('[FunctionIndex] Resetting function cache (building via ModelIndex)...');
-        this.functionCache.clear();
+        console.log('[FunctionIndex] Refreshing function cache (incremental)...');
+        // DO NOT CLEAR anymore
         this.isIndexing = false;
     }
 
@@ -165,6 +164,27 @@ class FunctionIndexService {
             all.push(...funcs);
         }
         return all;
+    }
+
+    public getState(): [string, FunctionInfo[]][] {
+        return Array.from(this.functionCache.entries());
+    }
+
+    public loadState(state: any) {
+        try {
+            if (Array.isArray(state)) {
+                // Old format
+                this.functionCache = new Map(state);
+            } else if (state && typeof state === 'object') {
+                // New format
+                if (Array.isArray(state.functions)) {
+                    this.functionCache = new Map(state.functions);
+                }
+            }
+        } catch (e) {
+            console.error('[FunctionIndex] Failed to load state:', e);
+            this.functionCache = new Map();
+        }
     }
 
     public dispose() {

@@ -196,7 +196,8 @@ export class ${this.componentClassName} extends Component {
                                                 content: this.getCssContent(),
                                                 updateManifest: true,
                                                 manifestCategory: 'asset',
-                                                assetCategory: 'backend'
+                                                assetCategory: 'backend',
+                                                depends: ['base']
                                             }
                                         ]
                                     }

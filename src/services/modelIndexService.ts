@@ -21,6 +21,7 @@ export interface RichIndexEvent {
 
 class ModelIndexService {
     private modelCache: Map<string, ModelInfo[]>; // modelName -> ModelInfo[] (since multiple modules can inherit/define)
+    private fileMetadata: Map<string, { mtime: number, size: number }>; // filePath -> metadata
     private watcher: vscode.FileSystemWatcher | null;
     private isIndexing: boolean = false;
     private _onDidIndexFile = new vscode.EventEmitter<vscode.Uri>();
@@ -33,6 +34,7 @@ class ModelIndexService {
 
     constructor() {
         this.modelCache = new Map();
+        this.fileMetadata = new Map();
         this.watcher = null;
     }
 
@@ -47,8 +49,8 @@ class ModelIndexService {
         if (this.isIndexing) return;
         this.isIndexing = true;
 
-        console.log('[ModelIndex] Building model cache...');
-        this.modelCache.clear();
+        console.log('[ModelIndex] Refreshing model cache (incremental)...');
+        // DO NOT CLEAR modelCache anymore!
 
         if (progress) {
             progress.report({ message: "Finding Odoo Modules..." });
@@ -82,6 +84,9 @@ class ModelIndexService {
             await new Promise(resolve => setTimeout(resolve, 0));
         }
 
+        // Cleanup: Remove entries for files that no longer exist
+        this.cleanupDeletedFiles();
+
         this.isIndexing = false;
         console.log(`[ModelIndex] Finished: Indexed ${this.modelCache.size} models across ${modules.length} modules.`);
     }
@@ -93,6 +98,18 @@ class ModelIndexService {
         }
 
         try {
+            const stats = await vscode.workspace.fs.stat(uri);
+            const cachedMetadata = this.fileMetadata.get(uri.fsPath);
+
+            // Skip if file hasn't changed
+            if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
+                // If we already have models for this file, skip parsing
+                const models = this.getModelsByFile(uri.fsPath);
+                if (models.length > 0 || this.hasMetadata(uri.fsPath)) {
+                    return;
+                }
+            }
+
             if (!moduleName) {
                 // Try to find module name if not provided
                 const modules = await moduleIndexService.getModules();
@@ -115,6 +132,9 @@ class ModelIndexService {
 
             // Parse classes
             const models = this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+
+            // Update metadata
+            this.fileMetadata.set(uri.fsPath, { mtime: stats.mtime, size: stats.size });
 
             // Notify others with the parsed tree
             this._onDidIndexRichFile.fire({ uri, tree, models });
@@ -251,6 +271,22 @@ class ModelIndexService {
         return this.modelCache.get(modelName) || [];
     }
 
+    private hasMetadata(filePath: string): boolean {
+        return this.fileMetadata.has(filePath);
+    }
+
+    private async cleanupDeletedFiles() {
+        for (const filePath of this.fileMetadata.keys()) {
+            try {
+                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+            } catch (e) {
+                // File deleted
+                this.removeFileEntries(filePath);
+                this.fileMetadata.delete(filePath);
+            }
+        }
+    }
+
     public getAllModelNames(): string[] {
         return Array.from(this.modelCache.keys());
     }
@@ -273,6 +309,34 @@ class ModelIndexService {
             }
         }
         return results;
+    }
+
+    public getState() {
+        return {
+            models: Array.from(this.modelCache.entries()),
+            metadata: Array.from(this.fileMetadata.entries())
+        };
+    }
+
+    public loadState(state: any) {
+        try {
+            if (Array.isArray(state)) {
+                // Old format: direct array
+                this.modelCache = new Map(state);
+            } else if (state && typeof state === 'object') {
+                // New format: { models: [], metadata: [] }
+                if (Array.isArray(state.models)) {
+                    this.modelCache = new Map(state.models);
+                }
+                if (Array.isArray(state.metadata)) {
+                    this.fileMetadata = new Map(state.metadata);
+                }
+            }
+        } catch (e) {
+            console.error('[ModelIndex] Failed to load state:', e);
+            this.modelCache = new Map();
+            this.fileMetadata = new Map();
+        }
     }
 
     public dispose() {

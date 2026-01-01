@@ -66,7 +66,7 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
             }
 
             // 1. Suggestions inside <field name="...">
-            if (node.tag === 'field') {
+            if (node.tag === 'field' || node.tag === 'filter') {
                 const nameAttrMatch = textUntilCursor.match(/name\s*=\s*(['"])([^'"]*)$/);
                 if (nameAttrMatch) {
                     const modelData = OdooModuleUtils.getModelMetadata(node, text);

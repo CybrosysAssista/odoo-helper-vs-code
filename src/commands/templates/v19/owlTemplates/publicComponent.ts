@@ -490,7 +490,8 @@ registry.category("public_components").add('${this.componentTechnicalName}', ${t
                                                 content: this.getJsContent(),
                                                 updateManifest: true,
                                                 manifestCategory: 'asset',
-                                                assetCategory: 'backend'
+                                                assetCategory: 'backend',
+                                                depends: ['base']
                                             },
                                             {
                                                 type: 'file',

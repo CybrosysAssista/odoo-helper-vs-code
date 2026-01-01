@@ -72,8 +72,8 @@ class FieldIndexService {
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;
-        console.log('[FieldIndex] Resetting field cache (building via ModelIndex)...');
-        this.fieldCache.clear();
+        console.log('[FieldIndex] Refreshing field cache (incremental)...');
+        // DO NOT CLEAR anymore
         this.isIndexing = false;
     }
 
@@ -187,6 +187,29 @@ class FieldIndexService {
             all.push(...fields);
         }
         return all;
+    }
+
+    public getState() {
+        return {
+            fields: Array.from(this.fieldCache.entries())
+        };
+    }
+
+    public loadState(state: any) {
+        try {
+            if (Array.isArray(state)) {
+                // Old format
+                this.fieldCache = new Map(state);
+            } else if (state && typeof state === 'object') {
+                // New format
+                if (Array.isArray(state.fields)) {
+                    this.fieldCache = new Map(state.fields);
+                }
+            }
+        } catch (e) {
+            console.error('[FieldIndex] Failed to load state:', e);
+            this.fieldCache = new Map();
+        }
     }
 }
 

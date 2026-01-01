@@ -18,6 +18,7 @@ export interface RegistryEntry {
  */
 export class OdooRegistryIndexer {
     private registryEntries: RegistryEntry[] = [];
+    private fileMetadata: Map<string, { mtime: number, size: number }> = new Map();
     private isScanning: boolean = false;
 
     /**
@@ -26,9 +27,8 @@ export class OdooRegistryIndexer {
     async scanWorkspace(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
         if (this.isScanning) return;
         this.isScanning = true;
-        this.registryEntries = [];
 
-        console.log('[OdooRegistryIndexer] Starting workspace scan...');
+        console.log('[OdooRegistryIndexer] Refreshing workspace (incremental)...');
 
         try {
             // Updated exclusion patterns to avoid indexing venv and other huge/irrelevant folders
@@ -52,6 +52,8 @@ export class OdooRegistryIndexer {
                 }
             }
 
+            await this.cleanupDeletedFiles();
+
             console.log(`[OdooRegistryIndexer] Scan complete. Indexed ${this.registryEntries.length} registry entries.`);
         } catch (error) {
             console.error('[OdooRegistryIndexer] Scan failed:', error);
@@ -68,9 +70,15 @@ export class OdooRegistryIndexer {
         const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
         if (!moduleRoot) return;
 
-        const moduleName = path.basename(moduleRoot.fsPath);
-
         try {
+            const stats = await vscode.workspace.fs.stat(uri);
+            const cachedMetadata = this.fileMetadata.get(uri.fsPath);
+
+            if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
+                return;
+            }
+
+            const moduleName = path.basename(moduleRoot.fsPath);
             const content = fs.readFileSync(uri.fsPath, 'utf8');
             const jsParser = getJavaScriptParserService();
 
@@ -90,6 +98,9 @@ export class OdooRegistryIndexer {
                     filePath: uri.fsPath
                 });
             }
+
+            // Update metadata
+            this.fileMetadata.set(uri.fsPath, { mtime: stats.mtime, size: stats.size });
         } catch (error) {
             console.warn(`[OdooRegistryIndexer] Failed to index ${uri.fsPath}:`, error);
         }
@@ -128,6 +139,45 @@ export class OdooRegistryIndexer {
      */
     clear(): void {
         this.registryEntries = [];
+    }
+
+    getState() {
+        return {
+            entries: this.registryEntries,
+            metadata: Array.from(this.fileMetadata.entries())
+        };
+    }
+
+    loadState(state: any) {
+        try {
+            if (Array.isArray(state)) {
+                // Old format: direct array
+                this.registryEntries = state;
+            } else if (state && typeof state === 'object') {
+                // New format: { entries: [], metadata: [] }
+                if (Array.isArray(state.entries)) {
+                    this.registryEntries = state.entries;
+                }
+                if (Array.isArray(state.metadata)) {
+                    this.fileMetadata = new Map(state.metadata);
+                }
+            }
+        } catch (e) {
+            console.error('[OdooRegistryIndexer] Failed to load state:', e);
+            this.registryEntries = [];
+            this.fileMetadata = new Map();
+        }
+    }
+
+    async cleanupDeletedFiles() {
+        for (const filePath of this.fileMetadata.keys()) {
+            try {
+                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+            } catch (e) {
+                this.registryEntries = this.registryEntries.filter(e => e.filePath !== filePath);
+                this.fileMetadata.delete(filePath);
+            }
+        }
     }
 }
 

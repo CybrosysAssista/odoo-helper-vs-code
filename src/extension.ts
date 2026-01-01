@@ -26,8 +26,12 @@ import { ManifestPathCompletionProvider } from './providers/manifestPathCompleti
 import { CssClassCompletionProvider } from './providers/completion/cssClassCompletionProvider';
 import { getJavaScriptParserService } from './services/javascriptParserService';
 import { getOdooRegistryIndexer } from './services/odooRegistryIndexer';
+import { persistenceService } from './services/persistenceService';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+    // Initialize Persistence Service
+    persistenceService.init(context);
+
     // Initialize Tree-sitter Python Parser
     console.log('[Extension] Initializing Python Parser Service...');
     const pythonParser = getPythonParserService();
@@ -59,16 +63,49 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     const registryIndexer = getOdooRegistryIndexer();
 
+    let isCached = false;
+    // 🚀 Phase 3: Fast Bootstrap - Load previous index synchronously
+    const loadStatusBar = vscode.window.setStatusBarMessage("$(sync~spin) Cybrosys Assista: Loading cached index...");
+    await (async () => {
+        try {
+            const models = await persistenceService.load<any>('modelIndex');
+            const fields = await persistenceService.load<any>('fieldIndex');
+            const functions = await persistenceService.load<any>('functionIndex');
+            const modules = await persistenceService.load<any>('moduleIndex');
+            const templates = await persistenceService.load<any>('templateIndex');
+            const registry = await persistenceService.load<any>('registryIndex');
+            const css = await persistenceService.load<any>('cssIndex');
+
+            if (models) {
+                modelIndexService.loadState(models);
+                isCached = true;
+            }
+            if (fields) fieldIndexService.loadState(fields);
+            if (functions) functionIndexService.loadState(functions);
+            if (modules) moduleIndexService.loadState(modules);
+            if (templates) templateIndexService.loadState(templates);
+            if (registry) registryIndexer.loadState(registry);
+            if (css) CssClassIndexer.getInstance().loadState(css);
+
+            console.log('[Extension] Cached index loaded successfully');
+        } catch (e) {
+            console.error('[Extension] Failed to load cached index:', e);
+        } finally {
+            loadStatusBar.dispose();
+        }
+    })();
+
+    // Background indexing refresh
     vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: "Cybrosys Assista: Odoo Helper",
+        location: vscode.ProgressLocation.Window,
+        title: isCached ? "$(sync) Cybrosys Assista: Refreshing index data..." : "$(database) Cybrosys Assista: Indexing...",
         cancellable: false
     }, async (progress) => {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
         const enableCore = config.get<boolean>('indexing.enableCoreIndexing', true);
         const enableRegistry = config.get<boolean>('indexing.enableRegistryIndexing', true);
 
-        // Reset caches for Python services if core is enabled
+        // Incremental cache refresh
         if (enableCore) {
             await fieldIndexService.buildCache(progress);
             await functionIndexService.buildCache(progress);
@@ -79,7 +116,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
         // Orchestrate unified indexing pass
         if (enableCore) {
-            // ModelIndex will trigger Fields and Functions indexing for each file
             await modelIndexService.buildCache(progress);
             await moduleIndexService.reindex(progress);
         }
@@ -89,6 +125,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
 
         await CssClassIndexer.getInstance().indexWorkspace(progress);
+
+        // 💾 Save updated index back to disk
+        const saveStatusBar = vscode.window.setStatusBarMessage("$(cloud-upload) Cybrosys Assista: Storing index to disk...");
+        try {
+            await persistenceService.save('modelIndex', modelIndexService.getState());
+            await persistenceService.save('fieldIndex', fieldIndexService.getState());
+            await persistenceService.save('functionIndex', functionIndexService.getState());
+            await persistenceService.save('moduleIndex', moduleIndexService.getState());
+            await persistenceService.save('templateIndex', templateIndexService.getState());
+            await persistenceService.save('registryIndex', registryIndexer.getState());
+            await persistenceService.save('cssIndex', CssClassIndexer.getInstance().getState());
+        } catch (e) {
+            console.error('[Extension] Failed to save index:', e);
+        } finally {
+            saveStatusBar.dispose();
+        }
 
         return Promise.resolve();
     });
@@ -137,7 +189,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         )
     );
 
-    // ✅ Register import completion provider
+    // Register import completion provider
     const importProvider = new ImportCompletionProvider();
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider(

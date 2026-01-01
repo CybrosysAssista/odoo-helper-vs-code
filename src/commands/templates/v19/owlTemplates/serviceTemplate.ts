@@ -75,7 +75,8 @@ registry.category("services").add("${this.componentTechnicalName}", ${this.compo
                                                 content: this.getJsContent(),
                                                 updateManifest: true,
                                                 manifestCategory: 'asset',
-                                                assetCategory: 'backend'
+                                                assetCategory: 'backend',
+                                                depends: ['base']
                                             }
                                         ]
                                     }

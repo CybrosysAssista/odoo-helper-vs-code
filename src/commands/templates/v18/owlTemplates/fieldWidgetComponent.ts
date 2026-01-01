@@ -133,7 +133,8 @@ registry.category("fields").add("${this.componentTechnicalName}", {
                                                         content: this.getJsContent(),
                                                         updateManifest: true,
                                                         manifestCategory: 'asset',
-                                                        assetCategory: 'backend'
+                                                        assetCategory: 'backend',
+                                                        depends: ['base']
                                                     },
                                                     {
                                                         type: 'file',
