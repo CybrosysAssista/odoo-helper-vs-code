@@ -37,13 +37,13 @@ export class CssClassIndexer {
     public async indexWorkspace(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
         if (!config.get<boolean>('indexing.enableCSSIndexing', true)) {
-            console.log('[CssClassIndexer] CSS scanning is disabled in settings.');
+            // console.log('[CssClassIndexer] CSS scanning is disabled in settings.');
             this.classesByModule.clear();
             this.cssClasses.clear();
             return;
         }
 
-        console.log('[CssClassIndexer] Refreshing CSS classes (incremental)...');
+        // console.log('[CssClassIndexer] Refreshing CSS classes (incremental)...');
 
         let totalFilesIndexed = 0;
         let totalClassesFound = 0;
@@ -56,7 +56,7 @@ export class CssClassIndexer {
         const allFiles = [...cssFiles];
 
         if (odooSourcePath && fs.existsSync(odooSourcePath)) {
-            console.log(`[CssClassIndexer] Including Odoo source path: ${odooSourcePath}`);
+            // console.log(`[CssClassIndexer] Including Odoo source path: ${odooSourcePath}`);
             const externalFiles = await this.findExternalCssFiles(odooSourcePath);
             allFiles.push(...externalFiles);
         }
@@ -87,11 +87,11 @@ export class CssClassIndexer {
 
         await this.cleanupDeletedFiles();
 
-        console.log(`[CssClassIndexer] Scan Complete:`);
-        console.log(` - Files indexed: ${totalFilesIndexed}`);
-        console.log(` - Total class definitions: ${this.getTotalClassCount()}`);
-        console.log(` - Unique class names: ${this.cssClasses.size}`);
-        console.log(` - Modules with CSS: ${this.classesByModule.size}`);
+        // console.log(`[CssClassIndexer] Scan Complete:`);
+        // console.log(` - Files indexed: ${totalFilesIndexed}`);
+        // console.log(` - Total class definitions: ${this.getTotalClassCount()}`);
+        // console.log(` - Unique class names: ${this.cssClasses.size}`);
+        // console.log(` - Modules with CSS: ${this.classesByModule.size}`);
     }
 
     private getTotalClassCount(): number {

@@ -33,7 +33,7 @@ export class PersistenceService {
      */
     public async save<T>(id: string, data: T): Promise<void> {
         if (!this.context?.storageUri) {
-            console.warn(`[PersistenceService] Cannot save ${id}: storageUri not available`);
+            // console.warn(`[PersistenceService] Cannot save ${id}: storageUri not available`);
             return;
         }
 
@@ -45,7 +45,7 @@ export class PersistenceService {
             const content = Buffer.from(JSON.stringify(data, null, 2), 'utf8');
 
             await vscode.workspace.fs.writeFile(fileUri, content);
-            console.log(`[PersistenceService] Saved data for index: ${id}`);
+            // console.log(`[PersistenceService] Saved data for index: ${id}`);
         } catch (error) {
             console.error(`[PersistenceService] Error saving ${id}:`, error);
         }

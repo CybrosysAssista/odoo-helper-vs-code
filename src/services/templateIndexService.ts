@@ -22,7 +22,7 @@ class TemplateIndexService {
     }
 
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        console.log('[TemplateIndex] Refreshing templates (incremental)...');
+        // console.log('[TemplateIndex] Refreshing templates (incremental)...');
         // DO NOT CLEAR anymore
 
         const xmlFiles = await vscode.workspace.findFiles('**/*.xml', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');

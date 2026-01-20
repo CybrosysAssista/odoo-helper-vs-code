@@ -33,22 +33,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     persistenceService.init(context);
 
     // Initialize Tree-sitter Python Parser
-    console.log('[Extension] Initializing Python Parser Service...');
+    // console.log('[Extension] Initializing Python Parser Service...');
     const pythonParser = getPythonParserService();
     try {
         await pythonParser.init(context);
-        console.log('[Extension] Python Parser Service initialized');
+        // console.log('[Extension] Python Parser Service initialized');
     } catch (error) {
         console.error('[Extension] Failed to initialize Python Parser:', error);
         vscode.window.showWarningMessage('Tree-sitter parser failed to initialize. Some features may be limited.');
     }
 
     // Initialize Tree-sitter JavaScript Parser
-    console.log('[Extension] Initializing JavaScript Parser Service...');
+    // console.log('[Extension] Initializing JavaScript Parser Service...');
     const jsParser = getJavaScriptParserService();
     try {
         await jsParser.init(context);
-        console.log('[Extension] JavaScript Parser Service initialized');
+        // console.log('[Extension] JavaScript Parser Service initialized');
     } catch (error) {
         console.error('[Extension] Failed to initialize JavaScript Parser:', error);
         vscode.window.showWarningMessage('JavaScript parser failed to initialize. Some features may be limited.');
@@ -87,7 +87,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             if (registry) registryIndexer.loadState(registry);
             if (css) CssClassIndexer.getInstance().loadState(css);
 
-            console.log('[Extension] Cached index loaded successfully');
+            // console.log('[Extension] Cached index loaded successfully');
         } catch (e) {
             console.error('[Extension] Failed to load cached index:', e);
         } finally {

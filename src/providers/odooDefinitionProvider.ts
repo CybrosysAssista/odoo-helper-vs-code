@@ -438,7 +438,7 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                                                 if (!fs.existsSync(fullPath)) {
                                                     const workspaceRoot = path.dirname(moduleRootPath);
                                                     fullPath = path.join(workspaceRoot, pathToSegment);
-                                                    console.log(`[OdooDefinitionProvider] Resolved path: ${fullPath}`);
+                                                    // console.log(`[OdooDefinitionProvider] Resolved path: ${fullPath}`);
                                                 }
                                                 // Check if the path exists
                                                 if (fs.existsSync(fullPath)) {

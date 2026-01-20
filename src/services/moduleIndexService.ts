@@ -22,7 +22,7 @@ class ModuleIndexService {
     }
 
     public async reindex(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        console.log('[ModuleIndex] Refreshing modules (incremental)...');
+        // console.log('[ModuleIndex] Refreshing modules (incremental)...');
         // DO NOT CLEAR moduleCache anymore!
 
         // Find all manifest files, excluding common non-Odoo directories
@@ -63,7 +63,7 @@ class ModuleIndexService {
                 // __init__.py doesn't exist, not a valid Odoo module
             }
         }
-        console.log(`[ModuleIndex] Indexed ${this.moduleCache.size} Odoo modules.`);
+        // console.log(`[ModuleIndex] Indexed ${this.moduleCache.size} Odoo modules.`);
     }
 
     public async getModules(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<ModuleInfo[]> {
