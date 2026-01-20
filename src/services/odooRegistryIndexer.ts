@@ -28,7 +28,7 @@ export class OdooRegistryIndexer {
         if (this.isScanning) return;
         this.isScanning = true;
 
-        console.log('[OdooRegistryIndexer] Refreshing workspace (incremental)...');
+        // console.log('[OdooRegistryIndexer] Refreshing workspace (incremental)...');
 
         try {
             // Updated exclusion patterns to avoid indexing venv and other huge/irrelevant folders
@@ -54,7 +54,7 @@ export class OdooRegistryIndexer {
 
             await this.cleanupDeletedFiles();
 
-            console.log(`[OdooRegistryIndexer] Scan complete. Indexed ${this.registryEntries.length} registry entries.`);
+            // console.log(`[OdooRegistryIndexer] Scan complete. Indexed ${this.registryEntries.length} registry entries.`);
         } catch (error) {
             console.error('[OdooRegistryIndexer] Scan failed:', error);
         } finally {

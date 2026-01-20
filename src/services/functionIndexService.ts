@@ -39,7 +39,7 @@ class FunctionIndexService {
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;
-        console.log('[FunctionIndex] Refreshing function cache (incremental)...');
+        // console.log('[FunctionIndex] Refreshing function cache (incremental)...');
         // DO NOT CLEAR anymore
         this.isIndexing = false;
     }

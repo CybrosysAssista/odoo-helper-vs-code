@@ -72,7 +72,7 @@ class FieldIndexService {
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         if (this.isIndexing) return;
         this.isIndexing = true;
-        console.log('[FieldIndex] Refreshing field cache (incremental)...');
+        // console.log('[FieldIndex] Refreshing field cache (incremental)...');
         // DO NOT CLEAR anymore
         this.isIndexing = false;
     }

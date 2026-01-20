@@ -67,7 +67,7 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
             if (items.length > 3000) break; // Safety limit
         }
 
-        console.log(`[CssClassCompletion] Returned ${items.length} candidates. (Project total: ${allUniqueClasses.length} unique classes)`);
+        // console.log(`[CssClassCompletion] Returned ${items.length} candidates. (Project total: ${allUniqueClasses.length} unique classes)`);
 
         return items;
     }

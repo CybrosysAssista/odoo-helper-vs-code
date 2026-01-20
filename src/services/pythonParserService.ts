@@ -31,7 +31,7 @@ export class PythonParserService {
             this.parser.setLanguage(this.language);
 
             this.isReady = true;
-            console.log('[PythonParserService] Initialized successfully');
+            // console.log('[PythonParserService] Initialized successfully');
         } catch (error) {
             console.error('[PythonParserService] Failed to initialize:', error);
             throw error;

@@ -49,7 +49,7 @@ class ModelIndexService {
         if (this.isIndexing) return;
         this.isIndexing = true;
 
-        console.log('[ModelIndex] Refreshing model cache (incremental)...');
+        // console.log('[ModelIndex] Refreshing model cache (incremental)...');
         // DO NOT CLEAR modelCache anymore!
 
         if (progress) {
@@ -88,7 +88,7 @@ class ModelIndexService {
         this.cleanupDeletedFiles();
 
         this.isIndexing = false;
-        console.log(`[ModelIndex] Finished: Indexed ${this.modelCache.size} models across ${modules.length} modules.`);
+        // console.log(`[ModelIndex] Finished: Indexed ${this.modelCache.size} models across ${modules.length} modules.`);
     }
 
     async indexFile(uri: vscode.Uri, moduleName?: string) {

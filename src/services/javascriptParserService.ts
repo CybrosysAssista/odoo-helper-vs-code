@@ -31,7 +31,7 @@ export class JavaScriptParserService {
             this.parser.setLanguage(this.language);
 
             this.isReady = true;
-            console.log('[JavaScriptParserService] Initialized successfully');
+            // console.log('[JavaScriptParserService] Initialized successfully');
         } catch (error) {
             console.error('[JavaScriptParserService] Failed to initialize:', error);
             throw error;
