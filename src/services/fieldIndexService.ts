@@ -16,6 +16,15 @@ export interface FieldInfo {
     character: number;
 }
 
+const POSITIONAL_ARG_MAP: { [key: string]: string[] } = {
+    'Many2one': ['comodel_name', 'string'],
+    'One2many': ['comodel_name', 'inverse_name', 'string'],
+    'Many2many': ['comodel_name', 'relation', 'column1', 'column2', 'string'],
+    'Selection': ['selection', 'string'],
+    'Reference': ['selection', 'string'],
+    'default': ['string']
+};
+
 class FieldIndexService {
     private fieldCache: Map<string, FieldInfo[]> = new Map(); // modelName -> FieldInfo[]
     private isIndexing: boolean = false;
@@ -129,7 +138,7 @@ class FieldIndexService {
                                 }
 
                                 if (fieldType) {
-                                    const attributes = this.extractAttributes(callNode);
+                                    const attributes = this.extractAttributes(callNode, fieldType);
                                     fields.push({
                                         fieldName,
                                         fieldType,
@@ -155,26 +164,40 @@ class FieldIndexService {
         }
     }
 
-    private extractAttributes(callNode: any): { [key: string]: string } {
+    private extractAttributes(callNode: any, fieldType: string): { [key: string]: string } {
         const attributes: { [key: string]: string } = {};
         const argListNode = callNode.childForFieldName('arguments');
         if (argListNode) {
+            let positionalIndex = 0;
+            const mapping = POSITIONAL_ARG_MAP[fieldType] || POSITIONAL_ARG_MAP['default'];
+
             for (const arg of argListNode.namedChildren) {
                 if (arg.type === 'keyword_argument') {
                     const nameNode = arg.childForFieldName('name');
                     const valueNode = arg.childForFieldName('value');
                     if (nameNode && valueNode) {
-                        let value = valueNode.text;
-                        // Strip quotes if it's a string
-                        if (valueNode.type === 'string') {
-                            value = value.slice(1, -1);
-                        }
-                        attributes[nameNode.text] = value;
+                        attributes[nameNode.text] = this.cleanValue(valueNode);
                     }
+                } else {
+                    // Positional argument
+                    if (positionalIndex < mapping.length) {
+                        const attrName = mapping[positionalIndex];
+                        attributes[attrName] = this.cleanValue(arg);
+                    }
+                    positionalIndex++;
                 }
             }
         }
         return attributes;
+    }
+
+    private cleanValue(node: any): string {
+        let value = node.text;
+        // Strip quotes if it's a string
+        if (node.type === 'string' && value.length >= 2) {
+            value = value.slice(1, -1);
+        }
+        return value;
     }
 
     public getFieldsForModel(modelName: string): FieldInfo[] {

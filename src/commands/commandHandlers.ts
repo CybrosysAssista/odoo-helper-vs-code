@@ -3,7 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createOdooScaffold } from '../modules/scaffold';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { OdooPythonUtils } from '../utils/odooPythonUtils';
+import { OdooCsvParser } from '../utils/csvUtils';
 import { helperUtils } from '../utils/utils';
+import { getPythonParserService } from '../services/pythonParserService';
 
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -441,6 +444,120 @@ async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): 
     }
 }
 
+async function handleOdooToolClick(uri: vscode.Uri, toolName: string): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    const context = await OdooPythonUtils.getModelAtContext(uri || editor.document.uri, editor.selection.active);
+
+    if (context.valid) {
+        const inheritMsg = context.isInherited ? '(Inherited)' : '(New Model)';
+        vscode.window.showInformationMessage(
+            `hi! Tool: ${toolName} | Model: ${context.modelName} ${inheritMsg} | Module: ${context.moduleName}`
+        );
+    } else {
+        vscode.window.showWarningMessage(`Tool "${toolName}" can only be used inside an Odoo Model class.`);
+    }
+}
+
+async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    const context = await OdooPythonUtils.getModelAtContext(uri || editor.document.uri, editor.selection.active);
+    if (!context.valid) {
+        vscode.window.showWarningMessage('Create Access Right can only be used inside an Odoo Model class.');
+        return;
+    }
+
+    const moduleRoot = await OdooModuleUtils.getModuleRoot(uri || editor.document.uri);
+    if (!moduleRoot) return;
+
+    const securityDir = path.join(moduleRoot.fsPath, 'security');
+    const csvPath = path.join(securityDir, 'ir.model.access.csv');
+
+    if (!fs.existsSync(securityDir)) {
+        fs.mkdirSync(securityDir, { recursive: true });
+    }
+
+    let csvParser: OdooCsvParser;
+    const modelId = `model_${context.modelName.replace(/\./g, '_')}`;
+    const accessId = `access_${context.modelName.replace(/\./g, '_')}`;
+    const headers = ['id', 'name', 'model_id:id', 'group_id:id', 'perm_read', 'perm_write', 'perm_create', 'perm_unlink'];
+
+    if (fs.existsSync(csvPath)) {
+        const content = fs.readFileSync(csvPath, 'utf8');
+        csvParser = new OdooCsvParser(content);
+    } else {
+        csvParser = new OdooCsvParser();
+    }
+
+    const matrix = csvParser.getMatrix();
+    const hasCorrectHeaders = matrix.length > 0 &&
+        matrix[0].length === headers.length &&
+        matrix[0][0] === 'id' &&
+        matrix[0][2] === 'model_id:id';
+
+    let headersAdded = false;
+    if (!hasCorrectHeaders) {
+        // Prepend headers if they are missing or incorrect
+        csvParser.setMatrix([headers, ...matrix]);
+        headersAdded = true;
+    }
+
+    // Check if model already exists in CSV (check in the updated matrix)
+    const updatedMatrix = csvParser.getMatrix();
+    const modelExists = updatedMatrix.slice(1).some(row => row[1] === context.modelName || row[2] === modelId);
+
+    if (modelExists) {
+        if (headersAdded) {
+            fs.writeFileSync(csvPath, csvParser.convertMatrixToText(), 'utf8');
+        }
+        vscode.window.showInformationMessage(`Access rights already exist for model ${context.modelName}`);
+        return;
+    }
+
+    // Add row: id, name, model_id:id, group_id:id, read, write, create, unlink
+    csvParser.addRow([
+        accessId,
+        context.modelName,
+        modelId,
+        '',
+        '1', '1', '1', '1'
+    ]);
+
+    fs.writeFileSync(csvPath, csvParser.convertMatrixToText(), 'utf8');
+
+    // Automatically add to manifest if it's not there
+    const manifestPath = path.join(moduleRoot.fsPath, '__manifest__.py');
+    if (fs.existsSync(manifestPath)) {
+        const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+        const pythonParser = getPythonParserService();
+        const manifestParser = pythonParser.getManifestParser();
+        if (manifestParser) {
+            manifestParser.parseManifest(manifestContent);
+            const result = manifestParser.updateManifest({
+                type: 'file',
+                name: 'ir.model.access.csv',
+                content: '',
+                updateManifest: true,
+                manifestCategory: 'data',
+                dataCategory: 'security'
+            }, 'security/ir.model.access.csv');
+
+            if (result.success && result.updatedContent) {
+                fs.writeFileSync(manifestPath, result.updatedContent, 'utf8');
+            }
+        }
+    }
+
+    vscode.window.showInformationMessage(`Access right created for "${context.modelName}" in ir.model.access.csv`);
+
+    // Open the CSV file
+    const doc = await vscode.workspace.openTextDocument(csvPath);
+    await vscode.window.showTextDocument(doc);
+}
+
 export function registerCommands(context: vscode.ExtensionContext): void {
     const commands = [
         {
@@ -562,6 +679,22 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.extendPosTicketScreen',
             handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendTicketScreen')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createViews',
+            handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Create Views')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createAccessRight',
+            handler: (uri: vscode.Uri) => handleCreateAccessRight(uri)
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.createReport',
+            handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Create Report')
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.addToInitModel',
+            handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Add to Init')
         },
 
     ];

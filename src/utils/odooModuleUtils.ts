@@ -15,7 +15,7 @@ export class OdooModuleUtils {
         while (currentFolder) {
             const manifestPath = path.join(currentFolder, '__manifest__.py');
             const initPath = path.join(currentFolder, '__init__.py');
-            if (fs.existsSync(manifestPath) || fs.existsSync(initPath)) {
+            if (fs.existsSync(manifestPath) && fs.existsSync(initPath)) {
                 return vscode.Uri.file(currentFolder);
             }
             const parentFolder = path.dirname(currentFolder);

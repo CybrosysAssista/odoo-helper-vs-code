@@ -143,6 +143,22 @@
       {
         "command": "cybrosys-assista-odoo-helper.extendPosTicketScreen",
         "title": "Order Management Screen"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createViews",
+        "title": "Create Views"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createAccessRight",
+        "title": "Create Access Right"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.createReport",
+        "title": "Create Report"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.addToInitModel",
+        "title": "Add to Init"
       }
     ],
     "menus": {
@@ -151,6 +167,40 @@
           "submenu": "cybrosys-assista-odoo-helper.mainMenu",
           "group": "navigation@1",
           "title": "Assista Odoo"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.odooModelTools",
+          "group": "navigation",
+          "title": "Odoo Model Tools",
+          "when": "resourceLangId == python && cybrosys-assista-odoo-helper.isOdooModel"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "cybrosys-assista-odoo-helper.odooModelTools",
+          "group": "navigation",
+          "title": "Odoo Model Tools",
+          "when": "resourceLangId == python && cybrosys-assista-odoo-helper.isOdooModel"
+        }
+      ],
+      "cybrosys-assista-odoo-helper.odooModelTools": [
+        {
+          "command": "cybrosys-assista-odoo-helper.createViews",
+          "group": "tools@1"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createAccessRight",
+          "group": "tools@2"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.createReport",
+          "group": "tools@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInitModel",
+          "group": "tools@4"
         }
       ],
       "cybrosys-assista-odoo-helper.mainMenu": [
@@ -305,6 +355,10 @@
       {
         "id": "cybrosys-assista-odoo-helper.extendPosScreenSubmenu",
         "label": "Extend Screen"
+      },
+      {
+        "id": "cybrosys-assista-odoo-helper.odooModelTools",
+        "label": "Odoo Model Tools"
       }
     ],
     "snippets": [],

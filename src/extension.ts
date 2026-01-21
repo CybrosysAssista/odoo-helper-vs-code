@@ -27,6 +27,7 @@ import { CssClassCompletionProvider } from './providers/completion/cssClassCompl
 import { getJavaScriptParserService } from './services/javascriptParserService';
 import { getOdooRegistryIndexer } from './services/odooRegistryIndexer';
 import { persistenceService } from './services/persistenceService';
+import { OdooPythonUtils } from './utils/odooPythonUtils';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Initialize Persistence Service
@@ -362,6 +363,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         null,
         context.subscriptions
     );
+
+    // Context Key Management for Odoo Model Tools
+    const updateOdooModelContext = async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor && editor.document.languageId === 'python') {
+            const context = await OdooPythonUtils.getModelAtContext(editor.document.uri, editor.selection.active);
+            vscode.commands.executeCommand('setContext', 'cybrosys-assista-odoo-helper.isOdooModel', context.valid);
+        } else {
+            vscode.commands.executeCommand('setContext', 'cybrosys-assista-odoo-helper.isOdooModel', false);
+        }
+    };
+
+    vscode.window.onDidChangeActiveTextEditor(updateOdooModelContext, null, context.subscriptions);
+    vscode.window.onDidChangeTextEditorSelection(updateOdooModelContext, null, context.subscriptions);
+    updateOdooModelContext();
 }
 
 async function registerVersionedSnippets(context: vscode.ExtensionContext): Promise<void> {
