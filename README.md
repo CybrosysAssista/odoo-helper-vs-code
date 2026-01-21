@@ -6,7 +6,7 @@ Odoo extension for Visual Studio Code
 ---
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/0967474f-a460-4253-ad39-46036ac003ab" alt="Cybrosys Assista Logo" width="200"/>
+  <img src="https://github.com/user-attachments/assets/0967474f-a460-4253-ad39-46036ac003ab" alt="Cybrosys Assista Logo" width="400"/>
 </p>
 
 ## ⚡ Supercharge Your Odoo Development with **Cybrosys Assista** 🚀
