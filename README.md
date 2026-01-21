@@ -1,10 +1,3 @@
-
-# Cybrosys-Assista-Odoo-Helper
-
-Odoo extension for Visual Studio Code
-
----
-
 <p align="center">
   <img src="https://github.com/user-attachments/assets/0967474f-a460-4253-ad39-46036ac003ab" alt="Cybrosys Assista Logo" width="400"/>
 </p>
@@ -21,6 +14,13 @@ Odoo extension for Visual Studio Code
 *   **🔍 Unified 360° Navigation**: Seamlessly navigate your entire stack with intelligent "Go-To-Definition" and cross-reference logic bridging XML, Python, and JavaScript.
 
 **Transform your Odoo development workflow—faster, smarter, and more reliable.**
+
+---
+
+
+# Cybrosys-Assista-Odoo-Helper
+
+Odoo extension for Visual Studio Code
 
 ---
 
