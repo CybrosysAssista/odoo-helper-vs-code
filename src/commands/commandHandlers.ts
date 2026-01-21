@@ -336,38 +336,53 @@ async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
 }
 
 async function handleAddToInit(uri: vscode.Uri): Promise<void> {
-    if (!uri || !uri.fsPath) return;
+    const activeEditor = vscode.window.activeTextEditor;
+    const targetUri = uri || (activeEditor ? activeEditor.document.uri : null);
+    if (!targetUri || !targetUri.fsPath) return;
 
     try {
-        const stats = fs.statSync(uri.fsPath);
+        const stats = fs.statSync(targetUri.fsPath);
         const isDirectory = stats.isDirectory();
-        const dirPath = isDirectory ? uri.fsPath : path.dirname(uri.fsPath);
-        const fileName = isDirectory ? null : path.basename(uri.fsPath, '.py');
 
-        const initPath = path.join(dirPath, '__init__.py');
+        let targetName: string;
+        let parentDir: string;
+
+        if (isDirectory) {
+            targetName = path.basename(targetUri.fsPath);
+            parentDir = path.dirname(targetUri.fsPath);
+        } else {
+            if (!targetUri.fsPath.endsWith('.py')) {
+                vscode.window.showWarningMessage('Add to Init only works for Python files and directories.');
+                return;
+            }
+            targetName = path.basename(targetUri.fsPath, '.py');
+            if (targetName === '__init__' || targetName === '__manifest__') return;
+            parentDir = path.dirname(targetUri.fsPath);
+        }
+
+        const initPath = path.join(parentDir, '__init__.py');
         let content = '';
+        const exists = fs.existsSync(initPath);
 
-        if (fs.existsSync(initPath)) {
+        if (exists) {
             content = fs.readFileSync(initPath, 'utf8');
         } else {
             content = '# -*- coding: utf-8 -*-\n';
         }
 
-        if (fileName && fileName !== '__init__' && fileName !== '__manifest__') {
-            const importLine = `from . import ${fileName}`;
-            if (!content.includes(importLine)) {
-                if (content && !content.endsWith('\n')) content += '\n';
-                content += `${importLine}\n`;
+        const importLine = `from . import ${targetName}`;
+        const importRegex = new RegExp(`^\\s*from\\s+\\.\\s+import\\s+${targetName}\\b`, 'm');
+
+        if (!importRegex.test(content)) {
+            if (content && !content.endsWith('\n')) content += '\n';
+            content += `${importLine}\n`;
+            fs.writeFileSync(initPath, content, 'utf8');
+            vscode.window.showInformationMessage(`${exists ? 'Added' : 'Created __init__.py and added'} "${targetName}" to __init__.py`);
+        } else {
+            if (!exists) {
                 fs.writeFileSync(initPath, content, 'utf8');
-                vscode.window.showInformationMessage(`Added "${fileName}" to __init__.py`);
-            } else {
-                vscode.window.showInformationMessage(`"${fileName}" is already in __init__.py`);
             }
-        } else if (isDirectory) {
-            if (!fs.existsSync(initPath)) {
-                fs.writeFileSync(initPath, '# -*- coding: utf-8 -*-\n', 'utf8');
-                vscode.window.showInformationMessage(`Created __init__.py in ${path.basename(dirPath)}`);
-            }
+            vscode.window.showInformationMessage(`"${targetName}" is already imported in __init__.py`);
         }
 
     } catch (error: any) {
@@ -691,12 +706,7 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.createReport',
             handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Create Report')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.addToInitModel',
-            handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Add to Init')
-        },
-
+        }
     ];
 
     commands.forEach(({ command, handler }) => {

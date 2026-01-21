@@ -155,10 +155,6 @@
       {
         "command": "cybrosys-assista-odoo-helper.createReport",
         "title": "Create Report"
-      },
-      {
-        "command": "cybrosys-assista-odoo-helper.addToInitModel",
-        "title": "Add to Init"
       }
     ],
     "menus": {
@@ -167,22 +163,37 @@
           "submenu": "cybrosys-assista-odoo-helper.mainMenu",
           "group": "navigation@1",
           "title": "Assista Odoo"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInit",
+          "group": "navigation@2",
+          "when": "resourceExtname == .py || explorerSearchIsDirectory"
         }
       ],
       "editor/title/context": [
         {
           "submenu": "cybrosys-assista-odoo-helper.odooModelTools",
-          "group": "navigation",
+          "group": "navigation@1",
           "title": "Odoo Model Tools",
           "when": "resourceLangId == python && cybrosys-assista-odoo-helper.isOdooModel"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInit",
+          "group": "navigation@2",
+          "when": "resourceLangId == python"
         }
       ],
       "editor/context": [
         {
           "submenu": "cybrosys-assista-odoo-helper.odooModelTools",
-          "group": "navigation",
+          "group": "navigation@1",
           "title": "Odoo Model Tools",
           "when": "resourceLangId == python && cybrosys-assista-odoo-helper.isOdooModel"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.addToInit",
+          "group": "navigation@2",
+          "when": "resourceLangId == python"
         }
       ],
       "cybrosys-assista-odoo-helper.odooModelTools": [
@@ -197,10 +208,6 @@
         {
           "command": "cybrosys-assista-odoo-helper.createReport",
           "group": "tools@3"
-        },
-        {
-          "command": "cybrosys-assista-odoo-helper.addToInitModel",
-          "group": "tools@4"
         }
       ],
       "cybrosys-assista-odoo-helper.mainMenu": [
