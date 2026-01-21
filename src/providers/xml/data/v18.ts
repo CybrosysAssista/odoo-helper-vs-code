@@ -5,7 +5,7 @@ export interface XmlMeta {
 
 const v18: XmlMeta = {
     xmlTags: [
-        'record', 'field', 'menuitem', 'template', 'xpath', 'data', 'odoo', 'form', 'tree', 'search', 'kanban', 'calendar', 'gantt', 'graph', 'pivot', 'action', 'report', 'template', 'view', 'wizard', 't'
+        'record', 'field', 'menuitem', 'template', 'xpath', 'data', 'odoo', 'form', 'tree', 'search', 'kanban', 'calendar', 'gantt', 'graph', 'pivot', 'action', 'report', 'template', 'view', 'wizard', 't', 'owl-component', 'owl'
     ],
     attributes: {
         'record': ['id', 'model', 'name'],

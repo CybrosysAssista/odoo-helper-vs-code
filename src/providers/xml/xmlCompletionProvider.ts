@@ -214,6 +214,22 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
                         });
                 }
             }
+
+            if (node.tag === 'owl-component') {
+                const nameMatch = textUntilCursor.match(/name\s*=\s*(['"])([^'"]*)$/);
+                if (nameMatch) {
+                    const partial = nameMatch[2] || '';
+                    const registryIndexer = getOdooRegistryIndexer();
+                    return registryIndexer.getEntriesByCategory('public_components')
+                        .filter((entry: RegistryEntry) => entry.id.startsWith(partial))
+                        .map((entry: RegistryEntry) => {
+                            const item = new vscode.CompletionItem(entry.id, vscode.CompletionItemKind.Value);
+                            item.detail = `Module: ${entry.moduleName}`;
+                            item.documentation = new vscode.MarkdownString(`**Component:** ${entry.component}\n\n**File:** ${entry.filePath}:${entry.line}`);
+                            return item;
+                        });
+                }
+            }
         }
 
         // Generic tag and attribute completions
