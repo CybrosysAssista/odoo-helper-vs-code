@@ -2,16 +2,16 @@
   <img src="https://github.com/user-attachments/assets/0967474f-a460-4253-ad39-46036ac003ab" alt="Cybrosys Assista Logo" width="400"/>
 </p>
 
-## ⚡ Supercharge Your Odoo Development with **Cybrosys Assista** 🚀
+##  Supercharge Your Odoo Development with **Cybrosys Assista** 
 
 **Cybrosys Assista** is an AI-powered developer toolkit and a **comprehensive ecosystem designed to streamline everything from Odoo development assistance to Odoo deployment and monitoring**. By blending intelligence and automation within popular IDEs like VS Code and PyCharm—as well as through its exclusive standalone Assista IDE—it provides complete lifecycle support for Odoo projects. From intelligent code generation and smart navigation to automated module scaffolding, Assista is built to boost productivity and simplify even the most complex full-stack tasks.
 
 ### The Complete Odoo Ecosystem
 
-*   **💻 Precision Development**: Boost your productivity with the **[Assista IDE](https://assista.cybrosys.com)** or our powerful **plugins for PyCharm and VS Code**, featuring AI-driven completions, instant scaffolding, and OWL/POS development mastery.
-*   **🚀 Efficient Deployment with Easy Instance**: Streamline your release cycle with **[Easy Instance](https://easyinstance.com)**—an advanced Odoo SaaS platform equipped with Odoo-focused features for seamless, high-performance deployment.
-*   **📊 Monitoring & Quality with Assista Performance**: Ensure excellence with **[Assista Performance](https://performance.cybrosys.com)**, dedicated to real-time monitoring, code quality audits, and deep performance insights for your Odoo projects.
-*   **🔍 Unified 360° Navigation**: Seamlessly navigate your entire stack with intelligent "Go-To-Definition" and cross-reference logic bridging XML, Python, and JavaScript.
+*   **Precision Development**: Boost your productivity with the **[Assista IDE](https://assista.cybrosys.com)** or our powerful **plugins for PyCharm and VS Code**, featuring AI-driven completions, instant scaffolding, and OWL/POS development mastery.
+*   **Efficient Deployment with Easy Instance**: Streamline your release cycle with **[Easy Instance](https://easyinstance.com)**—an advanced Odoo SaaS platform equipped with Odoo-focused features for seamless, high-performance deployment.
+*   **Monitoring & Quality with Assista Performance**: Ensure excellence with **[Assista Performance](https://performance.cybrosys.com)**, dedicated to real-time monitoring, code quality audits, and deep performance insights for your Odoo projects.
+*   **Unified 360° Navigation**: Seamlessly navigate your entire stack with intelligent "Go-To-Definition" and cross-reference logic bridging XML, Python, and JavaScript.
 
 **Transform your Odoo development workflow—faster, smarter, and more reliable.**
 
@@ -996,3 +996,11 @@ Modifies the finalized order receipt screen.
 Extends the interface for managing and refunding orders.
 - **Path**: `static/src/app/screens/ticket_screen/`
 - **Files**: `ticket_screen.js`, `ticket_screen.xml`, `ticket_screen.scss`
+- 
+
+<br/><br/><br/>
+
+
+<p align="center">
+  Powered by <b><a href="https://www.cybrosys.com/">Cybrosys Technologies</a></b>
+</p>
