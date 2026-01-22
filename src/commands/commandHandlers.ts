@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createOdooScaffold } from '../modules/scaffold';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import fieldIndexService, { FieldInfo } from '../services/fieldIndexService';
 import { OdooPythonUtils } from '../utils/odooPythonUtils';
 import { OdooCsvParser } from '../utils/csvUtils';
 import { helperUtils } from '../utils/utils';
@@ -11,6 +12,7 @@ import { getPythonParserService } from '../services/pythonParserService';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const templates = require('./templates');
+import { handleCreateViews } from './viewGeneration';
 
 function capitalize(text: string): string {
     return text
@@ -55,7 +57,7 @@ async function handleCreateModule(uri: vscode.Uri, type: string): Promise<void> 
         await vscode.window.showTextDocument(manifestUri);
         vscode.window.showInformationMessage(`${type} Odoo module "${moduleName}" created successfully!`);
     } catch (err: any) {
-        vscode.window.showErrorMessage(`Failed to create module: ${err.message}`);
+        vscode.window.showErrorMessage(`Failed to create module: ${err.message} `);
     }
 }
 
@@ -83,28 +85,10 @@ async function handleCreateOdooModelFile(uri: vscode.Uri): Promise<void> {
 
         if (fileType === '__init__') {
             fullFileName = '__init__.py';
-            fileContent = `# -*- coding: utf-8 -*-
-from . import `;
+            fileContent = `# -*- coding: utf-8 -*-\n\nfrom . import `;
         } else if (fileType === '__manifest__') {
             fullFileName = '__manifest__.py';
-            fileContent = `# -*- coding: utf-8 -*-
-{
-    'name': 'Module Name',
-    'version': '1.0',
-    'category': 'Uncategorized',
-    'summary': 'Module Summary',
-    'description': '''Module Description''',
-    'author': 'Your Company',
-    'website': 'https://www.yourcompany.com',
-    'depends': ['base'],
-    'data': [
-        'security/ir.model.access.csv',
-        'views/views.xml',
-    ],
-    'installable': True,
-    'application': False,
-    'auto_install': False,
-}`;
+            fileContent = `# -*- coding: utf-8 -*-\n{\n    'name': 'Module Name',\n    'version': '1.0',\n    'category': 'Uncategorized',\n    'summary': 'Module Summary',\n    'description': '''Module Description''',\n    'author': 'Your Company',\n    'website': 'https://www.yourcompany.com',\n    'depends': ['base'],\n    'data': [\n        'security/ir.model.access.csv',\n        'views/views.xml',\n    ],\n    'installable': True,\n    'application': False,\n    'auto_install': False,\n}`;
         } else {
             if (!moduleRoot || uri.path === moduleRoot.path) {
                 vscode.window.showErrorMessage(`${fileType} Creation is not allowed in module root directory or outside of module directory.`);
@@ -132,24 +116,9 @@ from . import `;
 
             if (fileType === 'Odoo Model') {
                 const modelName = fileName.replace(/_/g, '.');
-                fileContent = `# -*- coding: utf-8 -*-
-from odoo import fields,models
-
-class ${capitalize(fileName)}(models.Model):
-    _name = '${modelName}'
-
-    name = fields.Char(string='Name')`;
+                fileContent = `# -*- coding: utf-8 -*-\nfrom odoo import fields, models\n\n\nclass ${capitalize(fileName)}(models.Model):\n    _name = '${modelName}'\n\n    name = fields.Char(string='Name')\n`;
             } else if (fileType === 'Odoo Controller') {
-                fileContent = `# -*- coding: utf-8 -*-
-from odoo import http
-from odoo.http import request
-
-
-class MainController(http.Controller):
-    """Controller class to handle HTTP routes."""
-    @http.route('/controller', auth='public', website=True)
-    def index(self, **kw):
-        return request.render('your_module.template_id', {'sample_data': 'Sample Data'})`;
+                fileContent = `# -*- coding: utf-8 -*-\nfrom odoo import http\nfrom odoo.http import request\n\n\nclass MainController(http.Controller):\n    @http.route('/my_module/my_module', auth='public')\n    def index(self, **kw):\n        return "Hello, world"\n`;
             }
         }
 
@@ -227,12 +196,12 @@ async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: strin
 
         switch (fileType) {
             case 'Empty View':
-                fileContent = `<?xml version="1.0" encoding="utf-8"?>
-<odoo>
+                fileContent = `<? xml version = "1.0" encoding = "utf-8" ?>
+    <odoo>
     <data>
-        <!-- Your custom views here -->
-    </data>
-</odoo>`;
+    <!--Your custom views here-- >
+        </data>
+        </odoo>`;
                 break;
 
             case 'Basic View':
@@ -573,6 +542,8 @@ async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
     await vscode.window.showTextDocument(doc);
 }
 
+
+
 export function registerCommands(context: vscode.ExtensionContext): void {
     const commands = [
         {
@@ -697,7 +668,7 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         },
         {
             command: 'cybrosys-assista-odoo-helper.createViews',
-            handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Create Views')
+            handler: (uri: vscode.Uri) => handleCreateViews(uri)
         },
         {
             command: 'cybrosys-assista-odoo-helper.createAccessRight',

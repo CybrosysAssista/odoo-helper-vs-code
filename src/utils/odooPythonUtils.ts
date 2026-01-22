@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getPythonParserService } from '../services/pythonParserService';
 import { OdooModuleUtils } from './odooModuleUtils';
+import fieldIndexService, { FieldInfo } from '../services/fieldIndexService';
 
 export interface OdooModelContext {
     valid: boolean;
@@ -153,5 +154,11 @@ export class OdooPythonUtils {
             }
         }
         return '';
+    }
+    /**
+     * Gets indexed fields for a specific model.
+     */
+    static getModelFields(modelName: string): FieldInfo[] {
+        return fieldIndexService.getFieldsForModel(modelName);
     }
 }

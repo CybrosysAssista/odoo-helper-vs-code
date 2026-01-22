@@ -376,8 +376,43 @@ export class ManifestParser {
                 }
                 return { success: false, message: 'Could not find insertion position in depends list.' };
             }
+        } else if (options.manifestCategory === 'data') {
+            if (!this.parsedManifest.data.has("data")) {
+                const insertPos = this.getDictInsertPosition({
+                    type: 'dict',
+                    value: null,
+                    range: this.parsedManifest.range,
+                    children: this.parsedManifest.data
+                });
+
+                if (insertPos) {
+                    const isFirstEntry = this.parsedManifest.data.size === 0;
+                    const prefix = (isFirstEntry || !this.isTrailingCommaMissing(insertPos)) ? "" : ",";
+                    const dataToAdd = `${prefix}\n    'data': [\n        '${filePath}',\n    ]`;
+                    const updatedContent = this.insertAtPosition(this.originalContent, insertPos, dataToAdd);
+                    return { success: true, message: 'Manifest updated successfully.', updatedContent };
+                }
+            } else {
+                const dataList = this.parsedManifest.data.get("data");
+                if (dataList?.type !== "list") {
+                    return { success: false, message: 'Invalid manifest format (data is not a list).' };
+                }
+
+                if (listContains(dataList, filePath)) {
+                    return { success: true, message: 'File already exists in manifest.' };
+                }
+
+                const insertPos = this.getListInsertPosition(dataList);
+                if (insertPos) {
+                    const isFirstItem = (dataList.items?.length || 0) === 0;
+                    const prefix = (isFirstItem || !this.isTrailingCommaMissing(insertPos)) ? "" : ",";
+                    const itemToAdd = `${prefix}\n        '${filePath}',`;
+                    const updatedContent = this.insertAtPosition(this.originalContent, insertPos, itemToAdd);
+                    return { success: true, message: 'Manifest updated successfully.', updatedContent };
+                }
+            }
         } else {
-            return { success: true, message: 'Data category updates not implemented yet.' };
+            return { success: false, message: 'Unsupported manifest category.' };
         }
 
         if (!this.parsedManifest.data.has("assets")) {
@@ -460,12 +495,20 @@ export class ManifestParser {
         const lines = content.split('\n');
         const line = lines[pos.line];
 
-        let linePrefix = line.slice(0, pos.character).trimEnd();
+        let linePrefix = line.slice(0, pos.character);
         const lineSuffix = line.slice(pos.character).trimStart();
 
+        // If we are adding a newline and our current line is just indentation (like the bracket line),
+        // we should remove the prefix from this line to prevent it from becoming a blank line.
+        if (text.startsWith('\n') && linePrefix.trim() === "") {
+            linePrefix = "";
+        }
+
         // If we are adding a comma and it's on a new line, join it with the prefix/previous line
-        if (text.startsWith(',')) {
-            if (linePrefix.trim() === "" && pos.line > 0) {
+        let finalText = text;
+        if (finalText.startsWith(',')) {
+            let leftSide = linePrefix.trimEnd();
+            if (leftSide === "" && pos.line > 0) {
                 // Find last non-empty line
                 let prevLineIdx = pos.line - 1;
                 while (prevLineIdx >= 0 && lines[prevLineIdx].trim() === "") {
@@ -473,24 +516,24 @@ export class ManifestParser {
                 }
                 if (prevLineIdx >= 0 && !lines[prevLineIdx].trimEnd().endsWith(',')) {
                     lines[prevLineIdx] = lines[prevLineIdx].trimEnd() + ',';
-                    text = text.slice(1);
+                    finalText = finalText.slice(1);
                 } else if (prevLineIdx >= 0 && lines[prevLineIdx].trimEnd().endsWith(',')) {
-                    text = text.slice(1);
+                    finalText = finalText.slice(1);
                 }
-            } else if (linePrefix.trim() !== "" && !linePrefix.trimEnd().endsWith(',')) {
-                linePrefix = linePrefix.trimEnd() + ',';
-                text = text.slice(1);
-            } else if (linePrefix.trim() !== "" && linePrefix.trimEnd().endsWith(',')) {
-                linePrefix = linePrefix.trimEnd();
-                text = text.slice(1);
+            } else if (leftSide !== "" && !leftSide.endsWith(',')) {
+                linePrefix = leftSide + ',';
+                finalText = finalText.slice(1);
+            } else if (leftSide !== "" && leftSide.endsWith(',')) {
+                linePrefix = leftSide;
+                finalText = finalText.slice(1);
             }
         }
 
         // Clean up text to avoid redundant blank lines
-        let finalText = text.replace(/\n\s*\n/g, '\n');
+        finalText = finalText.replace(/\n\s*\n/g, '\n');
 
         // Handle suffix (closing bracket) move to new line if text contains newlines
-        if (lineSuffix !== "" && text.includes('\n')) {
+        if (lineSuffix !== "" && finalText.includes('\n')) {
             const indent = this.getIndentation(line);
             finalText += '\n' + indent + lineSuffix;
         } else if (lineSuffix !== "") {
