@@ -10,6 +10,7 @@ export interface OdooModelContext {
     isInherited: boolean;
     modelName: string;
     moduleName: string;
+    inheritedModels: string[];
 }
 
 export class OdooPythonUtils {
@@ -24,7 +25,8 @@ export class OdooPythonUtils {
             valid: false,
             isInherited: false,
             modelName: '',
-            moduleName: ''
+            moduleName: '',
+            inheritedModels: []
         };
 
         try {
@@ -87,7 +89,7 @@ export class OdooPythonUtils {
             // 5. Extract _name and _inherit
             const bodyNode = classNode.childForFieldName('body');
             let modelName = '';
-            let inheritName = '';
+            let inheritNames: string[] = [];
             let hasName = false;
 
             if (bodyNode) {
@@ -102,7 +104,7 @@ export class OdooPythonUtils {
                                 hasName = true;
                                 modelName = this.extractStringValue(right);
                             } else if (left?.text === '_inherit') {
-                                inheritName = this.extractInheritValue(right);
+                                inheritNames = this.extractInheritValue(right);
                             }
                         }
                     }
@@ -118,14 +120,15 @@ export class OdooPythonUtils {
             // But per request: "if not a inherited module return isinherited false and module name if inherited return true and module name"
             // Usually "inherited" in this context means ONLY _inherit (no _name).
 
-            const finalModelName = modelName || inheritName;
+            const finalModelName = modelName || (inheritNames.length > 0 ? inheritNames[0] : '');
             if (!finalModelName) return failContext;
 
             return {
                 valid: true,
                 isInherited: !hasName, // If no _name, it's a pure inheritance
                 modelName: finalModelName,
-                moduleName: moduleName
+                moduleName: moduleName,
+                inheritedModels: inheritNames
             };
 
         } catch (error) {
@@ -142,18 +145,17 @@ export class OdooPythonUtils {
         return '';
     }
 
-    private static extractInheritValue(node: any): string {
-        if (!node) return '';
+    private static extractInheritValue(node: any): string[] {
+        if (!node) return [];
         if (node.type === 'string') {
-            return node.text.slice(1, -1);
+            return [node.text.slice(1, -1)];
         }
         if (node.type === 'list' || node.type === 'tuple') {
-            const firstChild = node.namedChildren[0];
-            if (firstChild && firstChild.type === 'string') {
-                return firstChild.text.slice(1, -1);
-            }
+            return node.namedChildren
+                .filter((child: any) => child.type === 'string')
+                .map((child: any) => child.text.slice(1, -1));
         }
-        return '';
+        return [];
     }
     /**
      * Gets indexed fields for a specific model.

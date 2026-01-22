@@ -151,13 +151,15 @@ export class ViewGenerator {
     private root: any;
     private odooVersion: string;
     private listTag: string;
+    private hasChatter: boolean;
 
-    constructor(modelTechnicalName: string, viewToFieldMap: Record<string, advancedFieldInfo[]>, odooVersion: string) {
+    constructor(modelTechnicalName: string, viewToFieldMap: Record<string, advancedFieldInfo[]>, odooVersion: string, inheritedModels: string[] = []) {
         this.modelTechnicalName = modelTechnicalName;
         this.modelName = modelTechnicalName.replace(/\./g, '_');
         this.viewToFieldMap = viewToFieldMap;
         this.odooVersion = odooVersion;
         this.listTag = ['18', '19'].includes(odooVersion) ? 'list' : 'tree';
+        this.hasChatter = inheritedModels.includes('mail.thread');
 
         this.modelTitle = modelTechnicalName
             .split('.')
@@ -254,6 +256,17 @@ export class ViewGenerator {
                     });
                 }
             });
+        }
+
+        if (this.hasChatter) {
+            if (['18', '19'].includes(this.odooVersion)) {
+                form.ele('chatter');
+            } else {
+                const chatter = form.ele('div', { class: 'oe_chatter' });
+                chatter.ele('field', { name: 'message_follower_ids' });
+                chatter.ele('field', { name: 'activity_ids' });
+                chatter.ele('field', { name: 'message_ids' });
+            }
         }
     }
 
@@ -585,7 +598,7 @@ export async function handleCreateViews(uri: vscode.Uri): Promise<void> {
 
     try {
         const odooVersion = await getOdooVersion();
-        const generator = new ViewGenerator(modelTechnicalName, viewToFieldMap, odooVersion);
+        const generator = new ViewGenerator(modelTechnicalName, viewToFieldMap, odooVersion, context.inheritedModels);
         const xmlContent = generator.generateXML();
 
         fs.writeFileSync(filePath, xmlContent, 'utf8');
