@@ -13,6 +13,7 @@ import { getPythonParserService } from '../services/pythonParserService';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const templates = require('./templates');
 import { handleCreateViews } from './viewGeneration';
+import { handleCreateReport } from './reportGeneration';
 
 function capitalize(text: string): string {
     return text
@@ -676,7 +677,7 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         },
         {
             command: 'cybrosys-assista-odoo-helper.createReport',
-            handler: (uri: vscode.Uri) => handleOdooToolClick(uri, 'Create Report')
+            handler: (uri: vscode.Uri) => handleCreateReport(uri)
         }
     ];
 
