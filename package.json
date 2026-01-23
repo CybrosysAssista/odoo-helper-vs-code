@@ -105,6 +105,10 @@
         "title": "Assista: Set Odoo Version"
       },
       {
+        "command": "cybrosys-assista-odoo-helper.updateOdooServerConfig",
+        "title": "Assista: Update Odoo Server Settings"
+      },
+      {
         "command": "cybrosys-assista-odoo-helper.addFileToManifest",
         "title": "Add File to Manifest"
       },
@@ -155,6 +159,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.createReport",
         "title": "Create Report"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.installModule",
+        "title": "Install Module"
       }
     ],
     "menus": {
@@ -230,6 +238,11 @@
           "submenu": "cybrosys-assista-odoo-helper.createPosComponentsSubmenu",
           "group": "4_pos",
           "title": "POS Components"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.installModule",
+          "group": "5_install",
+          "title": "Install Module"
         }
       ],
       "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [
@@ -414,6 +427,25 @@
           "description": "Enable scanning of Python files for Odoo Models, Fields, and Functions. Highly recommended for full functionality."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "odoo-configurations",
+          "title": "Odoo Configurations",
+          "icon": "$(settings-gear)"
+        }
+      ]
+    },
+    "views": {
+      "odoo-configurations": [
+        {
+          "type": "webview",
+          "id": "cybrosys-assista-odoo-helper.configView",
+          "name": "Odoo Server Config",
+          "icon": "$(settings-gear)"
+        }
+      ]
     }
   },
   "main": "./out/extension.js",

@@ -14,6 +14,7 @@ import { getPythonParserService } from '../services/pythonParserService';
 const templates = require('./templates');
 import { handleCreateViews } from './viewGeneration';
 import { handleCreateReport } from './reportGeneration';
+import { installModule } from '../server_access/install_module';
 
 function capitalize(text: string): string {
     return text
@@ -678,6 +679,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.createReport',
             handler: (uri: vscode.Uri) => handleCreateReport(uri)
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.installModule',
+            handler: (uri: vscode.Uri) => installModule(uri)
         }
     ];
 

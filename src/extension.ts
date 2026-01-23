@@ -28,6 +28,7 @@ import { getJavaScriptParserService } from './services/javascriptParserService';
 import { getOdooRegistryIndexer } from './services/odooRegistryIndexer';
 import { persistenceService } from './services/persistenceService';
 import { OdooPythonUtils } from './utils/odooPythonUtils';
+import { ConfigViewProvider } from './providers/configViewProvider';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Initialize Persistence Service
@@ -321,6 +322,83 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
     context.subscriptions.push(setVersionCmd);
 
+    // Odoo Server Configuration Status Bar Item
+    const odooServerStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
+    odooServerStatusItem.command = 'cybrosys-assista-odoo-helper.updateOdooServerConfig';
+    context.subscriptions.push(odooServerStatusItem);
+
+    async function updateOdooServerStatus() {
+        const config = await persistenceService.load<any>('odoo_server_config');
+        if (config && config.url) {
+            try {
+                const url = new URL(config.url);
+                odooServerStatusItem.text = `$(server) Odoo: ${url.hostname}`;
+                odooServerStatusItem.tooltip = `Connected to ${config.db} at ${config.url}\nUser: ${config.email}\nClick to update settings`;
+            } catch (e) {
+                odooServerStatusItem.text = `$(server) Odoo Server`;
+                odooServerStatusItem.tooltip = `Click to configure Odoo server`;
+            }
+        } else {
+            odooServerStatusItem.text = `$(link-external) Odoo Server`;
+            odooServerStatusItem.tooltip = 'Click to configure Odoo server';
+        }
+        odooServerStatusItem.show();
+    }
+    updateOdooServerStatus();
+
+    const updateServerCmd = vscode.commands.registerCommand('cybrosys-assista-odoo-helper.updateOdooServerConfig', async () => {
+        let config = await persistenceService.load<any>('odoo_server_config') || {};
+
+        // 1. Odoo URL
+        const url = await vscode.window.showInputBox({
+            prompt: 'Enter Odoo Server URL',
+            placeHolder: 'e.g. http://localhost:8069',
+            value: config.url || '',
+            ignoreFocusOut: true
+        });
+        if (url === undefined) return;
+
+        // 2. Database
+        const db = await vscode.window.showInputBox({
+            prompt: 'Enter Odoo Database Name',
+            placeHolder: 'e.g. my_database',
+            value: config.db || '',
+            ignoreFocusOut: true
+        });
+        if (db === undefined) return;
+
+        // 3. Email / Username
+        const email = await vscode.window.showInputBox({
+            prompt: 'Enter Odoo Admin Email / Username',
+            placeHolder: 'e.g. admin',
+            value: config.email || '',
+            ignoreFocusOut: true
+        });
+        if (email === undefined) return;
+
+        // 4. Password
+        const password = await vscode.window.showInputBox({
+            prompt: 'Enter Odoo Password',
+            placeHolder: '••••••••',
+            value: config.password || '',
+            password: true,
+            ignoreFocusOut: true
+        });
+        if (password === undefined) return;
+
+        // Save all together
+        config = { url, db, email, password };
+        await persistenceService.save('odoo_server_config', config);
+        updateOdooServerStatus();
+        configProvider.refresh();
+        vscode.window.showInformationMessage(`Odoo server configuration updated successfully.`);
+    });
+    context.subscriptions.push(updateServerCmd);
+
+    context.subscriptions.push(vscode.commands.registerCommand('cybrosys-assista-odoo-helper.refreshStatusBar', () => {
+        updateOdooServerStatus();
+    }));
+
     // Odoo Linting Setup
     const diagnosticCollection = vscode.languages.createDiagnosticCollection("odooLint");
     context.subscriptions.push(diagnosticCollection);
@@ -359,6 +437,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 clearCache();
                 updateOdooVersionStatus();
             }
+            if (e.affectsConfiguration('cybrosys-assista-odoo-helper.odoo_server_config')) {
+                updateOdooServerStatus();
+            }
         },
         null,
         context.subscriptions
@@ -378,6 +459,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.onDidChangeActiveTextEditor(updateOdooModelContext, null, context.subscriptions);
     vscode.window.onDidChangeTextEditorSelection(updateOdooModelContext, null, context.subscriptions);
     updateOdooModelContext();
+
+    // Register Configurations View
+    const configProvider = new ConfigViewProvider(context.extensionUri);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(ConfigViewProvider.viewType, configProvider)
+    );
 }
 
 async function registerVersionedSnippets(context: vscode.ExtensionContext): Promise<void> {
