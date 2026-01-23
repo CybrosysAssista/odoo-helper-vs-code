@@ -163,6 +163,14 @@
       {
         "command": "cybrosys-assista-odoo-helper.installModule",
         "title": "Install Module"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.showDependencyGraph",
+        "title": "Module Dependency Graph"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.clearIndexData",
+        "title": "Assista: Remove Index Data (Clear Cache)"
       }
     ],
     "menus": {
@@ -240,9 +248,20 @@
           "title": "POS Components"
         },
         {
+          "submenu": "cybrosys-assista-odoo-helper.createReportSubmenu",
+          "group": "4_report",
+          "title": "Create Odoo Report"
+        },
+        {
           "command": "cybrosys-assista-odoo-helper.installModule",
           "group": "5_install",
           "title": "Install Module"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.showDependencyGraph",
+          "group": "6_graph",
+          "title": "Dependency Graph",
+          "when": "explorerResourceIsFolder"
         }
       ],
       "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [

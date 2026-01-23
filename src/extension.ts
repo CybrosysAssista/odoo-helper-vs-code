@@ -399,6 +399,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         updateOdooServerStatus();
     }));
 
+    const clearIndexCmd = vscode.commands.registerCommand('cybrosys-assista-odoo-helper.clearIndexData', async () => {
+        const confirm = await vscode.window.showWarningMessage(
+            'Are you sure you want to remove all index data? This will clear the local cache and require a full re-index.',
+            { modal: true },
+            'Yes'
+        );
+
+        if (confirm !== 'Yes') return;
+
+        const indices = [
+            'modelIndex', 'fieldIndex', 'functionIndex', 'moduleIndex',
+            'templateIndex', 'registryIndex', 'cssIndex'
+        ];
+
+        for (const index of indices) {
+            await persistenceService.clear(index);
+        }
+
+        vscode.window.showInformationMessage('Assista: Index data cleared. Please restart VS Code or trigger a refresh to rebuild the index.');
+    });
+    context.subscriptions.push(clearIndexCmd);
+
     // Odoo Linting Setup
     const diagnosticCollection = vscode.languages.createDiagnosticCollection("odooLint");
     context.subscriptions.push(diagnosticCollection);

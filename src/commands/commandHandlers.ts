@@ -15,6 +15,8 @@ const templates = require('./templates');
 import { handleCreateViews } from './viewGeneration';
 import { handleCreateReport } from './reportGeneration';
 import { installModule } from '../server_access/install_module';
+import { handleShowDependencyGraph } from './dependencyGraph';
+
 
 function capitalize(text: string): string {
     return text
@@ -683,6 +685,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.installModule',
             handler: (uri: vscode.Uri) => installModule(uri)
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.showDependencyGraph',
+            handler: (uri: vscode.Uri) => handleShowDependencyGraph(uri)
         }
     ];
 

@@ -113,7 +113,7 @@ export class PythonParserService {
                     key: (string) @key
                     value: (list) @value
                 )
-                (#eq? @key "\\"${key}\\"")
+                (#match? @key "^['\\"]${key}['\\"]$")
             )
         `;
 
@@ -152,7 +152,7 @@ export class PythonParserService {
                     key: (string) @key
                     value: (list) @value
                 )
-                (#eq? @key "\\"${key}\\"")
+                (#match? @key "^['\\"]${key}['\\"]$")
             )
         `;
 
