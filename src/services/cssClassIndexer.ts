@@ -68,7 +68,7 @@ export class CssClassIndexer {
             processed++;
             if (progress) {
                 progress.report({
-                    message: `Indexing CSS: ${processed}/${totalFiles} (${path.basename(file.fsPath)})`,
+                    message: `CSS classes: ${processed}/${totalFiles}`,
                     increment: (1 / totalFiles) * 100
                 });
             }

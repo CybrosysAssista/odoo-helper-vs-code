@@ -33,7 +33,7 @@ class ModuleIndexService {
         for (const manifestUri of manifestFiles) {
             if (progress) {
                 progress.report({
-                    message: `Checking Modules: ${counter}/${totalManifests} (${path.basename(path.dirname(manifestUri.fsPath))})`,
+                    message: `Modules: ${counter}/${totalManifests}`,
                     increment: (1 / totalManifests) * 100
                 });
             }

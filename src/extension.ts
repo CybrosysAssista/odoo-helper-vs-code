@@ -66,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     let isCached = false;
     // 🚀 Phase 3: Fast Bootstrap - Load previous index synchronously
-    const loadStatusBar = vscode.window.setStatusBarMessage("$(sync~spin) Cybrosys Assista: Loading cached index...");
+    const loadStatusBar = vscode.window.setStatusBarMessage("Cybrosys Assista: Loading cached index...");
     await (async () => {
         try {
             const models = await persistenceService.load<any>('modelIndex');
@@ -99,7 +99,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Background indexing refresh
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Window,
-        title: isCached ? "$(sync) Cybrosys Assista: Refreshing index data..." : "$(database) Cybrosys Assista: Indexing...",
+        title: isCached ? "Cybrosys Assista: Refreshing index data..." : "Cybrosys Assista: Indexing...",
         cancellable: false
     }, async (progress) => {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
@@ -128,7 +128,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await CssClassIndexer.getInstance().indexWorkspace(progress);
 
         // 💾 Save updated index back to disk
-        const saveStatusBar = vscode.window.setStatusBarMessage("$(cloud-upload) Cybrosys Assista: Storing index to disk...");
+        const saveStatusBar = vscode.window.setStatusBarMessage("Cybrosys Assista: Storing index to disk...");
         try {
             await persistenceService.save('modelIndex', modelIndexService.getState());
             await persistenceService.save('fieldIndex', fieldIndexService.getState());

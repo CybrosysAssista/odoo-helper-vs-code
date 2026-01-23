@@ -71,9 +71,8 @@ class ModelIndexService {
             for (const file of pythonFiles) {
                 filesProcessed++;
                 if (progress) {
-                    const fileName = path.basename(file.fsPath);
                     progress.report({
-                        message: `Indexing Models: [${modulesProcessed}/${totalModules}] ${module.name} - File ${filesProcessed}/${totalFiles} (${fileName})`,
+                        message: `Models: ${module.name} (${filesProcessed}/${totalFiles})`,
                         increment: (1 / (totalModules * (totalFiles || 1))) * 100
                     });
                 }

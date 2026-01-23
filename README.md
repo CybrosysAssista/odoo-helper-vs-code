@@ -848,10 +848,35 @@ Assista includes a built-in linter that enforces Odoo's official **Technical Gui
 Available via the Command Palette (`Ctrl+Shift+P`) or Context Menu:
 
 - **Assista: Add to Manifest**: Automatically adds the current file to the correct section of your `__manifest__.py` (Data, Demo, or Assets).
-- **Assista: Add to __init__.py**: Automatically imports the current Python file or folder in the parent `__init__.py`.
+- **Assista: Add to __init__.py**: Right-click any Python file or folder and select **Add to __init__.py** to automatically generate the import statement in the parent `__init__.py`.
 - **Assista: Set Odoo Version**: Manually switch between Odoo 18 and 19 logic if auto-detection is not desired.
 
 ---
+
+## 🏗️ Model-Driven Scaffolding
+
+Assista takes productivity to the next level by allowing you to generate entire views, security rules, and reports directly from your Python model definitions.
+
+### 1. Advanced View Builder
+Right-click inside any Odoo Model class and select **Create Views** to launch the advanced view generator.
+- **Multi-View Generation**: Select and generate Form, List, Kanban, Search, Pivot, and Calendar views in one go.
+- **Smart Field Selection**:
+    - **Quick Create**: Automatically selects all fields and builds standard views.
+    - **Advanced Builder**: Allows you to pick specific fields for each view type.
+- **Relational Intelligence**: For `One2many` fields in form views, it prompts you to select sub-fields for the embedded list view.
+- **Auto-Manifest**: Automatically adds the newly created XML file to your `__manifest__.py`.
+
+### 2. Intelligent Report Generator
+Generate complex QWeb reports (PDF or HTML) without writing a single line of XML manually.
+- **Header Info**: Select specific fields to display as key information in the report's header.
+- **Dynamic Tables**: Select a relational field (like `order_line`) and pick its sub-fields to generate a beautifully formatted line table.
+- **Action & Template**: Automatically creates the `ir.actions.report` record and the associated localized QWeb template.
+
+### 3. Rapid Access Rights (Security)
+Instantly generate security entries for your models without leaving your Python code.
+- **Automatic CSV**: Appends a new access rule to `ir.model.access.csv` with standard permissions (read, write, create, unlink).
+- **Group Support**: Pre-configures the rule for the target group (defaults to `base.group_user`).
+- **Smart Formatting**: Automatically handles technical model name transformations (e.g., `sale.order` → `model_sale_order`) and manifest registration.
 
 ## �🖱️ VSCode Context Menu Features
 

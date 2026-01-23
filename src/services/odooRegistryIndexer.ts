@@ -40,7 +40,7 @@ export class OdooRegistryIndexer {
                 filesProcessed++;
                 if (progress) {
                     progress.report({
-                        message: `Indexing Registry: ${filesProcessed}/${totalFiles} (${path.basename(file.fsPath)})`,
+                        message: `JS Registry: ${filesProcessed}/${totalFiles}`,
                         increment: (1 / totalFiles) * 100
                     });
                 }

@@ -33,7 +33,7 @@ class TemplateIndexService {
             filesProcessed++;
             if (progress) {
                 progress.report({
-                    message: `Indexing Templates: ${filesProcessed}/${totalFiles} (${path.basename(file.fsPath)})`,
+                    message: `Templates: ${filesProcessed}/${totalFiles}`,
                     increment: (1 / totalFiles) * 100
                 });
             }
