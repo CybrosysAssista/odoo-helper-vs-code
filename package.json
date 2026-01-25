@@ -171,6 +171,10 @@
       {
         "command": "cybrosys-assista-odoo-helper.clearIndexData",
         "title": "Assista: Remove Index Data (Clear Cache)"
+      },
+      {
+        "command": "cybrosys-assista-odoo-helper.showModelInheritanceGraph",
+        "title": "Model Inheritance Graph"
       }
     ],
     "menus": {
@@ -224,6 +228,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.createReport",
           "group": "tools@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.showModelInheritanceGraph",
+          "group": "tools@4"
         }
       ],
       "cybrosys-assista-odoo-helper.mainMenu": [

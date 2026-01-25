@@ -118,8 +118,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
         // Orchestrate unified indexing pass
         if (enableCore) {
-            await modelIndexService.buildCache(progress);
             await moduleIndexService.reindex(progress);
+            await modelIndexService.buildCache(progress);
         }
 
         if (enableRegistry) {

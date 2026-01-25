@@ -11,6 +11,7 @@ export interface ModelInfo {
     line: number;
     character: number;
     isInherited: boolean;
+    moduleDepends: string[];
 }
 
 export interface RichIndexEvent {
@@ -130,7 +131,9 @@ class ModelIndexService {
             this.removeFileEntries(uri.fsPath);
 
             // Parse classes
-            const models = this.parseModelsFromTree(tree, uri.fsPath, moduleName);
+            const moduleInfo = moduleIndexService.getModuleInfo(moduleName);
+            const moduleDepends = moduleInfo?.depends || [];
+            const models = this.parseModelsFromTree(tree, uri.fsPath, moduleName, moduleDepends);
 
             // Update metadata
             this.fileMetadata.set(uri.fsPath, { mtime: stats.mtime, size: stats.size });
@@ -147,7 +150,7 @@ class ModelIndexService {
         }
     }
 
-    private parseModelsFromTree(tree: any, filePath: string, moduleName: string): ModelInfo[] {
+    private parseModelsFromTree(tree: any, filePath: string, moduleName: string, moduleDepends: string[]): ModelInfo[] {
         const rootNode = tree.rootNode;
         const pythonParser = getPythonParserService();
         const language = pythonParser.getLanguage();
@@ -212,7 +215,8 @@ class ModelIndexService {
                         filePath: filePath,
                         line: classNameNode.startPosition.row,
                         character: classNameNode.startPosition.column,
-                        isInherited: !hasName
+                        isInherited: !hasName,
+                        moduleDepends: moduleDepends
                     };
 
                     const existing = this.modelCache.get(finalModelName) || [];

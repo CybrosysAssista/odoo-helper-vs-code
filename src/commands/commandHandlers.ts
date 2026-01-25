@@ -16,6 +16,7 @@ import { handleCreateViews } from './viewGeneration';
 import { handleCreateReport } from './reportGeneration';
 import { installModule } from '../server_access/install_module';
 import { handleShowDependencyGraph } from './dependencyGraph';
+import { handleShowModelInheritanceGraph } from './modelInheritanceGraph';
 
 
 function capitalize(text: string): string {
@@ -689,6 +690,10 @@ export function registerCommands(context: vscode.ExtensionContext): void {
         {
             command: 'cybrosys-assista-odoo-helper.showDependencyGraph',
             handler: (uri: vscode.Uri) => handleShowDependencyGraph(uri)
+        },
+        {
+            command: 'cybrosys-assista-odoo-helper.showModelInheritanceGraph',
+            handler: () => handleShowModelInheritanceGraph()
         }
     ];
 

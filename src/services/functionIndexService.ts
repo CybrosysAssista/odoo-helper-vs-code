@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getPythonParserService } from './pythonParserService';
 import modelIndexService, { ModelInfo } from './modelIndexService';
+import moduleIndexService from './moduleIndexService';
 
 export interface FunctionInfo {
     functionName: string;
@@ -10,6 +11,7 @@ export interface FunctionInfo {
     className: string;
     modelName: string;
     moduleName: string;
+    inheritsFromModule?: string; // The specific module this inheritance targets
     isInherited: boolean;
     filePath: string;
     line: number;
@@ -98,6 +100,25 @@ class FunctionIndexService {
                 const modelInfo = models.find(m => m.className === className);
                 if (!modelInfo) continue;
 
+                // Resolution Logic for Multiple Models:
+                let inheritsFromModule: string | undefined;
+                if (modelInfo.isInherited) {
+                    const allModulesDefiningModel = modelIndexService.getModelsByName(modelInfo.modelName)
+                        .map(m => m.moduleName);
+
+                    const currentModuleInfo = moduleIndexService.getModuleInfo(modelInfo.moduleName);
+                    if (currentModuleInfo && currentModuleInfo.depends) {
+                        // Find a module that exists in both the model definitions and the current module's dependencies
+                        inheritsFromModule = currentModuleInfo.depends.find((dep: string) => allModulesDefiningModel.includes(dep));
+
+                        // Fallback: if not found in direct dependencies, it might be core 'base' 
+                        // if we only have one other definition
+                        if (!inheritsFromModule && allModulesDefiningModel.length === 2) {
+                            inheritsFromModule = allModulesDefiningModel.find(m => m !== modelInfo.moduleName);
+                        }
+                    }
+                }
+
                 const functions: FunctionInfo[] = [];
 
                 for (const child of bodyNode.children) {
@@ -112,8 +133,6 @@ class FunctionIndexService {
                             if (paramsNode) {
                                 // Extract parameter names
                                 for (const param of paramsNode.namedChildren) {
-                                    // Parameters can be identifiers, typed_parameters, default_parameters, etc.
-                                    // We just want the name.
                                     let paramName = '';
                                     if (param.type === 'identifier') {
                                         paramName = param.text;
@@ -137,6 +156,7 @@ class FunctionIndexService {
                                 className: modelInfo.className,
                                 modelName: modelInfo.modelName,
                                 moduleName: modelInfo.moduleName,
+                                inheritsFromModule: inheritsFromModule,
                                 isInherited: modelInfo.isInherited,
                                 filePath: modelInfo.filePath,
                                 line: nameNode.startPosition.row,
