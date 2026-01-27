@@ -7,6 +7,8 @@ import fieldIndexService, { FieldInfo } from '../services/fieldIndexService';
 import functionIndexService, { FunctionInfo } from '../services/functionIndexService';
 import { OdooPythonUtils } from '../utils/odooPythonUtils';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { persistenceService } from '../services/persistenceService';
+import { OdooRpc } from '../utils/odooRpc';
 
 export async function handleShowModelInheritanceGraph(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
@@ -39,7 +41,7 @@ export async function handleShowModelInheritanceGraph(): Promise<void> {
         const moduleDepends = moduleInfo.depends;
 
         const models = modelIndexService.getModelsByName(modelName);
-        const parentModel = models.find(m => !m.isInherited && moduleDepends.includes(m.moduleName));
+        const parentModel = models.find((m: ModelInfo) => !m.isInherited && moduleDepends.includes(m.moduleName));
 
         if (parentModel) {
             moduleName = parentModel.moduleName;
@@ -49,29 +51,48 @@ export async function handleShowModelInheritanceGraph(): Promise<void> {
     }
 
     const allModels = modelIndexService.getModelsByName(modelName);
-    const inheritanceModels = allModels.filter(m => m.isInherited && m.moduleDepends.includes(moduleName));
+    const inheritanceModels = allModels.filter((m: ModelInfo) => m.isInherited && m.moduleDepends.includes(moduleName));
 
     const allFields = fieldIndexService.getFieldsForModel(modelName);
     const allFunctions = functionIndexService.getFunctionsForModel(modelName);
+
+    // Fetch Module Installation Status
+    const uniqueModules = Array.from(new Set([moduleName, ...inheritanceModels.map((m: ModelInfo) => m.moduleName)]));
+    const moduleStates: Record<string, string> = {};
+    try {
+        const config = await persistenceService.load<any>('odoo_server_config');
+        if (config && config.url && config.db && config.email && config.password) {
+            const rpc = new OdooRpc(config);
+            const uid = await rpc.authenticate();
+            const moduleRecords = await rpc.browseRecord(uid, 'ir.module.module', [['name', 'in', uniqueModules]], ['name', 'state']);
+            moduleRecords.forEach((mod: { name: string; state: string }) => {
+                moduleStates[mod.name] = mod.state;
+            });
+        }
+    } catch (err) {
+        console.log('Odoo server not connected or failed to fetch statuses', err);
+    }
 
     const nodes: any[] = [];
     const edges: any[] = [];
 
     // Helper to add a planet (module) and its satellites (members)
     const addPlanetarySystem = (mName: string, isBase: boolean, filePath?: string, line?: number) => {
+        const state = moduleStates[mName] || 'unknown';
         // Planet Node (Module)
         nodes.push({
             id: mName,
             label: mName,
             group: isBase ? 'base-planet' : 'ext-planet',
+            state,
             filePath,
             line,
             mass: isBase ? 5 : 3,
             size: isBase ? 50 : 35
         });
 
-        const mFields = allFields.filter(f => f.moduleName === mName && f.isInherited === !isBase);
-        const mFunctions = allFunctions.filter(f => f.moduleName === mName && f.isInherited === !isBase);
+        const mFields = allFields.filter((f: FieldInfo) => f.moduleName === mName && f.isInherited === !isBase);
+        const mFunctions = allFunctions.filter((f: FunctionInfo) => f.moduleName === mName && f.isInherited === !isBase);
 
         // Satellites (Fields)
         for (const f of mFields) {
@@ -117,7 +138,7 @@ export async function handleShowModelInheritanceGraph(): Promise<void> {
     };
 
     // 1. Central Planet
-    const baseModel = allModels.find(m => !m.isInherited && m.moduleName === moduleName);
+    const baseModel = allModels.find((m: ModelInfo) => !m.isInherited && m.moduleName === moduleName);
     addPlanetarySystem(moduleName, true, baseModel?.filePath, baseModel?.line);
 
     // 2. Outer Planets (Inheritance)
@@ -271,8 +292,9 @@ function getInheritanceGalaxyHtml(modelName: string, nodes: any[], edges: any[])
         </div>
 
         <div class="legend glass">
-            <div class="legend-item"><div class="dot" style="background: var(--base-color); box-shadow: 0 0 15px var(--base-color);"></div> Base Module</div>
-            <div class="legend-item"><div class="dot" style="background: var(--ext-color); box-shadow: 0 0 15px var(--ext-color);"></div> Extension Module</div>
+            <div class="legend-item"><div class="dot" style="background: #06b6d4; box-shadow: 0 0 15px #06b6d4;"></div> Installed Module</div>
+            <div class="legend-item"><div class="dot" style="background: var(--base-color);"></div> Base Module</div>
+            <div class="legend-item"><div class="dot" style="background: var(--ext-color);"></div> Extension Module</div>
             <div class="legend-item"><div class="dot" style="background: var(--field-color);"></div> Field</div>
             <div class="legend-item"><div class="dot" style="background: var(--func-color);"></div> Function</div>
         </div>
@@ -302,6 +324,12 @@ function getInheritanceGalaxyHtml(modelName: string, nodes: any[], edges: any[])
                     p = { ...p, shape: 'dot', color: '#10b981', font: { ...p.font, size: 11, face: 'JetBrains Mono', color: '#2ecc71' } };
                 } else if (n.group === 'func-satellite') {
                     p = { ...p, shape: 'dot', color: '#a29bfe', font: { ...p.font, size: 11, face: 'JetBrains Mono', color: '#a29bfe' } };
+                }
+
+                if (n.state === 'installed') {
+                    p.color = { background: '#06b6d4', border: '#fff' };
+                    p.shadow = { enabled: true, color: '#06b6d4', size: 30 };
+                    p.label = '✓ ' + p.label;
                 }
                 return p;
             }));
