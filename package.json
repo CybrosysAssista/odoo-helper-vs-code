@@ -11,12 +11,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/CybrosysAssista/Assista-VS-Code.git"
+    "url": "https://github.com/CybrosysAssista/odoo-helper-vs-code.git"
   },
   "bugs": {
-    "url": "https://github.com/CybrosysAssista/Assista-VS-Code/issues"
+    "url": "https://github.com/CybrosysAssista/odoo-helper-vs-code/issues"
   },
-  "homepage": "https://github.com/CybrosysAssista/Assista-VS-Code#readme",
+  "homepage": "https://assista.cybrosys.com/helper-for-vs-code",
   "keywords": [
     "odoo",
     "odoo18",
