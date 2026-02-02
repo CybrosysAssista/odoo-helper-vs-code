@@ -33,7 +33,7 @@ Cybrosys Assista Odoo Helper provides a collection of intelligent code shortcuts
 - The extension now selects version-specific data for many completions and snippets:
   - Field types, attributes, decorators, and XML metadata are already versioned.
   - Code snippet providers are versioned: fields, models, methods, utilities.
-  - User snippets are duplicated per version: `snippets/xml18.json`, `snippets/xml19.json`, `snippets/python18.json`, `snippets/python19.json`.
+  
 - Selection is automatic based on your configured/detected Odoo version (Settings → "Assista: Odoo Version").
 - In addition to built-in VS Code snippets, the extension registers versioned snippet completion providers for XML and Python at runtime.
 - **Intelligent Manifest Suggestions**: Smarter auto-completion for `__manifest__.py` files, including file paths and module dependencies.
