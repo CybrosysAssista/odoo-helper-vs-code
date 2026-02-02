@@ -4,6 +4,21 @@ All notable changes to the **cybrosys-assista-odoo-helper** extension will be do
 
 Check out [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) for guidelines.
 
+## [2.1.1] - 2026-02-02
+### Added
+- POS component creation.
+- OWL component creation.
+- Advance report creation.
+- Advance view creation.
+- Create security file.
+- Add to init from file.
+- Added new and updated smart suggestions.
+- Odoo aware go to navigations.
+- Odoo server connectivity.
+- Significant performance improvements.
+- Minor bug fixes.
+
+
 ## [1.4.1] - 2025-07-22
 ### Changed
 - Completions fix.
