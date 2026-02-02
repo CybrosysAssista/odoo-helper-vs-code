@@ -178,6 +178,16 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "cybrosys-assista-odoo-helper.showDependencyGraph",
+          "when": "false"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.showModelInheritanceGraph",
+          "when": "false"
+        }
+      ],
       "explorer/context": [
         {
           "submenu": "cybrosys-assista-odoo-helper.mainMenu",
@@ -228,10 +238,6 @@
         {
           "command": "cybrosys-assista-odoo-helper.createReport",
           "group": "tools@3"
-        },
-        {
-          "command": "cybrosys-assista-odoo-helper.showModelInheritanceGraph",
-          "group": "tools@4"
         }
       ],
       "cybrosys-assista-odoo-helper.mainMenu": [
@@ -264,12 +270,6 @@
           "command": "cybrosys-assista-odoo-helper.installModule",
           "group": "5_install",
           "title": "Install Module"
-        },
-        {
-          "command": "cybrosys-assista-odoo-helper.showDependencyGraph",
-          "group": "6_graph",
-          "title": "Dependency Graph",
-          "when": "explorerResourceIsFolder"
         }
       ],
       "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [
