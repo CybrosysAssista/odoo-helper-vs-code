@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo/assista-logo-title.svg" alt="Cybrosys Assista Logo" width="400"/>
+  <img src="logo/assista-logo-title.png" alt="Cybrosys Assista Logo" width="400"/>
 </p>
 
 ##  Supercharge Your Odoo Development with **Cybrosys Assista** 
