@@ -100,7 +100,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Background indexing refresh
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Window,
-        title: isCached ? "Cybrosys Assista: Refreshing index data..." : "Cybrosys Assista: Indexing...",
+        title: isCached ? "Cybrosys Assista: Refreshing index data.." : "Cybrosys Assista: Indexing..",
         cancellable: false
     }, async (progress) => {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');

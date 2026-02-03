@@ -454,16 +454,6 @@
           "description": "Enable scanning of Python files for Odoo Models, Fields, and Functions. Highly recommended for full functionality."
         }
       }
-    },
-    "views": {
-      "odoo-configurations": [
-        {
-          "type": "webview",
-          "id": "cybrosys-assista-odoo-helper.configView",
-          "name": "Odoo Server Config",
-          "icon": "$(settings-gear)"
-        }
-      ]
     }
   },
   "main": "./out/extension.js",

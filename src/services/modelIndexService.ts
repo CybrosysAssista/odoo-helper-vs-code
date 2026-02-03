@@ -73,7 +73,7 @@ class ModelIndexService {
                 filesProcessed++;
                 if (progress) {
                     progress.report({
-                        message: `Models: ${module.name} (${filesProcessed}/${totalFiles})`,
+                        message: `Models: ${filesProcessed}/${totalFiles}`,
                         increment: (1 / (totalModules * (totalFiles || 1))) * 100
                     });
                 }
