@@ -3,7 +3,7 @@
   "displayName": "Cybrosys Assista: Odoo Helper",
   "icon": "logo/logo.png",
   "description": "VS Code extension focused on Odoo 18 and 19 development. Includes code completions, model/view scaffolding, XML/Python snippets, and decorator intelligence.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "publisher": "CybrosysTechnologiesOdooOfficialPartner",
   "author": {
     "name": "Cybrosys Technologies",
