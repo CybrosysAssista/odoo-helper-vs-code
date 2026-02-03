@@ -455,15 +455,6 @@
         }
       }
     },
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "odoo-configurations",
-          "title": "Odoo Configurations",
-          "icon": "$(settings-gear)"
-        }
-      ]
-    },
     "views": {
       "odoo-configurations": [
         {
