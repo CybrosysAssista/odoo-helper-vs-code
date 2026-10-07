@@ -482,17 +482,14 @@ async function startIndexing(context: vscode.ExtensionContext): Promise<void> {
         CssClassIndexer.getInstance().initialize(),
     );
 
-    await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Window,
-        title: states[1] ? "Cybrosys Assista: Refreshing index data.." : "Cybrosys Assista: Indexing..",
-        cancellable: false
-    }, async (progress) => {
+    // Silent: indexing runs in a low-priority background process, so it shows no status-bar progress.
+    {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
         const enableCore = config.get<boolean>('indexing.enableCoreIndexing', true);
         const enableRegistry = config.get<boolean>('indexing.enableRegistryIndexing', true);
 
         try {
-            await moduleIndexService.reindex(progress);
+            await moduleIndexService.reindex();
             if (!moduleIndexService.hasModules()) {
                 return; // Not an Odoo workspace: nothing else to index.
             }
@@ -500,25 +497,25 @@ async function startIndexing(context: vscode.ExtensionContext): Promise<void> {
             // Cheap stages first (seconds of background CPU at most), then models, which take longest
             // on a first open. Each stage is saved as soon as it is done, so a window closed mid-way
             // doesn't lose the work.
-            await templateIndexService.buildCache(progress);
+            await templateIndexService.buildCache();
             await saveChangedIndexes(['moduleIndex', 'templateIndex']);
 
-            await CssClassIndexer.getInstance().indexWorkspace(progress);
+            await CssClassIndexer.getInstance().indexWorkspace();
             await saveChangedIndexes(['cssIndex']);
 
             if (enableCore) {
-                await modelIndexService.buildCache(progress);
+                await modelIndexService.buildCache();
             }
             await saveChangedIndexes(['modelIndex', 'fieldIndex', 'functionIndex']);
 
             if (enableRegistry) {
-                await getOdooRegistryIndexer().scanWorkspace(progress);
+                await getOdooRegistryIndexer().scanWorkspace();
                 await saveChangedIndexes(['registryIndex']);
             }
         } catch (e) {
             console.error('[Extension] Indexing failed:', e);
         }
-    });
+    }
 }
 
 /** Parsed snippet files, by path. They ship with the extension and never change while it runs. */
