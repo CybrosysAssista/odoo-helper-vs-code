@@ -10,3 +10,5 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 # Include resources folder (contains tree-sitter WASM files)
 !resources/**
+# SVG sources of the PNG logos
+logo/*.svg

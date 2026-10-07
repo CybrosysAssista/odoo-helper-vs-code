@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="logo/assista-logo-title.png" alt="Cybrosys Assista Logo" width="400"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logo/assista-logo-title.png"/>
+    <img src="logo/assista-logo-title-ink.png" alt="Cybrosys Assista Logo" width="400"/>
+  </picture>
 </p>
 
 ##  Supercharge Your Odoo Development with **Cybrosys Assista** 
