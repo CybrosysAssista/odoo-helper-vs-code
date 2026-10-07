@@ -1,6 +1,52 @@
-// Same as v18 for now; adjust when 19-specific XML changes are identified
-import v18 from './v18';
-export default v18;
+// Odoo 19 XML tags and attributes, generated from the 19.0 source: the schemas (odoo/import_xml.rng,
+// base/rng/*.rng) plus the attributes core Odoo uses on each tag in view archs and QWeb templates.
+import { XmlMeta } from './types';
 
+const v19: XmlMeta = {
+    xmlTags: ['odoo', 'data', 'record', 'field', 'menuitem', 'template', 'function', 'delete', 'value', 'form', 'list', 'kanban', 'search', 'calendar', 'graph', 'pivot', 'activity', 'hierarchy', 'sheet', 'group', 'notebook', 'page', 'header', 'footer', 'button', 'filter', 'separator', 'label', 'xpath', 'attribute', 'chatter', 'widget', 'searchpanel', 'progressbar', 'setting', 'block', 'app', 'create', 'main', 'aside', 't'],
+    attributes: {
+        'odoo': ['auto_sequence', 'noupdate'],
+        'data': ['auto_sequence', 'noupdate'],
+        'record': ['context', 'forcecreate', 'id', 'model', 'uid'],
+        'field': ['add-label', 'alt', 'avatar_field', 'avg', 'class', 'color', 'colspan', 'column_invisible', 'columns', 'context', 'decoration-bf', 'decoration-danger', 'decoration-info', 'decoration-muted', 'decoration-success', 'decoration-warning', 'default_focus', 'digits', 'display', 'domain', 'enable_counters', 'eval', 'expand', 'file', 'filename', 'filter_domain', 'filters', 'force_save', 'graph_type', 'groups', 'help', 'hideAddButton', 'icon', 'iconField', 'id', 'interval', 'invisible', 'label', 'limit', 'mode', 'model', 'month_field', 'muted', 'name', 'no_label', 'no_open', 'nolabel', 'operator', 'optional', 'options', 'password', 'placeholder', 'position', 'preview_image', 'readonly', 'ref', 'required', 'role', 'search', 'select', 'statusbar_visible', 'string', 'style', 'sum', 'teamField', 'title', 'type', 'use', 'widget', 'width'],
+        'menuitem': ['action', 'active', 'groups', 'id', 'name', 'parent', 'sequence', 'web_icon'],
+        'template': ['active', 'context', 'customize_show', 'forcecreate', 'groups', 'id', 'inherit_id', 'key', 'name', 'primary', 'priority', 't-name', 'track', 'website_id'],
+        'function': ['context', 'eval', 'model', 'name', 'uid'],
+        'delete': ['id', 'model', 'search'],
+        'value': ['eval', 'file', 'model', 'name', 'search', 'type', 'use'],
+        'form': ['class', 'create', 'delete', 'disable_autofocus', 'duplicate', 'edit', 'js_class', 'position', 'string'],
+        'list': ['action', 'class', 'count_limit', 'create', 'decoration-bf', 'decoration-danger', 'decoration-info', 'decoration-it', 'decoration-muted', 'decoration-primary', 'decoration-success', 'decoration-warning', 'default_group_by', 'default_order', 'delete', 'duplicate', 'edit', 'editable', 'expand', 'export_xlsx', 'group_create', 'group_delete', 'group_edit', 'groups_limit', 'import', 'js_class', 'limit', 'multi_edit', 'name', 'open_form_view', 'position', 'sample', 'string', 'type'],
+        'kanban': ['action', 'archivable', 'can_open', 'class', 'create', 'default_group_by', 'default_order', 'edit', 'group_create', 'highlight_color', 'js_class', 'on_create', 'position', 'quick_create', 'quick_create_view', 'records_draggable', 'sample', 'string', 'type'],
+        'search': ['position', 'string'],
+        'calendar': ['aggregate', 'all_day', 'color', 'create', 'create_name_field', 'date_delay', 'date_start', 'date_stop', 'delete', 'edit', 'event_limit', 'event_open_popup', 'form_view_id', 'hide_date', 'hide_time', 'js_class', 'mode', 'month_overflow', 'multi_create_view', 'quick_create', 'quick_create_view_id', 'scales', 'show_date_picker', 'show_unusual_days', 'string'],
+        'graph': ['class', 'cumulated', 'cumulated_start', 'disable_linking', 'js_class', 'order', 'sample', 'stacked', 'string', 'type'],
+        'pivot': ['class', 'default_order', 'disable_linking', 'display_quantity', 'js_class', 'sample', 'stacked', 'string'],
+        'activity': ['create', 'js_class', 'string'],
+        'hierarchy': ['child_field'],
+        'sheet': ['class', 'position', 'string'],
+        'group': ['class', 'col', 'colspan', 'groups', 'invisible', 'name', 'position', 'priority', 'readonly', 'string'],
+        'notebook': ['colspan', 'groups', 'invisible', 'name', 'position'],
+        'page': ['groups', 'invisible', 'name', 'position', 'string'],
+        'header': ['invisible', 'position'],
+        'footer': ['class', 'invisible', 'position'],
+        'button': ['class', 'close', 'colspan', 'column_invisible', 'confirm', 'confirm-label', 'confirm-title', 'context', 'default_focus', 'display', 'groups', 'help', 'icon', 'invisible', 'name', 'noSaveDialog', 'position', 'special', 'string', 'target', 'type', 'widget'],
+        'filter': ['context', 'date', 'default_period', 'domain', 'end_month', 'end_year', 'groups', 'help', 'invisible', 'name', 'position', 'string'],
+        'separator': ['colspan', 'groups', 'invisible', 'name', 'orientation', 'position', 'string'],
+        'label': ['class', 'colspan', 'for', 'groups', 'help', 'invisible', 'name', 'position', 'readonly', 'string'],
+        'xpath': ['expr', 'position'],
+        'attribute': ['add', 'name', 'remove', 'separator'],
+        'chatter': ['groups', 'reload_on_attachment', 'reload_on_follower', 'reload_on_post'],
+        'widget': ['bg_color', 'btnClass', 'class', 'colspan', 'groups', 'icon', 'invisible', 'label', 'name', 'path', 'service_name', 'string', 'text'],
+        'searchpanel': ['class', 'view_types'],
+        'progressbar': ['colors', 'field'],
+        'setting': ['class', 'colspan', 'company_dependent', 'documentation', 'groups', 'help', 'info', 'invisible', 'name', 'position', 'string', 'type'],
+        'block': ['groups', 'invisible', 'name', 'position'],
+        'app': ['groups', 'name', 'string'],
+        'create': ['context', 'name', 'string'],
+        'main': ['class'],
+        'aside': ['class'],
+        't': ['t-as', 't-att', 't-call', 't-call-assets', 't-call-context', 't-component', 't-elif', 't-else', 't-esc', 't-foreach', 't-if', 't-inherit', 't-inherit-mode', 't-key', 't-lang', 't-name', 't-options', 't-out', 't-portal', 't-props', 't-set', 't-set-slot', 't-slot', 't-slot-scope', 't-tag', 't-translation', 't-value', 't-valuef'],
+    },
+};
 
-
+export default v19;

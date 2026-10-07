@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { getPythonParserService } from '../../services/pythonParserService';
 import functionIndexService from '../../services/functionIndexService';
-import moduleIndexService from '../../services/moduleIndexService';
+import { OdooModuleUtils } from '../../utils/odooModuleUtils';
 
 export class PythonInheritedFunctionProvider implements vscode.CompletionItemProvider {
     async provideCompletionItems(
@@ -18,9 +17,7 @@ export class PythonInheritedFunctionProvider implements vscode.CompletionItemPro
         }
 
         // Check if in a valid Odoo module
-        const modules = await moduleIndexService.getModules();
-        const module = modules.find(m => document.uri.fsPath.startsWith(m.path));
-        if (!module) {
+        if (!OdooModuleUtils.getModuleRootPath(document.uri.fsPath)) {
             return undefined;
         }
 
@@ -57,32 +54,20 @@ export class PythonInheritedFunctionProvider implements vscode.CompletionItemPro
             if (!classNode && offset > 0) {
                 const prevNode = tree.rootNode.descendantForIndex(offset - 1);
                 classNode = findClassUp(prevNode);
-                if (classNode) {
-                    // found class
-                }
             }
 
             if (!classNode) {
-                // Final fallback: scan all classes and pick the one starting closest before offset
-                const allClassNodes: any[] = [];
-                const collect = (n: any) => {
-                    if (n.type === 'class_definition') allClassNodes.push(n);
-                    for (const c of n.children) collect(c);
-                };
-                collect(tree.rootNode);
-
+                // Final fallback: the last top-level class starting before the cursor. Only the root's
+                // own children are looked at; walking the whole tree on every keystroke is costly.
                 let best = null;
-                for (const cls of allClassNodes) {
-                    if (cls.startIndex <= offset) {
-                        if (!best || cls.startIndex > best.startIndex) {
-                            best = cls;
-                        }
+                for (const child of tree.rootNode.namedChildren) {
+                    if (child.startIndex > offset) break;
+                    const cls = child.type === 'decorated_definition' ? child.childForFieldName('definition') : child;
+                    if (cls?.type === 'class_definition') {
+                        best = cls;
                     }
                 }
                 classNode = best;
-                if (classNode) {
-                    // found class
-                }
             }
 
             if (!classNode) {
@@ -118,6 +103,8 @@ export class PythonInheritedFunctionProvider implements vscode.CompletionItemPro
 
             const suggestions: vscode.CompletionItem[] = [];
             const seenFunctions = new Set<string>();
+            const tabSize = vscode.workspace.getConfiguration('editor', document.uri).get<number>('tabSize', 4);
+            const indent = ' '.repeat(tabSize);
 
             for (const modelName of inheritModels) {
                 const functions = functionIndexService.getFunctionsForModel(modelName);
@@ -136,9 +123,6 @@ export class PythonInheritedFunctionProvider implements vscode.CompletionItemPro
 
                     const snippet = new vscode.SnippetString();
                     snippet.appendText(`${func.functionName}(${params}):\n`);
-                    const config = vscode.workspace.getConfiguration('editor');
-                    const tabSize = config.get<number>('tabSize', 4);
-                    const indent = ' '.repeat(tabSize);
                     snippet.appendText(`${indent}res = super().${func.functionName}(${callParams})\n`);
                     snippet.appendText(`${indent}return res`);
 

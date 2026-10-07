@@ -175,7 +175,9 @@
       "    <field name=\"model\">${3:model.name}</field>",
       "    <field name=\"inherit_id\" ref=\"${4:module.view_id}\"/>",
       "    <field name=\"arch\" type=\"xml\">",
-      "        ${5:<!-- Add your xpath modifications here -->}",
+      "        <xpath expr=\"${5://field[@name='name']}\" position=\"${6|after,before,inside,replace,attributes|}\">",
+      "            $0",
+      "        </xpath>",
       "    </field>",
       "</record>"
     ],
@@ -214,8 +216,8 @@
     "prefix": "odoo header",
     "body": [
       "<header>",
-      "    <button name=\"${1:action_confirm}\" string=\"${2:Confirm}\" type=\"object\" states=\"${3:draft}\" class=\"btn-primary\"/>",
-      "    <button name=\"${4:action_cancel}\" string=\"${5:Cancel}\" type=\"object\" states=\"${6:confirmed}\"/>",
+      "    <button name=\"${1:action_confirm}\" string=\"${2:Confirm}\" type=\"object\" invisible=\"state != '${3:draft}'\" class=\"btn-primary\"/>",
+      "    <button name=\"${4:action_cancel}\" string=\"${5:Cancel}\" type=\"object\" invisible=\"state != '${6:confirmed}'\"/>",
       "    <field name=\"state\" widget=\"statusbar\" statusbar_visible=\"${7:draft,confirmed,done}\"/>",
       "</header>"
     ],
@@ -373,7 +375,3 @@
     "description": "Add root menu item with icon"
   }
 }
-
-
-
-

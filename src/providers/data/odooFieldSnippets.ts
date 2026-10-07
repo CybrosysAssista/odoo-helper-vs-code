@@ -22,12 +22,12 @@ const fieldSnippets: vscode.CompletionItem[] = [
     ),
     createFieldItem(
         'Odoo Binary Field',
-        'fields.Binary(string="${1:Name}", help="${2:Help text}", attachment=True, max_size=10)',
+        'fields.Binary(string="${1:Name}", help="${2:Help text}", attachment=True)',
         'Binary Field',
         'Used to store binary data like files with size limit.\n\n' +
         '**Example:**\n' +
         '```python\n' +
-        'file_data = fields.Binary(string="File", help="Upload a file", attachment=True, max_size=10)\n' +
+        'file_data = fields.Binary(string="File", help="Upload a file", attachment=True)\n' +
         '```'
     ),
     // Char

@@ -1,33 +1,34 @@
 import * as vscode from 'vscode';
 import { getPythonParserService } from '../../services/pythonParserService';
 import modelIndexService from '../../services/modelIndexService';
-import moduleIndexService from '../../services/moduleIndexService';
+import { OdooModuleUtils } from '../../utils/odooModuleUtils';
 
 export class ModelInheritCompletionProvider implements vscode.CompletionItemProvider {
     async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position
     ): Promise<vscode.CompletionItem[]> {
-        // 1. Check if it's a valid Odoo module
-        const modules = await moduleIndexService.getModules();
-        const module = modules.find(m => document.uri.fsPath.startsWith(m.path));
-        if (!module) return [];
+        // Cheap gate first: an `_inherit` assignment must be in the lines just above the cursor.
+        // Completion is requested on almost every keystroke, so most requests stop here.
+        const startLine = Math.max(0, position.line - 30);
+        const recentText = document.getText(new vscode.Range(startLine, 0, position.line, position.character));
+        if (!recentText.includes('_inherit')) return [];
+
+        // Only inside an Odoo module
+        if (!OdooModuleUtils.getModuleRootPath(document.uri.fsPath)) return [];
 
         const pythonParser = getPythonParserService();
         if (!pythonParser.isInitialized()) return [];
 
-        const text = document.getText();
-        const tree = pythonParser.parse(text);
-        if (!tree) return [];
-
-        // 2. Find node at cursor
+        // 2. Find node at cursor and 3. check context: class -> assignment(_inherit) -> string
         const offset = document.offsetAt(position);
-        // We look slightly before the cursor if it's exactly at a boundary
-        const node = tree.rootNode.descendantForIndex(Math.max(0, offset - 1));
-        if (!node) return [];
+        const inInheritContext = pythonParser.withTree(document.getText(), tree => {
+            // We look slightly before the cursor if it's exactly at a boundary
+            const node = tree.rootNode.descendantForIndex(Math.max(0, offset - 1));
+            return !!node && this.isModelInheritContext(node);
+        });
 
-        // 3. Check context: class -> assignment(_inherit) -> string
-        if (this.isModelInheritContext(node)) {
+        if (inInheritContext) {
             const models = modelIndexService.getAllModelNames();
             return models.map(name => {
                 const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Class);

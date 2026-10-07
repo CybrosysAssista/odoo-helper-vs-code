@@ -42,7 +42,8 @@ export class PersistenceService {
             await vscode.workspace.fs.createDirectory(this.context.storageUri);
 
             const fileUri = vscode.Uri.joinPath(this.context.storageUri, `${id}.json`);
-            const content = Buffer.from(JSON.stringify(data, null, 2), 'utf8');
+            // Compact: index files run to megabytes, and are parsed again at every startup.
+            const content = Buffer.from(JSON.stringify(data), 'utf8');
 
             await vscode.workspace.fs.writeFile(fileUri, content);
             // console.log(`[PersistenceService] Saved data for index: ${id}`);

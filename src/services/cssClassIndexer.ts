@@ -1,8 +1,10 @@
-
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { EXCLUDE_GLOB, FileChange, FileMetadata, isIgnoredPath, watchFiles, yieldIfBusy } from '../utils/indexing';
+import { indexFiles } from '../indexer/indexer';
+import type { FileResult } from '../indexer/protocol';
+import { indexNeeded } from '../indexer/trigger';
 
 export interface CssClassDefinition {
     className: string;
@@ -11,16 +13,25 @@ export interface CssClassDefinition {
     lineNumber: number;
 }
 
+interface FileClasses {
+    moduleName: string;
+    /** [class name, 1-based line] */
+    classes: [string, number][];
+}
+
+const STATE_VERSION = 2;
+const EXCLUDED_DIRS = new Set(['node_modules', 'venv', '.venv', '__pycache__', 'dist', 'out', 'build', '.git']);
+
 export class CssClassIndexer {
     private static instance: CssClassIndexer;
 
-    // Stores detailed definition info (path, line) for features like Go-to-Definition
-    private cssClasses: Map<string, CssClassDefinition[]> = new Map();
+    private files: Map<string, FileClasses> = new Map(); // filePath -> classes defined in it
+    private fileMetadata: Map<string, FileMetadata> = new Map();
 
-    // Stores just class names per module for fast completion
-    private classesByModule: Map<string, Set<string>> = new Map();
-
-    private fileMetadata: Map<string, { mtime: number, size: number }> = new Map();
+    // Derived on demand from `files`, dropped whenever a file changes.
+    private classesByModule: Map<string, string[]> | null = null;
+    private cssClasses: Map<string, CssClassDefinition[]> | null = null;
+    private dirty = false;
 
     private constructor() { }
 
@@ -31,289 +42,206 @@ export class CssClassIndexer {
         return CssClassIndexer.instance;
     }
 
+    private isEnabled(): boolean {
+        return vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper').get<boolean>('indexing.enableCSSIndexing', true);
+    }
+
+    /** Keeps the index current as stylesheets change. */
+    public initialize(): vscode.Disposable {
+        // `static/lib` stays included: Bootstrap's classes are what most Odoo views use.
+        return watchFiles('**/*.{css,scss}', changes => this.applyChanges(changes));
+    }
+
+    private async applyChanges(changes: Map<string, FileChange>) {
+        if (!this.isEnabled()) return;
+        const changed: string[] = [];
+        for (const [fsPath, change] of changes) {
+            if (change === 'deleted') {
+                this.removeFile(fsPath);
+            } else {
+                changed.push(fsPath);
+            }
+        }
+        await this.indexPaths(changed);
+    }
+
+    private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
+        return indexFiles(
+            paths.filter(path => !isIgnoredPath(path)).map(path => ({ path, kind: 'css' as const, meta: this.fileMetadata.get(path) })),
+            result => this.applyResult(result),
+            progress && { report: value => progress.report(value), label: 'CSS classes' }
+        );
+    }
+
     /**
      * Index all CSS/SCSS files in the workspace.
      */
     public async indexWorkspace(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
         const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
         if (!config.get<boolean>('indexing.enableCSSIndexing', true)) {
-            // console.log('[CssClassIndexer] CSS scanning is disabled in settings.');
-            this.classesByModule.clear();
-            this.cssClasses.clear();
+            this.files.clear();
+            this.fileMetadata.clear();
+            this.invalidate();
             return;
         }
 
-        // console.log('[CssClassIndexer] Refreshing CSS classes (incremental)...');
-
-        let totalFilesIndexed = 0;
-        let totalClassesFound = 0;
-
         // 1. Index Workspace Files
-        const cssFiles = await vscode.workspace.findFiles('**/*.{css,scss}', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
+        const allFiles = (await vscode.workspace.findFiles('**/*.{css,scss}', EXCLUDE_GLOB)).map(f => f.fsPath);
 
         // 2. Index Odoo Source Path (if configured)
         const odooSourcePath = config.get<string>('odooSourcePath', '');
-        const allFiles = [...cssFiles];
-
         if (odooSourcePath && fs.existsSync(odooSourcePath)) {
-            // console.log(`[CssClassIndexer] Including Odoo source path: ${odooSourcePath}`);
-            const externalFiles = await this.findExternalCssFiles(odooSourcePath);
-            allFiles.push(...externalFiles);
+            allFiles.push(...await this.findExternalCssFiles(odooSourcePath));
         }
 
-        const totalFiles = allFiles.length;
-        let processed = 0;
-
-        for (const file of allFiles) {
-            processed++;
-            if (progress) {
-                progress.report({
-                    message: `CSS classes: ${processed}/${totalFiles}`,
-                    increment: (1 / totalFiles) * 100
-                });
-            }
-
-            const beforeCount = this.getTotalClassCount();
-            await this.indexFile(file);
-            const afterCount = this.getTotalClassCount();
-
-            totalClassesFound += (afterCount - beforeCount);
-            totalFilesIndexed++;
-
-            if (processed % 50 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 5));
+        const seen = new Set(allFiles);
+        await this.indexPaths([...seen], progress);
+        for (const filePath of [...this.fileMetadata.keys()]) {
+            if (!seen.has(filePath)) {
+                this.removeFile(filePath);
             }
         }
-
-        await this.cleanupDeletedFiles();
-
-        // console.log(`[CssClassIndexer] Scan Complete:`);
-        // console.log(` - Files indexed: ${totalFilesIndexed}`);
-        // console.log(` - Total class definitions: ${this.getTotalClassCount()}`);
-        // console.log(` - Unique class names: ${this.cssClasses.size}`);
-        // console.log(` - Modules with CSS: ${this.classesByModule.size}`);
     }
 
-    private getTotalClassCount(): number {
-        let count = 0;
-        for (const defs of this.cssClasses.values()) {
-            count += defs.length;
+    private applyResult(result: FileResult) {
+        if (result.status === 'missing') {
+            this.removeFile(result.path);
+        } else if (result.status === 'parsed') {
+            this.files.delete(result.path);
+            if (result.module && result.css && result.css.length > 0) {
+                this.files.set(result.path, { moduleName: result.module, classes: result.css });
+            }
+            this.fileMetadata.set(result.path, result.meta);
+            this.invalidate();
         }
-        return count;
     }
 
-    private async findExternalCssFiles(dir: string): Promise<vscode.Uri[]> {
-        const results: vscode.Uri[] = [];
-        const excluded = ['node_modules', 'venv', '.venv', '__pycache__', 'dist', 'out', 'build'];
+    private async findExternalCssFiles(dir: string): Promise<string[]> {
+        const results: string[] = [];
 
         const walk = async (currentDir: string) => {
+            let entries: fs.Dirent[];
             try {
-                const files = fs.readdirSync(currentDir);
-                for (const file of files) {
-                    if (excluded.includes(file)) continue;
-
-                    const fullPath = path.join(currentDir, file);
-                    const stat = fs.statSync(fullPath);
-
-                    if (stat.isDirectory()) {
-                        await walk(fullPath);
-                    } else if (file.endsWith('.css') || file.endsWith('.scss')) {
-                        results.push(vscode.Uri.file(fullPath));
-                    }
+                entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+            } catch {
+                return;
+            }
+            for (const entry of entries) {
+                if (EXCLUDED_DIRS.has(entry.name)) continue;
+                const fullPath = path.join(currentDir, entry.name);
+                if (entry.isDirectory()) {
+                    await walk(fullPath);
+                } else if (entry.name.endsWith('.css') || entry.name.endsWith('.scss')) {
+                    results.push(fullPath);
                 }
-            } catch (e) { }
+            }
+            await yieldIfBusy();
         };
 
         await walk(dir);
         return results;
     }
 
-    /**
-     * Index a single file using VS Code's built-in symbol provider.
-     */
-    private addIndexEntry(className: string, moduleName: string, filePath: string, line: number, moduleClassSet: Set<string>, enableAdvanced: boolean) {
-        moduleClassSet.add(className);
-
-        if (enableAdvanced) {
-            const definition: CssClassDefinition = {
-                className,
-                moduleName,
-                filePath,
-                lineNumber: line
-            };
-
-            if (!this.cssClasses.has(className)) {
-                this.cssClasses.set(className, []);
-            }
-            const existing = this.cssClasses.get(className)!;
-            if (!existing.some(d => d.filePath === filePath && d.lineNumber === line)) {
-                existing.push(definition);
-            }
-        } else {
-            // Even if advanced is off, we still keep a minimal entry in cssClasses
-            // to track which files have which classes (for cleanup)
-            if (!this.cssClasses.has(className)) {
-                this.cssClasses.set(className, []);
-            }
-            const existing = this.cssClasses.get(className)!;
-            if (!existing.some(d => d.filePath === filePath)) {
-                existing.push({ className, moduleName, filePath, lineNumber: line });
-            }
+    private removeFile(filePath: string) {
+        const hadFile = this.files.delete(filePath);
+        if (this.fileMetadata.delete(filePath) || hadFile) {
+            this.invalidate();
         }
     }
 
-    public async indexFile(uri: vscode.Uri): Promise<void> {
-        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
-        if (!config.get<boolean>('indexing.enableCSSIndexing', true)) return;
-
-        const enableAdvanced = config.get<boolean>('indexing.enableAdvanceCSSIndexing', false);
-
-        try {
-            const stats = await vscode.workspace.fs.stat(uri);
-            const cachedMetadata = this.fileMetadata.get(uri.fsPath);
-
-            if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
-                return; // Unchanged
-            }
-
-            const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
-            if (!moduleRoot) {
-                this.removeFileEntries(uri.fsPath);
-                return;
-            }
-
-            const moduleName = path.basename(moduleRoot.fsPath);
-            this.removeFileEntries(uri.fsPath, moduleName);
-
-            let symbols: vscode.DocumentSymbol[] | undefined;
-            try {
-                symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-                    'vscode.executeDocumentSymbolProvider',
-                    uri
-                );
-            } catch (e) {
-                // Symbols failed, fallback to regex
-            }
-
-            if (!this.classesByModule.has(moduleName)) {
-                this.classesByModule.set(moduleName, new Set());
-            }
-            const moduleClassSet = this.classesByModule.get(moduleName)!;
-
-            if (symbols && symbols.length > 0) {
-                const processSymbol = (symbol: vscode.DocumentSymbol) => {
-                    // Check for class selectors in CSS/SCSS
-                    // Note: symbol.name might contain ".a.b" or ".a .b" or ".a"
-                    if (symbol.kind === vscode.SymbolKind.Class || symbol.kind === vscode.SymbolKind.Property) {
-                        const classMatches = symbol.name.match(/\.([a-zA-Z0-9_-]+)/g);
-                        if (classMatches) {
-                            for (const match of classMatches) {
-                                const className = match.substring(1);
-                                this.addIndexEntry(className, moduleName, uri.fsPath, symbol.range.start.line + 1, moduleClassSet, enableAdvanced);
-                            }
-                        }
-                    }
-                    if (symbol.children) {
-                        symbol.children.forEach(processSymbol);
-                    }
-                };
-                symbols.forEach(processSymbol);
-            } else {
-                // Fallback: Regex scan
-                const content = await vscode.workspace.fs.readFile(uri);
-                const text = Buffer.from(content).toString('utf8');
-
-                // Matches .class-name but not .0-9 (numbers) nor inside strings/comments (mostly)
-                // This is a simple but effective scanner for large files
-                const classRegex = /\.([a-zA-Z][a-zA-Z0-9_-]*)/g;
-                let match;
-                while ((match = classRegex.exec(text)) !== null) {
-                    const className = match[1];
-                    // For fallback we don't have line numbers easily without more parsing
-                    this.addIndexEntry(className, moduleName, uri.fsPath, 0, moduleClassSet, enableAdvanced);
-                }
-            }
-
-            this.fileMetadata.set(uri.fsPath, { mtime: stats.mtime, size: stats.size });
-
-        } catch (err: any) {
-            if (err.code === 'FileNotFound' || err.code === 'ENOENT') {
-                this.removeFileEntries(uri.fsPath);
-                this.fileMetadata.delete(uri.fsPath);
-            }
-        }
-    }
-
-    private removeFileEntries(filePath: string, moduleName?: string) {
-        for (const [className, defs] of this.cssClasses.entries()) {
-            const filtered = defs.filter(d => d.filePath !== filePath);
-            if (filtered.length === 0) {
-                this.cssClasses.delete(className);
-            } else if (filtered.length < defs.length) {
-                this.cssClasses.set(className, filtered);
-            }
-        }
-        if (moduleName && this.classesByModule.has(moduleName)) {
-            // Rebuilding module set is expensive, so we just clear and let next refresh fix it
-            // or we keep it as is (incremental add only).
-            // For now, let's just clear to ensure accuracy if needed.
-            this.classesByModule.delete(moduleName);
-        }
-    }
-
-    private async cleanupDeletedFiles() {
-        const toDelete: string[] = [];
-        for (const filePath of this.fileMetadata.keys()) {
-            try {
-                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-            } catch (e) {
-                toDelete.push(filePath);
-            }
-        }
-        for (const filePath of toDelete) {
-            this.removeFileEntries(filePath);
-            this.fileMetadata.delete(filePath);
-        }
+    private invalidate() {
+        this.classesByModule = null;
+        this.cssClasses = null;
+        this.dirty = true;
     }
 
     public getClassDefinitions(className: string): CssClassDefinition[] {
+        indexNeeded();
+        if (!this.cssClasses) {
+            this.cssClasses = new Map();
+            for (const [filePath, { moduleName, classes }] of this.files) {
+                for (const [name, lineNumber] of classes) {
+                    const definition = { className: name, moduleName, filePath, lineNumber };
+                    const list = this.cssClasses.get(name);
+                    if (list) {
+                        list.push(definition);
+                    } else {
+                        this.cssClasses.set(name, [definition]);
+                    }
+                }
+            }
+        }
         return this.cssClasses.get(className) || [];
     }
 
     public getClassesInModule(moduleName: string): string[] {
-        if (this.classesByModule.has(moduleName)) {
-            return Array.from(this.classesByModule.get(moduleName)!);
+        indexNeeded();
+        return this.getClassesByModule().get(moduleName) || [];
+    }
+
+    /** Every class name with the first module defining it. */
+    public getAllClasses(): Map<string, string> {
+        indexNeeded();
+        const all = new Map<string, string>();
+        for (const [moduleName, classes] of this.getClassesByModule()) {
+            for (const name of classes) {
+                if (!all.has(name)) {
+                    all.set(name, moduleName);
+                }
+            }
         }
-        return [];
+        return all;
+    }
+
+    private getClassesByModule(): Map<string, string[]> {
+        if (!this.classesByModule) {
+            const sets = new Map<string, Set<string>>();
+            for (const { moduleName, classes } of this.files.values()) {
+                let set = sets.get(moduleName);
+                if (!set) {
+                    set = new Set();
+                    sets.set(moduleName, set);
+                }
+                for (const [name] of classes) {
+                    set.add(name);
+                }
+            }
+            this.classesByModule = new Map([...sets].map(([module, set]) => [module, Array.from(set)]));
+        }
+        return this.classesByModule;
+    }
+
+    public isDirty(): boolean {
+        return this.dirty;
     }
 
     public getState() {
+        this.dirty = false;
         return {
-            cssClasses: Array.from(this.cssClasses.entries()),
-            classesByModule: Array.from(this.classesByModule.entries()).map(([k, v]) => [k, Array.from(v)]),
+            version: STATE_VERSION,
+            files: Array.from(this.files.entries()),
             metadata: Array.from(this.fileMetadata.entries())
         };
     }
 
     public loadState(state: any) {
+        this.files = new Map();
+        this.fileMetadata = new Map();
+        this.invalidate();
+        this.dirty = false;
+        // Earlier versions stored classes without a reliable per-file breakdown; such a state is
+        // dropped and rebuilt (a cheap pass: classes are found by regex).
+        if (!state || state.version !== STATE_VERSION || !Array.isArray(state.files)) {
+            return;
+        }
         try {
-            if (state && typeof state === 'object') {
-                if (Array.isArray(state.cssClasses)) {
-                    this.cssClasses = new Map(state.cssClasses);
-                }
-                if (Array.isArray(state.classesByModule)) {
-                    this.classesByModule = new Map(
-                        (state.classesByModule as [string, string[]][]).map(([k, v]) => [k, new Set(v)])
-                    );
-                }
-                if (Array.isArray(state.metadata)) {
-                    this.fileMetadata = new Map(state.metadata);
-                }
+            this.files = new Map(state.files);
+            if (Array.isArray(state.metadata)) {
+                this.fileMetadata = new Map(state.metadata);
             }
         } catch (e) {
             console.error('[CssClassIndexer] Failed to load state:', e);
-            this.cssClasses = new Map();
-            this.classesByModule = new Map();
+            this.files = new Map();
             this.fileMetadata = new Map();
         }
     }

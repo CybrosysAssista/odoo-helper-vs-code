@@ -21,24 +21,16 @@ export class ManifestPathCompletionProvider implements vscode.CompletionItemProv
             return [];
         }
 
-        const tree = parserService.parse(document.getText());
-        if (!tree) {
-            return [];
-        }
-
-        // Get the node at the current cursor position
-        // We look slightly to the left if we are at the end of a node to stay within the string
-        let node = tree.rootNode.descendantForPosition({
-            row: position.line,
-            column: position.character > 0 ? position.character - 1 : position.character
-        });
-
-        if (!node) {
-            return [];
-        }
-
         // 1. Verify we are in a manifest 'path' list (data, demo, assets, etc.)
-        const manifestKey = this.getManifestContextKey(node);
+        const manifestKey = parserService.withTree(document.getText(), tree => {
+            // Get the node at the current cursor position
+            // We look slightly to the left if we are at the end of a node to stay within the string
+            const node = tree.rootNode.descendantForPosition({
+                row: position.line,
+                column: position.character > 0 ? position.character - 1 : position.character
+            });
+            return node ? this.getManifestContextKey(node) : null;
+        });
         if (!manifestKey) {
             return [];
         }

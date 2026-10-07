@@ -6,13 +6,19 @@ import { OdooPythonUtils } from '../utils/odooPythonUtils';
 import fieldIndexService, { FieldInfo } from '../services/fieldIndexService';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
 import { getPythonParserService } from '../services/pythonParserService';
-import { getOdooVersion } from '../services/versionService';
+import { getOdooVersion, isAtLeast, LATEST_VERSION } from '../services/versionService';
 
 interface ViewOption extends vscode.QuickPickItem {
     id: 'pdf' | 'html';
 }
 
-class ReportGenerator {
+/** The field's label as Odoo shows it: its string, or the name without _id/_ids, title-cased (fields.py). */
+function fieldLabel(f: FieldInfo): string {
+    if (f.attributes['string']) return f.attributes['string'];
+    return f.fieldName.replace(/_ids?$/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+export class ReportGenerator {
     private reportType: ViewOption;
     private nameField: FieldInfo;
     private infoFields: FieldInfo[];
@@ -28,7 +34,8 @@ class ReportGenerator {
         tableField: FieldInfo | undefined,
         tableChildFields: FieldInfo[],
         modelTechnicalName: string,
-        moduleName: string
+        moduleName: string,
+        private readonly odooVersion: string = LATEST_VERSION
     ) {
         this.reportType = reportType;
         this.nameField = nameField;
@@ -56,7 +63,9 @@ class ReportGenerator {
         reportAction.ele('field', { name: 'model' }).txt(this.modelTechnicalName);
         reportAction.ele('field', { name: 'report_type' }).txt(typeId === 'pdf' ? 'qweb-pdf' : 'qweb-html');
         reportAction.ele('field', { name: 'report_name' }).txt(fullTemplateId);
-        reportAction.ele('field', { name: 'report_file' }).txt(fullTemplateId);
+        if (!isAtLeast(this.odooVersion, '20')) {  // removed from ir.actions.report in Odoo 20
+            reportAction.ele('field', { name: 'report_file' }).txt(fullTemplateId);
+        }
         reportAction.ele('field', { name: 'print_report_name' }).txt(`'%s' % 'Report - ' + str(object.id)`);
         reportAction.ele('field', { name: 'binding_model_id', ref: `model_${modelName}` });
         reportAction.ele('field', { name: 'binding_type' }).txt('report');
@@ -85,7 +94,7 @@ class ReportGenerator {
             const infoRow = infoWrap.ele('div', { class: 'row' });
 
             this.infoFields.forEach(f => {
-                const label = f.attributes['string'] || f.fieldName;
+                const label = fieldLabel(f);
                 const col = infoRow.ele('div', { class: 'col-6' });
                 const wrap = col.ele('div');
                 wrap.ele('div', { class: 'fw-bold mb-1' }).txt(label);
@@ -103,7 +112,7 @@ class ReportGenerator {
             const thead = table.ele('thead', { style: 'display: table-row-group;' }).ele('tr');
 
             this.tableChildFields.forEach((cf, index) => {
-                const label = cf.attributes['string'] || cf.fieldName;
+                const label = fieldLabel(cf);
                 const alignClass = index === 0 ? 'text-start' : 'text-end';
                 thead.ele('th', { class: `${alignClass} fw-bold`, scope: 'col', style: 'width: 15%' }).txt(label);
             });
@@ -279,7 +288,8 @@ export async function handleCreateReport(uri: vscode.Uri): Promise<void> {
             tableField,
             tableChildFields,
             modelTechnicalName,
-            currentModuleName
+            currentModuleName,
+            await getOdooVersion()
         );
 
         const xmlContent = generator.generateXML();

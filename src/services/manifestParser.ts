@@ -1,9 +1,7 @@
 import * as vscode from 'vscode';
 
 import { DataFileMetaDataOptions, AssetFileMetaDataOptions, DependencyMetaDataOptions } from '../utils/utils';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const TreeSitter = require('web-tree-sitter');
+import { getPythonParserService } from './pythonParserService';
 
 /**
  * Represents a position in the source code
@@ -64,14 +62,14 @@ export class ManifestParser {
      */
     parseManifest(text: string): ParsedManifest | null {
         this.originalContent = text;
+        // The parsed manifest holds plain values and ranges only, so the tree can be freed
+        // as soon as it has been read. Trees live in WASM memory and are never garbage collected.
+        let tree: any = null;
         try {
-            const TreeSitterModule = require('web-tree-sitter');
-            const { Parser } = TreeSitterModule;
-
-            const parser = new Parser();
-            parser.setLanguage(this.language);
-
-            const tree = parser.parse(text);
+            tree = getPythonParserService().parse(text);
+            if (!tree) {
+                return null;
+            }
             const rootNode = tree.rootNode;
 
             // Find the main dictionary (the manifest)
@@ -90,6 +88,8 @@ export class ManifestParser {
         } catch (error) {
             console.error('[ManifestParser] Error parsing manifest:', error);
             return null;
+        } finally {
+            tree?.delete();
         }
     }
 

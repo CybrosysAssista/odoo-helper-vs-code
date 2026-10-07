@@ -78,7 +78,7 @@ interface OdooStandards {
 const ODOO_STANDARDS: OdooStandards = {
     fileNaming: {
         views: /(_views|_templates|_menus)\.xml$/,
-        security: /(ir\.model\.access\.csv|_groups\.xml|_security\.xml)$/,
+        security: /(ir\.model\.access\.csv|ir\.access\.csv|_groups\.xml|_security\.xml)$/,
         report: /_report_views\.xml|_reports\.xml|_templates\.xml$/,
         wizard: /_views\.xml$/,
         data: /_data\.xml|_demo\.xml$/,
@@ -457,7 +457,7 @@ interface FileNamingRulesMap {
 const FILE_NAMING_RULES: FileNamingRulesMap = {
     xml: {
         views: { pattern: ODOO_STANDARDS.fileNaming.views, message: "should end with _views.xml, _templates.xml, or _menus.xml" },
-        security: { pattern: ODOO_STANDARDS.fileNaming.security, message: "should be named ir.model.access.csv, *_groups.xml, or *_security.xml" },
+        security: { pattern: ODOO_STANDARDS.fileNaming.security, message: "should be named ir.model.access.csv (ir.access.csv on Odoo 20), *_groups.xml, or *_security.xml" },
         report: { pattern: ODOO_STANDARDS.fileNaming.report, message: "should end with _report_views.xml, _reports.xml, or _templates.xml" },
         wizard: { pattern: ODOO_STANDARDS.fileNaming.wizard, message: "should end with _views.xml" },
         data: { pattern: ODOO_STANDARDS.fileNaming.data, message: "should end with _data.xml or _demo.xml" }

@@ -1,0 +1,82 @@
+{
+  "Odoo Abstract Model": {
+    "prefix": "odoo abstract model",
+    "description": "Abstract model (mixin), no table",
+    "body": [
+      "from odoo import api, fields, models",
+      "",
+      "",
+      "class ${1:ModelName}(models.AbstractModel):",
+      "    _name = '${2:model.name}'",
+      "    _description = '${3:Model Description}'",
+      "",
+      "    ${4:name} = fields.Char(string='${5:Name}')",
+      "$0"
+    ]
+  },
+  "Odoo Transient Model": {
+    "prefix": "odoo transient model",
+    "description": "Wizard (transient model) with a confirm button method",
+    "body": [
+      "from odoo import api, fields, models",
+      "",
+      "",
+      "class ${1:WizardName}(models.TransientModel):",
+      "    _name = '${2:model.name.wizard}'",
+      "    _description = '${3:Wizard Description}'",
+      "",
+      "    ${4:name} = fields.Char(string='${5:Name}')",
+      "",
+      "    def action_confirm(self):",
+      "        self.ensure_one()",
+      "        ${0:pass}",
+      "        return {'type': 'ir.actions.act_window_close'}"
+    ]
+  },
+  "Odoo Constraint": {
+    "prefix": "odoo constraint",
+    "description": "SQL constraint (Odoo 20: models.Constraint replaces _sql_constraints)",
+    "body": [
+      "_${1:name}_uniq = models.Constraint(",
+      "    '${2:unique(name)}',",
+      "    '${3:The name must be unique.}',",
+      ")"
+    ]
+  },
+  "Odoo Index": {
+    "prefix": "odoo index",
+    "description": "Database index (models.Index)",
+    "body": [
+      "_${1:field}_idx = models.Index('(${2:field})')"
+    ]
+  },
+  "Odoo Unique Index": {
+    "prefix": "odoo unique index",
+    "description": "Unique (optionally partial) index with an error message (models.UniqueIndex)",
+    "body": [
+      "_${1:name}_unique = models.UniqueIndex(",
+      "    '(${2:name}) WHERE ${3:active IS TRUE}',",
+      "    '${4:This value must be unique.}',",
+      ")"
+    ]
+  },
+  "Odoo Controller": {
+    "prefix": "odoo controller",
+    "description": "HTTP controller with a page route and a JSON-RPC route",
+    "body": [
+      "from odoo import http",
+      "from odoo.http import request",
+      "",
+      "",
+      "class ${1:MyController}(http.Controller):",
+      "",
+      "    @http.route('/${2:my_module}/page', type='http', auth='${3|user,public|}')",
+      "    def ${4:page}(self, **kwargs):",
+      "        return request.render('${5:my_module.template_id}', {})",
+      "",
+      "    @http.route('/${2:my_module}/data', type='jsonrpc', auth='user')",
+      "    def ${6:data}(self, **kwargs):",
+      "        return {'records': request.env['${7:res.partner}'].search_read([], ['name'], limit=10)}"
+    ]
+  }
+}

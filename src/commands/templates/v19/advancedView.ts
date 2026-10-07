@@ -80,7 +80,7 @@ export const getAdvancedViewTemplate = (pureName: string, modelDotName: string, 
                     <filter string="Draft" name="draft" domain="[('state','=','draft')]"/>
                     <filter string="Confirmed" name="confirmed" domain="[('state','=','confirmed')]"/>
                     <filter string="Done" name="done" domain="[('state','=','done')]"/>
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter string="State" name="groupby_state" context="{'group_by': 'state'}"/>
                         <filter string="Creation Date" name="groupby_create_date" context="{'group_by': 'create_date:month'}"/>
                     </group>

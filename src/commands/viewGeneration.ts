@@ -6,7 +6,7 @@ import { OdooPythonUtils } from '../utils/odooPythonUtils';
 import { FieldInfo } from '../services/fieldIndexService';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
 import { getPythonParserService } from '../services/pythonParserService';
-import { getOdooVersion } from '../services/versionService';
+import { getOdooVersion, isAtLeast } from '../services/versionService';
 
 export type ViewSupport = {
     fullSupport: boolean;
@@ -158,7 +158,7 @@ export class ViewGenerator {
         this.modelName = modelTechnicalName.replace(/\./g, '_');
         this.viewToFieldMap = viewToFieldMap;
         this.odooVersion = odooVersion;
-        this.listTag = ['18', '19'].includes(odooVersion) ? 'list' : 'tree';
+        this.listTag = isAtLeast(odooVersion, '18') ? 'list' : 'tree';
         this.hasChatter = inheritedModels.includes('mail.thread');
 
         this.modelTitle = modelTechnicalName
@@ -192,6 +192,9 @@ export class ViewGenerator {
                 case 'pivot':
                     this.createPivotRecord(fields);
                     break;
+                case 'calendar':
+                    this.createCalendarRecord(fields);
+                    break;
                 case 'action':
                     this.createWindowAction();
                     break;
@@ -204,7 +207,7 @@ export class ViewGenerator {
     }
 
     private createFormRecord(fields: advancedFieldInfo[]) {
-        const record = this.root.ele('record', { id: `${this.modelName}form_view`, model: 'ir.ui.view' });
+        const record = this.root.ele('record', { id: `${this.modelName}_form_view`, model: 'ir.ui.view' });
         record.ele('field', { name: 'name' }).txt(`${this.modelTechnicalName}.form.view`);
         record.ele('field', { name: 'model' }).txt(this.modelTechnicalName);
 
@@ -259,7 +262,7 @@ export class ViewGenerator {
         }
 
         if (this.hasChatter) {
-            if (['18', '19'].includes(this.odooVersion)) {
+            if (isAtLeast(this.odooVersion, '18')) {
                 form.ele('chatter');
             } else {
                 const chatter = form.ele('div', { class: 'oe_chatter' });
@@ -275,7 +278,8 @@ export class ViewGenerator {
         record.ele('field', { name: 'name' }).txt(`${this.modelTechnicalName}.${this.listTag}.view`);
         record.ele('field', { name: 'model' }).txt(this.modelTechnicalName);
         const arch = record.ele('field', { name: 'arch', type: 'xml' });
-        const list = arch.ele(this.listTag, { string: this.modelTitle });
+        // string on <list> is deprecated (no effect) since Odoo 20
+        const list = arch.ele(this.listTag, isAtLeast(this.odooVersion, '20') ? {} : { string: this.modelTitle });
 
         fields.forEach(f => {
             const attrs: any = { name: f.fieldName };
@@ -295,7 +299,8 @@ export class ViewGenerator {
             search.ele('field', { name: f.fieldName });
         });
 
-        const groupBy = search.ele('group', { expand: '0', string: 'Group By' });
+        // search view groups take no expand/string attributes since 19
+        const groupBy = search.ele('group', isAtLeast(this.odooVersion, '19') ? {} : { expand: '0', string: 'Group By' });
         fields.forEach(f => {
             const type = f.fieldType.toLowerCase();
             if (['many2one', 'selection', 'date', 'datetime', 'boolean'].includes(type)) {
@@ -317,9 +322,10 @@ export class ViewGenerator {
         const kanban = arch.ele('kanban');
         const templates = kanban.ele('templates');
 
-        const tName = this.odooVersion === '19' ? 'card' : 'kanban-box';
-        const t = templates.ele('t', { 't-name': tName });
-        const div = t.ele('div', { class: 'oe_kanban_global_click' });
+        // Odoo 19+: a "card" template, the whole card opens the record (no oe_kanban_global_click)
+        const modernCard = isAtLeast(this.odooVersion, '19');
+        const t = templates.ele('t', { 't-name': modernCard ? 'card' : 'kanban-box' });
+        const div = modernCard ? t : t.ele('div', { class: 'oe_kanban_global_click' });
 
         fields.forEach(f => {
             const fieldAttrs: any = { name: f.fieldName };
@@ -351,10 +357,29 @@ export class ViewGenerator {
         });
     }
 
+    /** The first selected date/datetime field starts the events; without one there is no calendar. */
+    private calendarStartField(fields: advancedFieldInfo[]): advancedFieldInfo | undefined {
+        return fields.find(f => ['date', 'datetime'].includes(f.fieldType.toLowerCase()));
+    }
+
+    private createCalendarRecord(fields: advancedFieldInfo[]) {
+        const start = this.calendarStartField(fields);
+        if (!start) return;
+        const record = this.root.ele('record', { id: `${this.modelName}_calendar_view`, model: 'ir.ui.view' });
+        record.ele('field', { name: 'name' }).txt(`${this.modelTechnicalName}.calendar.view`);
+        record.ele('field', { name: 'model' }).txt(this.modelTechnicalName);
+        const arch = record.ele('field', { name: 'arch', type: 'xml' });
+        const calendar = arch.ele('calendar', { date_start: start.fieldName, mode: 'month' });
+        fields.filter(f => f !== start).forEach(f => calendar.ele('field', { name: f.fieldName }));
+    }
+
     private createWindowAction() {
+        // search is not an action view mode; calendar only when one was generated
         const modes = Object.keys(this.viewToFieldMap)
-            .filter(k => !['action', 'menu', 'client_action'].includes(k) && this.viewToFieldMap[k].length > 0)
-            .map(k => k === 'list' ? this.listTag : k);
+            .filter(k => !['action', 'menu', 'search'].includes(k) && this.viewToFieldMap[k].length > 0)
+            .filter(k => k !== 'calendar' || this.calendarStartField(this.viewToFieldMap[k]))
+            .map(k => k === 'list' ? this.listTag : k)
+            .sort((a, b) => Number(a === 'form') - Number(b === 'form'));  // the first mode is the default view: never open on a blank form
 
         const record = this.root.ele('record', { id: `action_${this.modelName}`, model: 'ir.actions.act_window' });
         record.ele('field', { name: 'name' }).txt(this.modelTitle);
@@ -420,7 +445,6 @@ export async function handleCreateViews(uri: vscode.Uri): Promise<void> {
         { label: 'Calendar View', id: 'calendar', picked: false },
         { label: 'Pivot View', id: 'pivot', picked: false },
         { label: 'Window Action', id: 'action', picked: true },
-        { label: 'Client Action', id: 'client_action', picked: false },
         { label: 'Menu', id: 'menu', picked: true }
     ];
 

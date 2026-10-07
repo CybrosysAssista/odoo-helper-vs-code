@@ -3,6 +3,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createOdooScaffold } from '../modules/scaffold';
 import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import modelIndexService from '../services/modelIndexService';
+import { accessCsvSpec } from '../utils/accessCsv';
+import { getOdooVersion } from '../services/versionService';
 import fieldIndexService, { FieldInfo } from '../services/fieldIndexService';
 import { OdooPythonUtils } from '../utils/odooPythonUtils';
 import { OdooCsvParser } from '../utils/csvUtils';
@@ -26,7 +29,7 @@ function capitalize(text: string): string {
         .join('');
 }
 
-async function handleCreateModule(uri: vscode.Uri, type: string): Promise<void> {
+export async function handleCreateModule(uri: vscode.Uri, type: string): Promise<void> {
     if (!uri || !uri.fsPath) {
         vscode.window.showErrorMessage(
             `Right‑click a folder and choose "Create ${type} Module".`
@@ -66,7 +69,7 @@ async function handleCreateModule(uri: vscode.Uri, type: string): Promise<void> 
     }
 }
 
-async function handleCreateOdooModelFile(uri: vscode.Uri): Promise<void> {
+export async function handleCreateOdooModelFile(uri: vscode.Uri): Promise<void> {
     try {
         const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
 
@@ -93,7 +96,8 @@ async function handleCreateOdooModelFile(uri: vscode.Uri): Promise<void> {
             fileContent = `# -*- coding: utf-8 -*-\n\nfrom . import `;
         } else if (fileType === '__manifest__') {
             fullFileName = '__manifest__.py';
-            fileContent = `# -*- coding: utf-8 -*-\n{\n    'name': 'Module Name',\n    'version': '1.0',\n    'category': 'Uncategorized',\n    'summary': 'Module Summary',\n    'description': '''Module Description''',\n    'author': 'Your Company',\n    'website': 'https://www.yourcompany.com',\n    'depends': ['base'],\n    'data': [\n        'security/ir.model.access.csv',\n        'views/views.xml',\n    ],\n    'installable': True,\n    'application': False,\n    'auto_install': False,\n}`;
+            const access = accessCsvSpec(await getOdooVersion());
+            fileContent = `# -*- coding: utf-8 -*-\n{\n    'name': 'Module Name',\n    'version': '1.0',\n    'category': 'Uncategorized',\n    'summary': 'Module Summary',\n    'description': '''Module Description''',\n    'author': 'Your Company',\n    'website': 'https://www.yourcompany.com',\n    'depends': ['base'],\n    'data': [\n        'security/${access.fileName}',\n        'views/views.xml',\n    ],\n    'license': 'LGPL-3',\n    'installable': True,\n    'application': False,\n    'auto_install': False,\n}`;
         } else {
             if (!moduleRoot || uri.path === moduleRoot.path) {
                 vscode.window.showErrorMessage(`${fileType} Creation is not allowed in module root directory or outside of module directory.`);
@@ -142,7 +146,7 @@ async function handleCreateOdooModelFile(uri: vscode.Uri): Promise<void> {
     }
 }
 
-async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: string, reportType = 'qweb-pdf'): Promise<void> {
+export async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: string, reportType = 'qweb-pdf'): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
     if (!moduleRoot || uri.path === moduleRoot.path) {
         vscode.window.showErrorMessage('View Creation is not allowed in module root directory or outside of module directory.');
@@ -193,20 +197,22 @@ async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: strin
         }
 
         let fileContent = '';
-        const pureName = fileName.replace('.xml', '').replace('_views', '_view');
-        const modelDotName = pureName.replace(/_/g, '.');
+        // "sale_order_views" -> model sale.order: the indexed model whose name matches, else dots for underscores.
+        const pureName = fileName.replace(/\.xml$/, '').replace(/_(views?|templates?|data|reports?|security|menus?)$/, '');
+        const modelDotName = modelIndexService.getAllModelNames().find(m => m.replace(/\./g, '_') === pureName)
+            ?? pureName.replace(/_/g, '.');
         const modelTitle = pureName
             .replace(/_/g, ' ')
             .replace(/\b\w/g, c => c.toUpperCase());
+        const moduleName = path.basename(moduleRoot.fsPath);
 
         switch (fileType) {
             case 'Empty View':
-                fileContent = `<? xml version = "1.0" encoding = "utf-8" ?>
-    <odoo>
-    <data>
-    <!--Your custom views here-- >
-        </data>
-        </odoo>`;
+                fileContent = `<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Your records, views and menus here -->
+</odoo>
+`;
                 break;
 
             case 'Basic View':
@@ -222,7 +228,7 @@ async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: strin
                 break;
 
             case 'Report View':
-                fileContent = await templates.getReportViewTemplate(pureName, modelDotName, modelTitle, reportType);
+                fileContent = await templates.getReportViewTemplate(pureName, modelDotName, modelTitle, reportType, moduleName);
                 break;
 
             case 'Security Group View':
@@ -255,7 +261,7 @@ async function handleCreateOdooViewFile(uri: vscode.Uri, preSelectedType?: strin
     }
 }
 
-async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
+export async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
     if (!moduleRoot) {
         vscode.window.showWarningMessage('Security file creation is only allowed inside a valid Odoo module.');
@@ -283,7 +289,8 @@ async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
             fs.mkdirSync(securityDir, { recursive: true });
         }
 
-        const fileName = 'ir.model.access.csv';
+        const access = accessCsvSpec(await getOdooVersion());
+        const fileName = access.fileName;
         const filePath = path.join(securityDir, fileName);
 
         let fileContent = '';
@@ -293,12 +300,9 @@ async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
                 fileContent += '\n';
             }
         } else {
-            fileContent = 'id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink\n';
+            fileContent = access.header.join(',') + '\n';
         }
-
-        const accessId = `access_${modelName.replace('.', '_')}`;
-        const newLine = `${accessId},${modelName.replace('.', ' ')} access,model_${modelName.replace('.', '_')},base.group_user,1,1,1,1\n`;
-        fileContent += newLine;
+        fileContent += access.row(modelName).join(',') + '\n';
 
         fs.writeFileSync(filePath, fileContent, 'utf8');
         await vscode.window.showTextDocument(vscode.Uri.file(filePath));
@@ -309,7 +313,7 @@ async function handleCreateOdooAccessFile(uri: vscode.Uri): Promise<void> {
     }
 }
 
-async function handleAddToInit(uri: vscode.Uri): Promise<void> {
+export async function handleAddToInit(uri: vscode.Uri): Promise<void> {
     const activeEditor = vscode.window.activeTextEditor;
     const targetUri = uri || (activeEditor ? activeEditor.document.uri : null);
     if (!targetUri || !targetUri.fsPath) return;
@@ -364,7 +368,7 @@ async function handleAddToInit(uri: vscode.Uri): Promise<void> {
     }
 }
 
-async function handleCreateOwlComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
+export async function handleCreateOwlComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
     if (!moduleRoot) {
         vscode.window.showWarningMessage('Owl component creation is only allowed in a valid Odoo module.');
@@ -403,7 +407,7 @@ async function handleCreateOwlComponentCreation(uri: vscode.Uri, type: string): 
     }
 }
 
-async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
+export async function handleCreatePosComponentCreation(uri: vscode.Uri, type: string): Promise<void> {
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
     if (!moduleRoot) {
         vscode.window.showWarningMessage('POS component creation is only allowed in a valid Odoo module.');
@@ -449,7 +453,7 @@ async function handleOdooToolClick(uri: vscode.Uri, toolName: string): Promise<v
     }
 }
 
-async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
+export async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
 
@@ -460,45 +464,32 @@ async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
     }
 
     const moduleRoot = await OdooModuleUtils.getModuleRoot(uri || editor.document.uri);
-    if (!moduleRoot) return;
+    if (!moduleRoot) {
+        vscode.window.showWarningMessage('Create Access Right needs the model to be inside an Odoo module (a folder with __manifest__.py and __init__.py).');
+        return;
+    }
 
     const securityDir = path.join(moduleRoot.fsPath, 'security');
-    const csvPath = path.join(securityDir, 'ir.model.access.csv');
+    const access = accessCsvSpec(await getOdooVersion());
+    const csvPath = path.join(securityDir, access.fileName);
 
     if (!fs.existsSync(securityDir)) {
         fs.mkdirSync(securityDir, { recursive: true });
     }
 
-    let csvParser: OdooCsvParser;
-    const modelId = `model_${context.modelName.replace(/\./g, '_')}`;
-    const accessId = `access_${context.modelName.replace(/\./g, '_')}`;
-    const headers = ['id', 'name', 'model_id:id', 'group_id:id', 'perm_read', 'perm_write', 'perm_create', 'perm_unlink'];
-
-    if (fs.existsSync(csvPath)) {
-        const content = fs.readFileSync(csvPath, 'utf8');
-        csvParser = new OdooCsvParser(content);
-    } else {
-        csvParser = new OdooCsvParser();
-    }
-
+    const csvParser = fs.existsSync(csvPath) ? new OdooCsvParser(fs.readFileSync(csvPath, 'utf8')) : new OdooCsvParser();
     const matrix = csvParser.getMatrix();
-    const hasCorrectHeaders = matrix.length > 0 &&
-        matrix[0].length === headers.length &&
-        matrix[0][0] === 'id' &&
-        matrix[0][2] === 'model_id:id';
+    const hasCorrectHeaders = matrix.length > 0 && matrix[0].join(',') === access.header.join(',');
 
     let headersAdded = false;
     if (!hasCorrectHeaders) {
         // Prepend headers if they are missing or incorrect
-        csvParser.setMatrix([headers, ...matrix]);
+        csvParser.setMatrix([access.header, ...matrix]);
         headersAdded = true;
     }
 
     // Check if model already exists in CSV (check in the updated matrix)
-    const updatedMatrix = csvParser.getMatrix();
-    const modelExists = updatedMatrix.slice(1).some(row => row[1] === context.modelName || row[2] === modelId);
-
-    if (modelExists) {
+    if (csvParser.getMatrix().slice(1).some(row => access.hasModel(row, context.modelName))) {
         if (headersAdded) {
             fs.writeFileSync(csvPath, csvParser.convertMatrixToText(), 'utf8');
         }
@@ -506,15 +497,7 @@ async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
         return;
     }
 
-    // Add row: id, name, model_id:id, group_id:id, read, write, create, unlink
-    csvParser.addRow([
-        accessId,
-        context.modelName,
-        modelId,
-        '',
-        '1', '1', '1', '1'
-    ]);
-
+    csvParser.addRow(access.row(context.modelName));
     fs.writeFileSync(csvPath, csvParser.convertMatrixToText(), 'utf8');
 
     // Automatically add to manifest if it's not there
@@ -527,12 +510,12 @@ async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
             manifestParser.parseManifest(manifestContent);
             const result = manifestParser.updateManifest({
                 type: 'file',
-                name: 'ir.model.access.csv',
+                name: access.fileName,
                 content: '',
                 updateManifest: true,
                 manifestCategory: 'data',
                 dataCategory: 'security'
-            }, 'security/ir.model.access.csv');
+            }, `security/${access.fileName}`);
 
             if (result.success && result.updatedContent) {
                 fs.writeFileSync(manifestPath, result.updatedContent, 'utf8');
@@ -540,165 +523,12 @@ async function handleCreateAccessRight(uri: vscode.Uri): Promise<void> {
         }
     }
 
-    vscode.window.showInformationMessage(`Access right created for "${context.modelName}" in ir.model.access.csv`);
+    vscode.window.showInformationMessage(`Access right created for "${context.modelName}" in ${access.fileName}`);
 
     // Open the CSV file
     const doc = await vscode.workspace.openTextDocument(csvPath);
     await vscode.window.showTextDocument(doc);
 }
 
-
-
-export function registerCommands(context: vscode.ExtensionContext): void {
-    const commands = [
-        {
-            command: 'cybrosys-assista-odoo-helper.createModuleBasic',
-            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'basic')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createModuleAdvanced',
-            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'advanced')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createModuleowlBasic',
-            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'owl_basic')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createModuleowlAdvanced',
-            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'owl_advanced')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createModuleWithSystrayMenu',
-            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'systray_module')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createModuleWebsiteTheme',
-            handler: (uri: vscode.Uri) => handleCreateModule(uri, 'website_theme')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooModelFile',
-            handler: handleCreateOdooModelFile
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewFile',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri)
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewBasic',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Basic View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewAdvanced',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Advanced View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewInherit',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Inherit View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooReportFile',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Report View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooReportPdf',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Report View', 'qweb-pdf')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooReportHtml',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Report View', 'qweb-html')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewSecurityGroup',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Security Group View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewSecurityRule',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Security Rule View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewSequence',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Sequence View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewSettings',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Settings View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooViewCron',
-            handler: (uri: vscode.Uri) => handleCreateOdooViewFile(uri, 'Cron Job View')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOdooAccessFile',
-            handler: handleCreateOdooAccessFile
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.addToInit',
-            handler: handleAddToInit
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOwlCommonComponent',
-            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'commonComponent')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOwlFieldWidgetComponent',
-            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'fieldWidgetComponent')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOwlPublicComponent',
-            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'publicComponent')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createOwlOdooService',
-            handler: (uri: vscode.Uri) => handleCreateOwlComponentCreation(uri, 'serviceTemplate')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.extendPosProductScreen',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendProductScreen')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.extendPosPartnerListScreen',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendPartnerListScreen')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.extendPosPaymentScreen',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendPaymentScreen')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.extendPosReceiptScreen',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendReceiptScreen')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.extendPosTicketScreen',
-            handler: (uri: vscode.Uri) => handleCreatePosComponentCreation(uri, 'extendTicketScreen')
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createViews',
-            handler: (uri: vscode.Uri) => handleCreateViews(uri)
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createAccessRight',
-            handler: (uri: vscode.Uri) => handleCreateAccessRight(uri)
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.createReport',
-            handler: (uri: vscode.Uri) => handleCreateReport(uri)
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.installModule',
-            handler: (uri: vscode.Uri) => installModule(uri)
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.showDependencyGraph',
-            handler: (uri: vscode.Uri) => handleShowDependencyGraph(uri)
-        },
-        {
-            command: 'cybrosys-assista-odoo-helper.showModelInheritanceGraph',
-            handler: () => handleShowModelInheritanceGraph()
-        }
-    ];
-
-    commands.forEach(({ command, handler }) => {
-        const disposable = vscode.commands.registerCommand(command, handler);
-        context.subscriptions.push(disposable);
-    });
-}
+// Implementations behind the commands registered in `registerCommands.ts`, loaded on first use.
+export { handleCreateViews, handleCreateReport, installModule, handleShowDependencyGraph, handleShowModelInheritanceGraph };

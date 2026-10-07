@@ -1,30 +1,30 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
-import { Node } from 'vscode-html-languageservice';
+import type { Node } from 'vscode-html-languageservice';
 import { getXmlParserService } from '../services/xmlParserService';
+import { clearModuleRootCache, findModuleRoot } from '../parsing/moduleRoot';
+
+// arch root tags of every view type (tree before 18, card from 20)
+const VIEW_ROOT_TAGS = new Set(['form', 'tree', 'list', 'kanban', 'card', 'pivot', 'graph', 'calendar', 'search', 'activity', 'hierarchy']);
 
 export class OdooModuleUtils {
+    /** Cleared whenever the module index changes. */
+    static clearCache() {
+        clearModuleRootCache();
+    }
+
     /**
      * Get the root directory of the Odoo module containing the given URI.
      * @param uri - The URI of a file or directory within the module.
      * @returns The URI of the module root, or null if not found.
      */
     static async getModuleRoot(uri: vscode.Uri): Promise<vscode.Uri | null> {
-        let currentFolder = uri.fsPath;
-        while (currentFolder) {
-            const manifestPath = path.join(currentFolder, '__manifest__.py');
-            const initPath = path.join(currentFolder, '__init__.py');
-            if (fs.existsSync(manifestPath) && fs.existsSync(initPath)) {
-                return vscode.Uri.file(currentFolder);
-            }
-            const parentFolder = path.dirname(currentFolder);
-            if (parentFolder === currentFolder) {
-                break;
-            }
-            currentFolder = parentFolder;
-        }
-        return null;
+        const root = findModuleRoot(uri.fsPath);
+        return root ? vscode.Uri.file(root) : null;
+    }
+
+    /** Synchronous form of {@link getModuleRoot}; answers from a cache after the first lookup. */
+    static getModuleRootPath(fsPath: string): string | null {
+        return findModuleRoot(fsPath);
     }
 
     /**
@@ -47,7 +47,7 @@ export class OdooModuleUtils {
                 }
             }
 
-            if (parentNode.tag && ['form', 'tree', 'list', 'kanban', 'pivot', 'search'].includes(parentNode.tag)) {
+            if (parentNode.tag && VIEW_ROOT_TAGS.has(parentNode.tag)) {
                 const archField = parentNode.parent;
                 if (archField && archField.parent) {
                     const recordNode = archField.parent;
@@ -124,7 +124,7 @@ export class OdooModuleUtils {
                 break;
             }
 
-            if (parentNode.tag && ['form', 'tree', 'list', 'kanban', 'pivot', 'search'].includes(parentNode.tag)) {
+            if (parentNode.tag && VIEW_ROOT_TAGS.has(parentNode.tag)) {
                 foundViewTag = true;
             }
 

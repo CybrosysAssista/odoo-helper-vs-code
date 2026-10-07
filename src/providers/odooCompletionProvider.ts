@@ -187,7 +187,7 @@ export function registerFieldProviders(context: vscode.ExtensionContext) {
                 (await getFieldSnippets()).forEach(snippet => {
                     const item = new vscode.CompletionItem(snippet.label, vscode.CompletionItemKind.Field);
                     item.sortText = `odoo field ${String(snippet.label).toLowerCase()}`;
-                    item.insertText = snippet.insertText;
+                    item.insertText = new vscode.SnippetString(snippet.insertText);
                     item.detail = snippet.detail;
                     item.documentation = new vscode.MarkdownString(
                         `### ${snippet.label}\n\n` +
@@ -199,7 +199,7 @@ export function registerFieldProviders(context: vscode.ExtensionContext) {
                 (await getUtilitySnippets()).forEach(snippet => {
                     const item = new vscode.CompletionItem(snippet.label, vscode.CompletionItemKind.Field);
                     item.sortText = `odoo ${String(snippet.label).toLowerCase()}`;
-                    item.insertText = snippet.insertText;
+                    item.insertText = new vscode.SnippetString(snippet.insertText);
                     item.detail = snippet.detail;
                     item.documentation = new vscode.MarkdownString(
                         `### ${snippet.label}\n\n` +

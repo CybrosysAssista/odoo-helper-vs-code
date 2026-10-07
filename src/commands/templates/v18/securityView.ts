@@ -28,7 +28,7 @@ export const getSecurityGroupViewTemplate = (pureName: string, modelTitle: strin
 </odoo>`;
 
 export const getSecurityRuleViewTemplate = (pureName: string, modelDotName: string): string => {
-    const modelUnderscore = modelDotName.replace('.', '_');
+    const modelUnderscore = modelDotName.replace(/\./g, '_');
     return `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>

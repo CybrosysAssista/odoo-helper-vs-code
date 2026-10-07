@@ -1,22 +1,30 @@
+// Odoo 19+ settings: <app>/<block>/<setting> inside base.res_config_settings_view_form.
+// `your_field_setting` is a placeholder for a res.config.settings field of the module.
 export const getSettingsViewTemplate = (pureName: string, modelDotName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-        <!-- Inherit Res Config Settings Form -->
-        <record id="${pureName}_settings_view_form" model="ir.ui.view">
-            <field name="name">${modelDotName}.settings.inherit.view</field>
-            <field name="model">res.config.settings</field>
-            <field name="inherit_id" ref="base.view_res_config_settings"/>
-            <field name="arch" type="xml">
-                <xpath expr="//div[@id='settings']" position="inside">
-                    <div class="app_settings_block" data-string="${modelTitle} Settings">
-                        <h2>${modelTitle} Settings</h2>
-                        <group>
+    <record id="res_config_settings_view_form_${pureName}" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.${pureName}</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="50"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="${modelTitle}" string="${modelTitle}" name="${pureName}">
+                    <block title="${modelTitle}" id="${pureName}_settings">
+                        <setting id="${pureName}_setting" help="Describe what this setting does">
                             <field name="your_field_setting"/>
-                            <!-- Add more fields if needed -->
-                        </group>
-                    </div>
-                </xpath>
-            </field>
-        </record>
-    </data>
-</odoo>`;
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_${pureName}_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': '${pureName}'}</field>
+    </record>
+</odoo>
+`;

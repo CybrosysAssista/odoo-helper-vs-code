@@ -1,149 +1,192 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
+import { EXCLUDE_GLOB, FileChange, FileMetadata, watchFiles } from '../utils/indexing';
+import { EntryKind, XmlEntry } from '../parsing/xml';
+import { indexFiles } from '../indexer/indexer';
+import type { FileResult } from '../indexer/protocol';
+import { indexNeeded } from '../indexer/trigger';
+
+export interface TemplateLocation {
+    filePath: string;
+    line: number;
+}
+
+const STATE_VERSION = 2;
 
 class TemplateIndexService {
-    private templateCache: Set<string>;
-    private fileMetadata: Map<string, { mtime: number, size: number }>;
-    private watcher: vscode.FileSystemWatcher | null;
-
-    constructor() {
-        this.templateCache = new Set();
-        this.fileMetadata = new Map();
-        this.watcher = null;
-    }
+    private fileEntries: Map<string, XmlEntry[]> = new Map(); // filePath -> templates and ids it defines
+    private templates: Map<string, TemplateLocation[]> = new Map(); // template name -> where it is defined
+    private xmlIds: Map<string, TemplateLocation[]> = new Map(); // module.xml_id -> where it is defined
+    private fileMetadata: Map<string, FileMetadata> = new Map();
+    private watcher: vscode.Disposable | null = null;
+    private templateNames: string[] | null = null;
+    private dirty = false;
 
     initialize() {
-        // Watch for XML file changes to invalidate cache
-        this.watcher = vscode.workspace.createFileSystemWatcher('**/*.xml');
-        this.watcher.onDidChange(() => this.buildCache());
-        this.watcher.onDidCreate(() => this.buildCache());
-        this.watcher.onDidDelete(() => this.buildCache());
+        this.watcher = watchFiles('**/*.xml', changes => this.applyChanges(changes));
+    }
+
+    private async applyChanges(changes: Map<string, FileChange>) {
+        const changed: string[] = [];
+        for (const [fsPath, change] of changes) {
+            if (change === 'deleted') {
+                this.removeFile(fsPath);
+            } else {
+                changed.push(fsPath);
+            }
+        }
+        await this.indexPaths(changed);
+    }
+
+    private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
+        return indexFiles(
+            paths.map(path => ({ path, kind: 'xml' as const, meta: this.fileMetadata.get(path) })),
+            result => this.applyResult(result),
+            progress && { report: value => progress.report(value), label: 'Templates' }
+        );
     }
 
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        // console.log('[TemplateIndex] Refreshing templates (incremental)...');
-        // DO NOT CLEAR anymore
-
-        const xmlFiles = await vscode.workspace.findFiles('**/*.xml', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
-        const totalFiles = xmlFiles.length;
-        let filesProcessed = 0;
-
-        for (const file of xmlFiles) {
-            filesProcessed++;
-            if (progress) {
-                progress.report({
-                    message: `Templates: ${filesProcessed}/${totalFiles}`,
-                    increment: (1 / totalFiles) * 100
-                });
-            }
-
-            try {
-                const stats = await vscode.workspace.fs.stat(file);
-                const cachedMetadata = this.fileMetadata.get(file.fsPath);
-
-                if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
-                    continue;
-                }
-
-                const content = await vscode.workspace.fs.readFile(file);
-                const text = Buffer.from(content).toString('utf8');
-                const moduleName = await this.getModuleNameForFile(file.fsPath);
-
-                // Remove old entries for this file (requires changing how extractTemplates works,
-                // but since it's a Set, we might have issues with shared IDs from different files?
-                // Actually Odoo template IDs should be unique per module.
-                // For simplicity, we just add. If a template is removed from a file,
-                // it might stay in the Set until refresh or cleanup.
-                // Let's improve this if needed).
-
-                this.extractTemplates(text, moduleName);
-                this.fileMetadata.set(file.fsPath, { mtime: stats.mtime, size: stats.size });
-            } catch (err) { }
-
-            if (filesProcessed % 50 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 5));
-            }
-        }
-
-        await this.cleanupDeletedFiles();
-    }
-
-    private async cleanupDeletedFiles() {
-        const currentFiles = new Set((await vscode.workspace.findFiles('**/*.xml', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**')).map(f => f.fsPath));
-        for (const filePath of this.fileMetadata.keys()) {
-            if (!currentFiles.has(filePath)) {
-                this.fileMetadata.delete(filePath);
-                // Note: We don't easily know which templates were in THIS file to remove them from the Set
-                // Full rebuild might be needed occasionally, or we change Set to Map<filePath, templates[]>
+        const xmlFiles = await vscode.workspace.findFiles('**/*.xml', EXCLUDE_GLOB);
+        const seen = new Set(xmlFiles.map(file => file.fsPath));
+        await this.indexPaths([...seen], progress);
+        for (const filePath of [...this.fileMetadata.keys()]) {
+            if (!seen.has(filePath)) {
+                this.removeFile(filePath);
             }
         }
     }
 
-    // Find the module name by walking up to the directory containing __manifest__.py
-    async getModuleNameForFile(filePath: string): Promise<string | null> {
-        let dir = path.dirname(filePath);
-        let lastDir = null;
-        while (dir !== lastDir) {
-            if (fs.existsSync(path.join(dir, '__manifest__.py'))) {
-                return path.basename(dir);
+    private applyResult(result: FileResult) {
+        if (result.status === 'missing') {
+            this.removeFile(result.path);
+        } else if (result.status === 'parsed') {
+            this.removeEntries(result.path);
+            if (result.xml) {
+                this.addEntries(result.path, result.xml);
             }
-            lastDir = dir;
-            dir = path.dirname(dir);
+            this.fileMetadata.set(result.path, result.meta);
+            this.dirty = true;
         }
-        return null;
     }
 
-    extractTemplates(xmlText: string, moduleName: string | null) {
-        if (!moduleName) return;
-        // <template id="..." ...>
-        const templateIdRegex = /<template[^>]*id=["']([^"']+)["']/g;
-        let match;
-        while ((match = templateIdRegex.exec(xmlText)) !== null) {
-            this.templateCache.add(`${moduleName}.${match[1]}`);
+    private removeFile(filePath: string) {
+        if (this.fileMetadata.delete(filePath)) {
+            this.dirty = true;
         }
-        // <t t-name="..." ...>
-        const tNameRegex = /<t[^>]*t-name=["']([^"']+)["']/g;
-        while ((match = tNameRegex.exec(xmlText)) !== null) {
-            const tName = match[1];
-            if (tName.includes('.')) {
-                this.templateCache.add(tName);
+        this.removeEntries(filePath);
+    }
+
+    private addEntries(filePath: string, entries: XmlEntry[]) {
+        if (entries.length === 0) return;
+        this.fileEntries.set(filePath, entries);
+        for (const [name, line, kind] of entries) {
+            const map = kind === EntryKind.Template ? this.templates : this.xmlIds;
+            const locations = map.get(name);
+            if (locations) {
+                locations.push({ filePath, line });
             } else {
-                this.templateCache.add(`${moduleName}.${tName}`);
+                map.set(name, [{ filePath, line }]);
             }
         }
+        this.templateNames = null;
+        this.dirty = true;
+    }
+
+    private removeEntries(filePath: string) {
+        const entries = this.fileEntries.get(filePath);
+        if (!entries) return;
+        this.fileEntries.delete(filePath);
+        for (const [name, , kind] of entries) {
+            const map = kind === EntryKind.Template ? this.templates : this.xmlIds;
+            const locations = map.get(name)?.filter(l => l.filePath !== filePath);
+            if (locations && locations.length > 0) {
+                map.set(name, locations);
+            } else {
+                map.delete(name);
+            }
+        }
+        this.templateNames = null;
+        this.dirty = true;
     }
 
     getAllTemplates(): string[] {
-        return Array.from(this.templateCache);
+        indexNeeded();
+        if (!this.templateNames) {
+            this.templateNames = Array.from(this.templates.keys());
+        }
+        return this.templateNames;
+    }
+
+    /** Where a template is defined, by full name (`module.name`) or by its name alone. */
+    findTemplate(name: string): TemplateLocation[] {
+        indexNeeded();
+        return TemplateIndexService.lookup(this.templates, name);
+    }
+
+    /** Where an XML id (record, menu item or template) is defined, as `module.id` or `id`. */
+    findXmlId(id: string): TemplateLocation[] {
+        indexNeeded();
+        return TemplateIndexService.lookup(this.xmlIds, id);
+    }
+
+    private static lookup(map: Map<string, TemplateLocation[]>, name: string): TemplateLocation[] {
+        const exact = map.get(name);
+        if (exact) {
+            return exact;
+        }
+        const suffix = '.' + name;
+        const results: TemplateLocation[] = [];
+        for (const [fullName, locations] of map) {
+            if (fullName.endsWith(suffix)) {
+                results.push(...locations);
+            }
+        }
+        return results;
+    }
+
+    isDirty(): boolean {
+        return this.dirty;
     }
 
     getState() {
+        this.dirty = false;
         return {
-            templates: Array.from(this.templateCache),
+            version: STATE_VERSION,
+            files: Array.from(this.fileEntries.entries()),
             metadata: Array.from(this.fileMetadata.entries())
         };
     }
 
     loadState(state: any) {
+        this.fileEntries = new Map();
+        this.templates = new Map();
+        this.xmlIds = new Map();
+        this.fileMetadata = new Map();
+        this.templateNames = null;
+        // Earlier versions saved template names without their files, so their entries could never
+        // be removed. Such a state is dropped and rebuilt (a cheap pass: templates are found by regex).
+        if (!state || state.version !== STATE_VERSION || !Array.isArray(state.files)) {
+            return;
+        }
         try {
-            if (Array.isArray(state)) {
-                // Old format
-                this.templateCache = new Set(state);
-            } else if (state && typeof state === 'object') {
-                // New format
-                if (Array.isArray(state.templates)) {
-                    this.templateCache = new Set(state.templates);
-                }
-                if (Array.isArray(state.metadata)) {
-                    this.fileMetadata = new Map(state.metadata);
-                }
+            for (const [filePath, entries] of state.files as [string, XmlEntry[]][]) {
+                this.addEntries(filePath, entries);
+            }
+            if (Array.isArray(state.metadata)) {
+                this.fileMetadata = new Map(state.metadata);
             }
         } catch (e) {
             console.error('[TemplateIndex] Failed to load state:', e);
-            this.templateCache = new Set();
+            this.fileEntries = new Map();
+            this.templates = new Map();
+            this.xmlIds = new Map();
             this.fileMetadata = new Map();
         }
+        this.dirty = false;
+    }
+
+    dispose() {
+        this.watcher?.dispose();
     }
 }
 

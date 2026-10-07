@@ -12,10 +12,7 @@ import { OdooModuleUtils } from '../utils/odooModuleUtils';
 import { CssClassIndexer } from '../services/cssClassIndexer';
 import { getOdooRegistryIndexer } from '../services/odooRegistryIndexer';
 import { getXmlParserService } from '../services/xmlParserService';
-
-function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import templateIndexService, { TemplateLocation } from '../services/templateIndexService';
 
 export class OdooDefinitionProvider implements vscode.DefinitionProvider {
     async provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Location | vscode.Location[] | null | undefined> {
@@ -95,20 +92,9 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
             if (/<button[^>]*name\s*=\s*["']([^"']+)["']/.test(line) && word) {
                 // Find the model context for this view (look for <field name="model">...)
                 const modelName = this.getXmlModelContext(documentText, position.line);
-                if (modelName) {
-                    // Search all Python files for def <word> in the correct model
-                    const files = await vscode.workspace.findFiles('**/*.py');
-                    for (const file of files) {
-                        const content = fs.readFileSync(file.fsPath, 'utf8');
-                        if (!content.includes(`_name = '${modelName}'`) && !content.includes(`_inherit = '${modelName}'`)) continue;
-                        const regex = new RegExp('def\\s+' + escapeRegExp(word) + '\\s*\\(');
-                        const match = regex.exec(content);
-                        if (match) {
-                            const idx = content.indexOf(match[0]);
-                            const lines = content.slice(0, idx).split('\n');
-                            return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-                        }
-                    }
+                const methods = modelName ? await this.findPythonMethodInModel(modelName, word) : null;
+                if (methods) {
+                    return methods;
                 }
             }
             // 2. Menuitem parent navigation: <menuitem parent="..."> (multi-line support)
@@ -122,20 +108,9 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                 const menuitemBlock = lines.slice(tagStart, tagEnd + 1).join(' ');
                 // Extract parent attribute value
                 const parentMatch = menuitemBlock.match(/parent\s*=\s*["']([^"']+)["']/);
-                if (parentMatch && parentMatch[1] === word) {
-                    // Search all XML files for <menuitem id="..."> (multi-line aware)
-                    const files = await vscode.workspace.findFiles('**/*.xml');
-                    for (const file of files) {
-                        const content = fs.readFileSync(file.fsPath, 'utf8');
-                        // Match <menuitem ... id="..." ...> across multiple lines
-                        const regex = new RegExp('<menuitem[^>]*id\s*=\s*["\']' + escapeRegExp(word) + '["\'][^>]*>', 'gms');
-                        const match = regex.exec(content);
-                        if (match) {
-                            const idx = content.indexOf(match[0]);
-                            const linesArr = content.slice(0, idx).split('\n');
-                            return new vscode.Location(file, new vscode.Position(linesArr.length - 1, 0));
-                        }
-                    }
+                const parentMenu = parentMatch && parentMatch[1] === word ? await this.findXmlRecord(word) : null;
+                if (parentMenu) {
+                    return parentMenu;
                 }
             }
             // QWeb t-call and t-name navigation
@@ -185,23 +160,8 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                                 );
                             }
 
-                            const pick = await vscode.window.showQuickPick(
-                                candidates.map(f => ({
-                                    label: `${f.fieldName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
-                                    description: f.filePath,
-                                    detail: `Type: ${f.fieldType}`,
-                                    field: f
-                                })),
-                                { placeHolder: `Select definition for field: ${word}` }
-                            );
-
-                            if (pick) {
-                                return new vscode.Location(
-                                    vscode.Uri.file(pick.field.filePath),
-                                    new vscode.Position(pick.field.line, pick.field.character)
-                                );
-                            }
-                            return null;
+                            // Several definitions: VS Code lists them in its peek view.
+                            return candidates.map(f => new vscode.Location(vscode.Uri.file(f.filePath), new vscode.Position(f.line, f.character)));
                         }
                     }
                 }
@@ -234,22 +194,8 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                                 );
                             }
 
-                            const pick = await vscode.window.showQuickPick(
-                                entries.map(e => ({
-                                    label: `${e.id} (in ${e.moduleName})`,
-                                    description: e.filePath,
-                                    detail: `Component: ${e.component}`,
-                                    entry: e
-                                })),
-                                { placeHolder: `Select definition for action tag: ${word}` }
-                            );
-
-                            if (pick) {
-                                return new vscode.Location(
-                                    vscode.Uri.file(pick.entry.filePath),
-                                    new vscode.Position(pick.entry.line, 0)
-                                );
-                            }
+                            // Several definitions: VS Code lists them in its peek view.
+                            return entries.map(e => new vscode.Location(vscode.Uri.file(e.filePath), new vscode.Position(e.line, 0)));
                         }
                     }
                 }
@@ -282,23 +228,8 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                                 );
                             }
 
-                            const pick = await vscode.window.showQuickPick(
-                                candidates.map(f => ({
-                                    label: `${f.functionName} (${f.moduleName}) ${f.isInherited ? '[Inherited]' : '[Base]'}`,
-                                    description: f.filePath,
-                                    detail: `Class: ${f.className}, Model: ${f.modelName}`,
-                                    func: f
-                                })),
-                                { placeHolder: `Select definition for method: ${word}` }
-                            );
-
-                            if (pick) {
-                                return new vscode.Location(
-                                    vscode.Uri.file(pick.func.filePath),
-                                    new vscode.Position(pick.func.line, pick.func.character)
-                                );
-                            }
-                            return null;
+                            // Several definitions: VS Code lists them in its peek view.
+                            return candidates.map(f => new vscode.Location(vscode.Uri.file(f.filePath), new vscode.Position(f.line, f.character)));
                         }
                     }
                 }
@@ -321,24 +252,18 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
         }
         if (languageId === 'python') {
             // Check if it's a valid Odoo module
-            const modules = await moduleIndexService.getModules();
-            const module = modules.find(m => document.uri.fsPath.startsWith(m.path));
-            if (!module) return null;
+            if (!OdooModuleUtils.getModuleRootPath(document.uri.fsPath)) return null;
 
             // Handle _inherit navigation using Tree-sitter
             const pythonParser = getPythonParserService();
             if (pythonParser.isInitialized()) {
-                const tree = pythonParser.parse(document.getText());
-                if (tree) {
-                    const offset = document.offsetAt(position);
+                const offset = document.offsetAt(position);
+                const inheritedModel = pythonParser.withTree(documentText, tree => {
                     const node = tree.rootNode.descendantForIndex(Math.max(0, offset - 1));
-
-                    if (node && this.isModelInheritContext(node)) {
-                        const modelName = node.text.replace(/['"]/g, '');
-                        if (modelName) {
-                            return await this.handleModelDefinitionMultiLookup(modelName);
-                        }
-                    }
+                    return node && this.isModelInheritContext(node) ? node.text.replace(/['"]/g, '') : '';
+                });
+                if (inheritedModel) {
+                    return await this.handleModelDefinitionMultiLookup(inheritedModel);
                 }
             }
 
@@ -485,35 +410,52 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
             }
         }
 
-        // self.field_name
-        if (/self\.(\w+)/.test(line) && line.includes(word)) {
-            const modelName = this.getPythonModelContext(documentText, position.line);
-            if (modelName) {
-                return await this.findFieldDefinition(document, word, modelName);
+        const identRange = document.getWordRangeAtPosition(position);
+        if (!identRange) return null;
+        const ident = document.getText(identRange);
+        const currentModel = this.getPythonModelContext(documentText, position.line);
+
+        // env['model.name'], with the cursor inside the string
+        for (const match of line.matchAll(/env\[\s*['"]([^'"]+)['"]\s*\]/g)) {
+            const start = match.index! + match[0].indexOf(match[1]);
+            if (position.character >= start && position.character <= start + match[1].length) {
+                return await this.findModelDefinition(match[1]);
             }
         }
-        // self.method_name()
-        if (/self\.(\w+)\s*\(/.test(line) && line.includes(word)) {
-            const modelName = this.getPythonModelContext(documentText, position.line);
-            if (modelName) {
-                return await this.findPythonMethodInModel(modelName, word);
+
+        // related='partner_id.country_id': a field chain from the current model
+        for (const match of line.matchAll(/related\s*=\s*['"]([^'"]+)['"]/g)) {
+            const start = match.index! + match[0].indexOf(match[1]);
+            if (currentModel && position.character >= start && position.character <= start + match[1].length) {
+                const segments = match[1].split('.');
+                const index = match[1].slice(0, position.character - start).split('.').length - 1;
+                const model = this.resolveFieldChain(currentModel, segments.slice(0, index));
+                return model ? await this.findFieldDefinition(null, segments[index], model) : null;
             }
         }
-        // env['model.name']
-        if (/env\[['"]([^'"]+)['"]\]/.test(line) && line.includes(word)) {
-            return await this.findModelDefinition(word);
-        }
-        // related='model.field'
-        if (/related\s*=\s*['"]([^'"]+)['"]/.test(line)) {
-            const rel = line.match(/related\s*=\s*['"]([^'"]+)['"]/);
-            if (rel) {
-                const [modelName, fieldName] = rel[1].split('.');
-                if (fieldName === word) {
-                    return await this.findFieldDefinition(null, fieldName, modelName);
-                }
+
+        // self.field, self.method(), self.partner_id.name...: resolve the chain up to the identifier
+        const chain = line.slice(0, identRange.end.character).match(/\bself((?:\.\w+)*)$/);
+        if (chain && currentModel) {
+            const segments = chain[1].split('.').filter(Boolean);
+            const model = this.resolveFieldChain(currentModel, segments.slice(0, -1));
+            if (model) {
+                const found = await this.findFieldDefinition(null, ident, model) ?? await this.findPythonMethodInModel(model, ident);
+                if (found) return found;
             }
         }
         return null;
+    }
+
+    /** The model reached by following relational `fields` from `model`, or null if the chain breaks. */
+    private resolveFieldChain(model: string, fields: string[]): string | null {
+        let current = model;
+        for (const name of fields) {
+            const comodel = fieldIndexService.getFieldsForModel(current).find(f => f.fieldName === name && f.attributes['comodel_name'])?.attributes['comodel_name'];
+            if (!comodel) return null;
+            current = comodel;
+        }
+        return current;
     }
 
     // --- Context helpers ---
@@ -529,54 +471,39 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
         return null;
     }
     getPythonModelContext(documentText: string, lineNumber: number): string | null {
-        // Look upwards for _name = 'model.name' or _inherit = 'model.name'
-        const lines = documentText.split('\n').slice(0, lineNumber + 1).reverse();
-        for (const line of lines) {
-            let m = line.match(/_name\s*=\s*['"]([\w.]+)['"]/);
-            if (m) return m[1];
-            m = line.match(/_inherit\s*=\s*['"]([\w.]+)['"]/);
-            if (m) return m[1];
+        // The model of the class enclosing the line: its `_name`, else its (first) `_inherit`.
+        const lines = documentText.split('\n');
+        let classLine = -1;
+        for (let i = Math.min(lineNumber, lines.length - 1); i >= 0; i--) {
+            if (/^class\s+\w+/.test(lines[i])) { classLine = i; break; }
         }
-        return null;
+        if (classLine === -1) return null;
+        let inherit: string | null = null;
+        for (let i = classLine + 1; i < lines.length && !/^class\s+\w+/.test(lines[i]); i++) {
+            const name = lines[i].match(/^\s+_name\s*=\s*['"]([\w.]+)['"]/);
+            if (name) return name[1];
+            const inh = lines[i].match(/^\s+_inherit\s*=\s*\[?\s*['"]([\w.]+)['"]/);
+            if (inh && !inherit) inherit = inh[1];
+        }
+        return inherit;
     }
 
     // --- Navigation helpers ---
-    async findPythonMethodInModel(modelName: string, methodName: string): Promise<vscode.Location | null> {
-        const files = await vscode.workspace.findFiles('**/*.py');
-        for (const file of files) {
-            const content = fs.readFileSync(file.fsPath, 'utf8');
-            if (!content.includes(`_name = '${modelName}'`) && !content.includes(`_inherit = '${modelName}'`)) continue;
-            const regex = new RegExp('def\\s+' + escapeRegExp(methodName) + '\\s*\\(', 'm');
-            const match = regex.exec(content);
-            if (match) {
-                const idx = content.indexOf(match[0]);
-                const lines = content.slice(0, idx).split('\n');
-                // Place cursor at start of matched line
-                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-            }
-        }
-        return null;
+    async findPythonMethodInModel(modelName: string, methodName: string): Promise<vscode.Location[] | null> {
+        const methods = functionIndexService.getFunctionsForModel(modelName).filter(f => f.functionName === methodName);
+        return methods.length > 0
+            ? methods.map(f => new vscode.Location(vscode.Uri.file(f.filePath), new vscode.Position(f.line, f.character)))
+            : null;
     }
-    async findFieldDefinition(document: vscode.TextDocument | null, fieldName: string, modelName: string | null = null): Promise<vscode.Location | null> {
+    async findFieldDefinition(document: vscode.TextDocument | null, fieldName: string, modelName: string | null = null): Promise<vscode.Location[] | null> {
         if (!modelName && document) {
             modelName = this.getPythonModelContext(document.getText(), document.lineCount - 1);
         }
         if (!modelName) return null;
-        const files = await vscode.workspace.findFiles('**/*.py');
-        for (const file of files) {
-            const content = fs.readFileSync(file.fsPath, 'utf8');
-            if (!content.includes(`_name = '${modelName}'`) && !content.includes(`_inherit = '${modelName}'`)) continue;
-            // Use a simple, robust regex for field assignment
-            const regex = new RegExp('^\\s*' + escapeRegExp(fieldName) + '\\s*=\\s*fields\\.[A-Z][a-zA-Z0-9_]*\\s*\\(', 'm');
-            const match = regex.exec(content);
-            if (match) {
-                const idx = content.indexOf(match[0]);
-                const lines = content.slice(0, idx).split('\n');
-                // Place cursor at start of matched line
-                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-            }
-        }
-        return null;
+        const fields = fieldIndexService.getFieldsForModel(modelName).filter(f => f.fieldName === fieldName);
+        return fields.length > 0
+            ? fields.map(f => new vscode.Location(vscode.Uri.file(f.filePath), new vscode.Position(f.line, f.character)))
+            : null;
     }
     async findModelDefinition(modelName: string): Promise<vscode.Location | null> {
         const modelInfos = modelIndexService.getModelsByName(modelName);
@@ -590,36 +517,16 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
         }
         return null;
     }
-    async findXmlRecord(recordId: string): Promise<vscode.Location | null> {
-        const files = await vscode.workspace.findFiles('**/*.xml');
-        for (const file of files) {
-            const content = fs.readFileSync(file.fsPath, 'utf8');
-            const regex = new RegExp('<record[^>]+id\\s*=\\s*[\'\"]' + escapeRegExp(recordId) + '[\'\"]', 'g');
-            const match = regex.exec(content);
-            if (match) {
-                const idx = content.indexOf(match[0]);
-                const lines = content.slice(0, idx).split('\n');
-                // Place cursor at start of matched line
-                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-            }
-        }
-        return null;
+    async findXmlRecord(recordId: string): Promise<vscode.Location[] | null> {
+        return this.toLocations(templateIndexService.findXmlId(recordId));
     }
-    async findQWebTemplate(templateName: string): Promise<vscode.Location | null> {
-        const files = await vscode.workspace.findFiles('**/*.xml');
-        for (const file of files) {
-            const content = fs.readFileSync(file.fsPath, 'utf8');
-            // Match <t t-name="...">
-            const regex = new RegExp('<t\\s+t-name\\s*=\\s*[\'\"]' + escapeRegExp(templateName) + '[\'\"]', 'g');
-            const match = regex.exec(content);
-            if (match) {
-                const idx = content.indexOf(match[0]);
-                const lines = content.slice(0, idx).split('\n');
-                // Place cursor at start of matched line
-                return new vscode.Location(file, new vscode.Position(lines.length - 1, 0));
-            }
-        }
-        return null;
+    async findQWebTemplate(templateName: string): Promise<vscode.Location[] | null> {
+        return this.toLocations(templateIndexService.findTemplate(templateName));
+    }
+    private toLocations(found: TemplateLocation[]): vscode.Location[] | null {
+        return found.length > 0
+            ? found.map(l => new vscode.Location(vscode.Uri.file(l.filePath), new vscode.Position(l.line, 0)))
+            : null;
     }
 
     private isModelInheritContext(node: any): boolean {
@@ -676,20 +583,8 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
                 return new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character));
             }
 
-            const pick = await vscode.window.showQuickPick(
-                modelInfos.map(m => ({
-                    label: `${m.modelName} (in ${m.moduleName}) ${m.isInherited ? '[Inherited]' : '[Base]'}`,
-                    description: m.filePath,
-                    detail: `Class: ${m.className}`,
-                    model: m
-                })),
-                { placeHolder: `Select definition for model: ${modelName}` }
-            );
-
-            if (pick) {
-                return new vscode.Location(vscode.Uri.file(pick.model.filePath), new vscode.Position(pick.model.line, pick.model.character));
-            }
-            return null;
+            // Several definitions: VS Code lists them in its peek view.
+            return modelInfos.map(m => new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character)));
         }
 
         if (candidates.length === 1) {
@@ -698,20 +593,7 @@ export class OdooDefinitionProvider implements vscode.DefinitionProvider {
         }
 
         // Multiple candidates found, ask user to choose
-        const pick = await vscode.window.showQuickPick(
-            candidates.map(m => ({
-                label: `${m.modelName} (in ${m.moduleName}) ${m.isInherited ? '[Inherited]' : '[Base]'}`,
-                description: m.filePath,
-                detail: `Class: ${m.className}`,
-                model: m
-            })),
-            { placeHolder: `Select definition for model: ${modelName}` }
-        );
-
-        if (pick) {
-            return new vscode.Location(vscode.Uri.file(pick.model.filePath), new vscode.Position(pick.model.line, pick.model.character));
-        }
-
-        return null;
+        // Several definitions: VS Code lists them in its peek view.
+        return candidates.map(m => new vscode.Location(vscode.Uri.file(m.filePath), new vscode.Position(m.line, m.character)));
     }
 }

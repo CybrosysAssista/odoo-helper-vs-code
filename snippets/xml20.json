@@ -1,0 +1,469 @@
+{
+  "Odoo Common Tag": {
+    "prefix": "odoo xml",
+    "description": "Odoo XML data file",
+    "body": [
+      "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
+      "<odoo>",
+      "    ${0:<!-- Records, views, menus... -->}",
+      "</odoo>"
+    ]
+  },
+  "Odoo Record": {
+    "prefix": "odoo record",
+    "description": "Record of any model",
+    "body": [
+      "<record id=\"${1:record_id}\" model=\"${2:model.name}\">",
+      "    <field name=\"${3:field_name}\">${4:value}</field>",
+      "</record>"
+    ]
+  },
+  "Odoo Form View": {
+    "prefix": "odoo form view",
+    "description": "Form view",
+    "body": [
+      "<record id=\"${1:model_name}_view_form\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.form</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <form>",
+      "            <sheet>",
+      "                <div class=\"oe_title\">",
+      "                    <h1><field name=\"name\" placeholder=\"${3:Name}\"/></h1>",
+      "                </div>",
+      "                <group>",
+      "                    <group>",
+      "                        ${4:<field name=\"name\"/>}",
+      "                    </group>",
+      "                </group>",
+      "            </sheet>",
+      "        </form>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo List View": {
+    "prefix": "odoo list view",
+    "description": "List view",
+    "body": [
+      "<record id=\"${1:model_name}_view_list\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.list</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <list>",
+      "            <field name=\"name\"/>",
+      "            ${3}",
+      "        </list>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Editable List View": {
+    "prefix": "odoo editable list",
+    "description": "Inline-editable list view",
+    "body": [
+      "<record id=\"${1:model_name}_view_list\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.list</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <list editable=\"${3|bottom,top|}\">",
+      "            <field name=\"name\"/>",
+      "            ${4}",
+      "        </list>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Pivot View": {
+    "prefix": "odoo pivot view",
+    "description": "Pivot view",
+    "body": [
+      "<record id=\"${1:model_name}_view_pivot\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.pivot</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <pivot sample=\"1\">",
+      "            <field name=\"${3:create_date}\" interval=\"month\" type=\"row\"/>",
+      "            <field name=\"${4:create_uid}\" type=\"col\"/>",
+      "        </pivot>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Calendar View": {
+    "prefix": "odoo calendar view",
+    "description": "Calendar view",
+    "body": [
+      "<record id=\"${1:model_name}_view_calendar\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.calendar</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <calendar date_start=\"${3:date_start}\" date_stop=\"${4:date_stop}\" mode=\"${5|month,week,day,year|}\" color=\"${6:user_id}\">",
+      "            <field name=\"name\"/>",
+      "        </calendar>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Graph View": {
+    "prefix": "odoo graph view",
+    "description": "Graph view",
+    "body": [
+      "<record id=\"${1:model_name}_view_graph\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.graph</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <graph type=\"${3|bar,line,pie|}\" sample=\"1\">",
+      "            <field name=\"${4:create_date}\" interval=\"month\"/>",
+      "        </graph>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Search View": {
+    "prefix": "odoo search view",
+    "description": "Search view with a filter and a group-by",
+    "body": [
+      "<record id=\"${1:model_name}_view_search\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.search</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <search>",
+      "            <field name=\"name\"/>",
+      "            <filter string=\"${3:Mine}\" name=\"${4:my_records}\" domain=\"[('create_uid', '=', uid)]\"/>",
+      "            <separator/>",
+      "            <filter string=\"${5:Archived}\" name=\"inactive\" domain=\"[('active', '=', False)]\"/>",
+      "            <group>",
+      "                <filter string=\"${6:Created by}\" name=\"groupby_${7:create_uid}\" context=\"{'group_by': '${7:create_uid}'}\"/>",
+      "            </group>",
+      "        </search>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Kanban View": {
+    "prefix": "odoo kanban view",
+    "description": "Kanban view (Odoo 20 card template)",
+    "body": [
+      "<record id=\"${1:model_name}_view_kanban\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${2:model.name}.view.kanban</field>",
+      "    <field name=\"model\">${2:model.name}</field>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <kanban sample=\"1\">",
+      "            <templates>",
+      "                <t t-name=\"card\">",
+      "                    <field name=\"name\" class=\"fw-bold fs-5\"/>",
+      "                    ${3}",
+      "                </t>",
+      "            </templates>",
+      "        </kanban>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Action": {
+    "prefix": "odoo action",
+    "description": "Window action",
+    "body": [
+      "<record id=\"action_${1:model_name}\" model=\"ir.actions.act_window\">",
+      "    <field name=\"name\">${2:Action Name}</field>",
+      "    <field name=\"res_model\">${3:model.name}</field>",
+      "    <field name=\"view_mode\">${4:list,form}</field>",
+      "    <field name=\"help\" type=\"html\">",
+      "        <p class=\"o_view_nocontent_smiling_face\">",
+      "            ${5:Create your first record!}",
+      "        </p>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo View Inherit": {
+    "prefix": "odoo view inherit",
+    "description": "Inherited view",
+    "body": [
+      "<record id=\"${1:model_name}_view_${2:form}_inherit\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">${3:model.name}.view.${2:form}.inherit</field>",
+      "    <field name=\"model\">${3:model.name}</field>",
+      "    <field name=\"inherit_id\" ref=\"${4:module.view_id}\"/>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <xpath expr=\"//field[@name='${5:name}']\" position=\"${6|after,before,inside,replace,attributes|}\">",
+      "            ${7:<field name=\"new_field\"/>}",
+      "        </xpath>",
+      "    </field>",
+      "</record>"
+    ]
+  },
+  "Odoo Page": {
+    "prefix": "odoo page",
+    "description": "Notebook page",
+    "body": [
+      "<page string=\"${1:Page Title}\" name=\"${2:page_name}\">",
+      "    <group>",
+      "        ${3:<field name=\"name\"/>}",
+      "    </group>",
+      "</page>"
+    ]
+  },
+  "Odoo Notebook": {
+    "prefix": "odoo notebook",
+    "description": "Notebook with a page",
+    "body": [
+      "<notebook>",
+      "    <page string=\"${1:Page Title}\" name=\"${2:page_name}\">",
+      "        <group>",
+      "            ${3:<field name=\"name\"/>}",
+      "        </group>",
+      "    </page>",
+      "</notebook>"
+    ]
+  },
+  "Odoo XPath": {
+    "prefix": "odoo xpath",
+    "description": "XPath for view inheritance",
+    "body": [
+      "<xpath expr=\"//field[@name='${1:name}']\" position=\"${2|after,before,inside,replace,attributes|}\">",
+      "    ${3:<field name=\"new_field\"/>}",
+      "</xpath>"
+    ]
+  },
+  "Odoo Header": {
+    "prefix": "odoo header",
+    "description": "Form header with buttons and statusbar",
+    "body": [
+      "<header>",
+      "    <button name=\"${1:action_confirm}\" string=\"${2:Confirm}\" type=\"object\" class=\"btn-primary\" invisible=\"state != '${3:draft}'\"/>",
+      "    <button name=\"${4:action_cancel}\" string=\"${5:Cancel}\" type=\"object\" invisible=\"state not in ('${3:draft}', '${6:confirmed}')\"/>",
+      "    <field name=\"state\" widget=\"statusbar\" statusbar_visible=\"${7:draft,confirmed,done}\"/>",
+      "</header>"
+    ]
+  },
+  "Odoo Sheet": {
+    "prefix": "odoo sheet",
+    "description": "Form sheet",
+    "body": [
+      "<sheet>",
+      "    <group>",
+      "        <field name=\"${1:name}\"/>",
+      "        ${2}",
+      "    </group>",
+      "</sheet>"
+    ]
+  },
+  "Odoo Smart Button": {
+    "prefix": "odoo smart button",
+    "description": "Smart button (icon is a Material Symbols name in Odoo 20)",
+    "body": [
+      "<button name=\"${1:action_view_records}\" type=\"object\" class=\"oe_stat_button\" icon=\"${2:list}\">",
+      "    <field name=\"${3:record_count}\" widget=\"statinfo\" string=\"${4:Records}\"/>",
+      "</button>"
+    ]
+  },
+  "Odoo Label": {
+    "prefix": "odoo label",
+    "description": "Field label",
+    "body": [
+      "<label for=\"${1:field_name}\" string=\"${2:Label Text}\"/>"
+    ]
+  },
+  "Odoo Groups": {
+    "prefix": "odoo groups",
+    "description": "Restrict to groups",
+    "body": [
+      "groups=\"${1:base.group_user}\""
+    ]
+  },
+  "Odoo Field": {
+    "prefix": "odoo field",
+    "description": "Field",
+    "body": [
+      "<field name=\"${1:field_name}\"/>"
+    ]
+  },
+  "Odoo Domain": {
+    "prefix": "odoo domain",
+    "description": "Domain attribute",
+    "body": [
+      "domain=\"[('${1:field_name}', '${2:=}', ${3:value})]\""
+    ]
+  },
+  "Odoo Field Invisible": {
+    "prefix": "odoo field invisible",
+    "description": "Field hidden by a condition (Python-like expression)",
+    "body": [
+      "<field name=\"${1:field_name}\" invisible=\"${2:not id}\"/>"
+    ]
+  },
+  "Odoo Field Readonly": {
+    "prefix": "odoo field readonly",
+    "description": "Field read-only by a condition",
+    "body": [
+      "<field name=\"${1:field_name}\" readonly=\"${2:state == 'done'}\"/>"
+    ]
+  },
+  "Odoo Field Required": {
+    "prefix": "odoo field required",
+    "description": "Field required by a condition",
+    "body": [
+      "<field name=\"${1:field_name}\" required=\"${2:True}\"/>"
+    ]
+  },
+  "Odoo Column Invisible": {
+    "prefix": "odoo column invisible",
+    "description": "List column hidden by a condition on the parent",
+    "body": [
+      "<field name=\"${1:field_name}\" column_invisible=\"${2:True}\"/>"
+    ]
+  },
+  "Odoo Field Optional": {
+    "prefix": "odoo field optional",
+    "description": "Optional list column",
+    "body": [
+      "<field name=\"${1:field_name}\" optional=\"${2|show,hide|}\"/>"
+    ]
+  },
+  "Odoo Field State": {
+    "prefix": "odoo field state",
+    "description": "Status bar",
+    "body": [
+      "<field name=\"state\" widget=\"statusbar\" statusbar_visible=\"${1:draft,confirmed,done}\" options=\"{'clickable': ${2:False}}\"/>"
+    ]
+  },
+  "Odoo Field Widget": {
+    "prefix": "odoo field widget",
+    "description": "Field with a widget",
+    "body": [
+      "<field name=\"${1:field_name}\" widget=\"${2|many2many_tags,many2one_avatar_user,badge,badges_selection,priority,boolean_toggle,handle,monetary,image,html,statusbar,relative_date,progressbar,percentage|}\"/>"
+    ]
+  },
+  "Odoo Options": {
+    "prefix": "odoo options",
+    "description": "Field options",
+    "body": [
+      "options=\"{'${1:no_create}': ${2:True}}\""
+    ]
+  },
+  "Odoo Chatter": {
+    "prefix": "odoo chatter",
+    "description": "Chatter (model must inherit mail.thread)",
+    "body": [
+      "<chatter/>"
+    ]
+  },
+  "Odoo Button Box": {
+    "prefix": "odoo button box",
+    "description": "Smart buttons container",
+    "body": [
+      "<div class=\"oe_button_box\" name=\"button_box\">",
+      "    ${1}",
+      "</div>"
+    ]
+  },
+  "Odoo Ribbon": {
+    "prefix": "odoo ribbon",
+    "description": "Ribbon widget",
+    "body": [
+      "<widget name=\"web_ribbon\" title=\"${1:Archived}\" bg_color=\"${2|text-bg-danger,text-bg-success,text-bg-warning,text-bg-info|}\" invisible=\"${3:active}\"/>"
+    ]
+  },
+  "Odoo Action Button": {
+    "prefix": "odoo action button",
+    "description": "Button opening an action",
+    "body": [
+      "<button name=\"%(${1:action_xml_id})d\" string=\"${2:Button Text}\" type=\"action\" class=\"${3:btn-primary}\"/>"
+    ]
+  },
+  "Odoo Object Button": {
+    "prefix": "odoo object button",
+    "description": "Button calling a model method",
+    "body": [
+      "<button name=\"${1:method_name}\" string=\"${2:Button Text}\" type=\"object\" class=\"${3:btn-primary}\"/>"
+    ]
+  },
+  "Odoo Menu Category": {
+    "prefix": "odoo menu category",
+    "description": "Menu with sub-menus",
+    "body": [
+      "<menuitem id=\"menu_${1:category_name}\" name=\"${2:Category Name}\" sequence=\"${3:10}\"/>"
+    ]
+  },
+  "Odoo Menu Action": {
+    "prefix": "odoo menu action",
+    "description": "Menu opening an action",
+    "body": [
+      "<menuitem id=\"menu_${1:menu_name}\" name=\"${2:Menu Name}\" action=\"${3:action_name}\" parent=\"${4:parent_menu}\" sequence=\"${5:10}\"/>"
+    ]
+  },
+  "Odoo Menu Root": {
+    "prefix": "odoo menu root",
+    "description": "App (root) menu with icon",
+    "body": [
+      "<menuitem id=\"menu_${1:root_name}\" name=\"${2:App Name}\" web_icon=\"${3:module_name},static/description/icon.png\" sequence=\"${4:10}\"/>"
+    ]
+  },
+  "Odoo Access": {
+    "prefix": "odoo access",
+    "description": "Access right (Odoo 20 ir.access; no group = restriction for everyone)",
+    "body": [
+      "<record id=\"access_${1:model_name}_${2:user}\" model=\"ir.access\">",
+      "    <field name=\"name\">${3:model.name} ${2:user}</field>",
+      "    <field name=\"model_id\" ref=\"model_${1:model_name}\"/>",
+      "    <field name=\"group_id\" ref=\"${4:base.group_user}\"/>",
+      "    <field name=\"operation\">${5|crud,cru,cr,r|}</field>",
+      "    <field name=\"domain\">${6:[(1, '=', 1)]}</field>",
+      "</record>"
+    ]
+  },
+  "Odoo Cron": {
+    "prefix": "odoo cron",
+    "description": "Scheduled action",
+    "body": [
+      "<record id=\"ir_cron_${1:model_name}_${2:task}\" model=\"ir.cron\">",
+      "    <field name=\"name\">${3:Model}: ${4:Task}</field>",
+      "    <field name=\"model_id\" ref=\"model_${1:model_name}\"/>",
+      "    <field name=\"state\">code</field>",
+      "    <field name=\"code\">model._cron_${2:task}()</field>",
+      "    <field name=\"user_id\" ref=\"base.user_root\"/>",
+      "    <field name=\"interval_number\">${5:1}</field>",
+      "    <field name=\"interval_type\">${6|days,hours,minutes,weeks,months|}</field>",
+      "    <field name=\"active\" eval=\"${7:True}\"/>",
+      "</record>"
+    ]
+  },
+  "Odoo Report Action": {
+    "prefix": "odoo report",
+    "description": "PDF report action",
+    "body": [
+      "<record id=\"action_report_${1:model_name}\" model=\"ir.actions.report\">",
+      "    <field name=\"name\">${2:Report Name}</field>",
+      "    <field name=\"model\">${3:model.name}</field>",
+      "    <field name=\"report_type\">${4|qweb-pdf,qweb-html,qweb-text|}</field>",
+      "    <field name=\"report_name\">${5:module_name}.report_${1:model_name}</field>",
+      "    <field name=\"print_report_name\">'${2:Report Name} - %s' % object.display_name</field>",
+      "    <field name=\"binding_model_id\" ref=\"model_${1:model_name}\"/>",
+      "    <field name=\"binding_type\">report</field>",
+      "</record>"
+    ]
+  },
+  "Odoo Settings Block": {
+    "prefix": "odoo settings",
+    "description": "Settings app/block/setting (inherit base.res_config_settings_view_form)",
+    "body": [
+      "<record id=\"res_config_settings_view_form_${1:module_name}\" model=\"ir.ui.view\">",
+      "    <field name=\"name\">res.config.settings.view.form.inherit.${1:module_name}</field>",
+      "    <field name=\"model\">res.config.settings</field>",
+      "    <field name=\"inherit_id\" ref=\"base.res_config_settings_view_form\"/>",
+      "    <field name=\"arch\" type=\"xml\">",
+      "        <xpath expr=\"//form\" position=\"inside\">",
+      "            <app data-string=\"${2:App Name}\" string=\"${2:App Name}\" name=\"${1:module_name}\">",
+      "                <block title=\"${3:Block Title}\" id=\"${1:module_name}_block\">",
+      "                    <setting string=\"${4:Setting}\" help=\"${5:What this setting does}\">",
+      "                        <field name=\"${6:setting_field}\"/>",
+      "                    </setting>",
+      "                </block>",
+      "            </app>",
+      "        </xpath>",
+      "    </field>",
+      "</record>"
+    ]
+  }
+}

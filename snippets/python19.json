@@ -1,5 +1,5 @@
-{   
-     "Odoo Abstract Model": {
+{
+    "Odoo Abstract Model": {
         "prefix": "odoo abstract model",
         "body": [
             "from odoo import api,fields,models",
@@ -27,17 +27,14 @@
         ],
         "description": "Create a new Odoo transient model"
     },
-    "SQL Constraint": {
-        "prefix": "odoo sql constraints",
+    "Odoo Constraint": {
+        "prefix": "odoo constraint",
+        "description": "SQL constraint (models.Constraint replaces _sql_constraints since 19)",
         "body": [
-            "_sql_constraints = [",
-            "    ('${1:constraint_name}', '${2:constraint_type}', '${3:message}')",
-            "]"
-        ],
-        "description": "Add SQL constraints"
+            "_${1:name}_uniq = models.Constraint(",
+            "    '${2:unique(name)}',",
+            "    '${3:The name must be unique.}',",
+            ")"
+        ]
     }
 }
-
-
-
-

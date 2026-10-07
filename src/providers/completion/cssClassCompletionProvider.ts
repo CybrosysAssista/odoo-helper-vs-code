@@ -5,7 +5,7 @@ import { OdooModuleUtils } from '../../utils/odooModuleUtils';
 import { CssClassIndexer } from '../../services/cssClassIndexer';
 
 export class CssClassCompletionProvider implements vscode.CompletionItemProvider {
-    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
+    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionList | undefined> {
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
 
         // Check if the cursor is properly positioned inside class="..." or class='...'
@@ -16,6 +16,10 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
 
         const attrValue = match[1];
         const typedClasses = new Set(attrValue.split(/\s+/).filter(Boolean));
+        // The class being typed. Candidates are filtered by it here, so the size limit below never
+        // hides a matching class; the list is marked incomplete when cut, and asked for again as
+        // typing continues.
+        const partial = attrValue.slice(attrValue.search(/\S*$/));
 
         const moduleRoot = await OdooModuleUtils.getModuleRoot(document.uri);
         if (!moduleRoot) {
@@ -36,7 +40,7 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
         for (const mod of priorityModules) {
             const classNames = indexer.getClassesInModule(mod);
             for (const className of classNames) {
-                if (usedClasses.has(className) || typedClasses.has(className)) {
+                if (usedClasses.has(className) || typedClasses.has(className) || !className.startsWith(partial)) {
                     continue;
                 }
                 usedClasses.add(className);
@@ -51,24 +55,24 @@ export class CssClassCompletionProvider implements vscode.CompletionItemProvider
 
         // 2. Add ALL other remaining classes (up to a limit for performance)
         // This ensures that even if we misidentified a module, or it's a 3rd party addon, the class is found.
-        const allUniqueClasses = indexer.getState().cssClasses;
-        for (const [className, defs] of allUniqueClasses) {
-            if (usedClasses.has(className) || typedClasses.has(className)) {
+        let truncated = false;
+        for (const [className, mod] of indexer.getAllClasses()) {
+            if (usedClasses.has(className) || typedClasses.has(className) || !className.startsWith(partial)) {
                 continue;
             }
             usedClasses.add(className);
 
             const item = new vscode.CompletionItem(className, vscode.CompletionItemKind.Constant);
-            const mod = defs[0]?.moduleName || 'unknown';
             item.detail = `Global: ${mod}`;
             item.sortText = `2_${className}`;
             items.push(item);
 
-            if (items.length > 3000) break; // Safety limit
+            if (items.length > 3000) { // Safety limit
+                truncated = true;
+                break;
+            }
         }
 
-        // console.log(`[CssClassCompletion] Returned ${items.length} candidates. (Project total: ${allUniqueClasses.length} unique classes)`);
-
-        return items;
+        return new vscode.CompletionList(items, truncated);
     }
 }

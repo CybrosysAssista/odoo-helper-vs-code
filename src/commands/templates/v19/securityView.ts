@@ -1,34 +1,32 @@
+// Since 19, groups belong to a privilege (res.groups.privilege) and list their users in user_ids
 export const getSecurityGroupViewTemplate = (pureName: string, modelTitle: string): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-        <!-- Custom Groups -->
-        <record id="group_${pureName}_user" model="res.groups">
-            <field name="name">${modelTitle} User</field>
-            <field name="category_id" ref="base.module_category_hidden"/>
-            <field name="comment">Basic access to ${modelTitle}</field>
-            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-        </record>
-        
-        <record id="group_${pureName}_manager" model="res.groups">
-            <field name="name">${modelTitle} Manager</field>
-            <field name="category_id" ref="base.module_category_hidden"/>
-            <field name="comment">Full access to ${modelTitle}</field>
-            <field name="implied_ids" eval="[(4, ref('group_${pureName}_user'))]"/>
-        </record>
-        
-        <!-- Sample Users Data -->
-        <record id="user_${pureName}_demo_user" model="res.users">
-            <field name="name">${modelTitle} Demo User</field>
-            <field name="login">${pureName}_demo_user</field>
-            <field name="groups_id" eval="[(4, ref('group_${pureName}_user'))]"/>
-            <field name="password">${pureName}_demo_user</field>
-            <field name="email">${pureName}_demo_user@example.com</field>
-        </record>
-    </data>
-</odoo>`;
+    <record id="res_groups_privilege_${pureName}" model="res.groups.privilege">
+        <field name="name">${modelTitle}</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="group_${pureName}_user" model="res.groups">
+        <field name="name">User</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_${pureName}"/>
+        <field name="comment">Basic access to ${modelTitle}</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_${pureName}_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_${pureName}"/>
+        <field name="comment">Full access to ${modelTitle}</field>
+        <field name="implied_ids" eval="[(4, ref('group_${pureName}_user'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>
+`;
 
 export const getSecurityRuleViewTemplate = (pureName: string, modelDotName: string): string => {
-    const modelUnderscore = modelDotName.replace('.', '_');
+    const modelUnderscore = modelDotName.replace(/\./g, '_');
     return `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>

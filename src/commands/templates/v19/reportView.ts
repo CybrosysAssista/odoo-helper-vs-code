@@ -1,4 +1,4 @@
-export const getReportViewTemplate = (pureName: string, modelDotName: string, modelTitle: string, reportType = 'qweb-pdf'): string => `<?xml version="1.0" encoding="utf-8"?>
+export const getReportViewTemplate = (pureName: string, modelDotName: string, modelTitle: string, reportType = 'qweb-pdf', moduleName = 'module_name'): string => `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- Report Action -->
@@ -6,9 +6,9 @@ export const getReportViewTemplate = (pureName: string, modelDotName: string, mo
             <field name="name">${modelTitle} Report</field>
             <field name="model">${modelDotName}</field>
             <field name="report_type">${reportType}</field>
-            <field name="report_name">${modelDotName}.report_${pureName}</field>
-            <field name="report_file">${modelDotName}.report_${pureName}</field>
-            <field name="binding_model_id" ref="model_${pureName.replace('.', '_')}"/>
+            <field name="report_name">${moduleName}.report_${pureName}</field>
+            <field name="report_file">${moduleName}.report_${pureName}</field>
+            <field name="binding_model_id" ref="model_${modelDotName.replace(/\./g, '_')}"/>
             <field name="binding_type">report</field>
         </record>
         
@@ -79,7 +79,7 @@ export const getReportViewTemplate = (pureName: string, modelDotName: string, mo
         <template id="report_${pureName}">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="doc">
-                    <t t-call="${modelDotName}.report_${pureName}_document" t-lang="doc.partner_id.lang"/>
+                    <t t-call="${moduleName}.report_${pureName}_document" t-lang="doc.partner_id.lang"/>
                 </t>
             </t>
         </template>

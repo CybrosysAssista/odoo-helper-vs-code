@@ -1,13 +1,9 @@
-import { getOdooVersion } from '../../services/versionService';
+import { byVersion, getOdooVersion } from '../../services/versionService';
 
 async function getTemplates(): Promise<any> {
     const v = await getOdooVersion();
-    if (v === '18') {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        return require('./v18/index');
-    }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('./v19/index');
+    return byVersion(v, { 18: () => require('./v18/index'), 19: () => require('./v19/index'), 20: () => require('./v20/index') })();
 }
 
 // Export wrapper functions that dispatch to the versioned modules

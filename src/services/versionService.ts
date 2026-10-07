@@ -2,11 +2,34 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export type OdooVersion = '18' | '19' | '20';
+
+/** Versions with their own completions, snippets and templates, oldest first. */
+export const SUPPORTED_VERSIONS: readonly OdooVersion[] = ['18', '19', '20'];
+export const LATEST_VERSION: OdooVersion = '20';
+
+/** The supported version whose data fits Odoo `major`: older majors get the oldest, newer the latest. */
+export function toSupportedVersion(major: number): OdooVersion {
+    if (major >= Number(LATEST_VERSION)) return LATEST_VERSION;
+    const exact = SUPPORTED_VERSIONS.find(v => Number(v) === major);
+    return exact ?? SUPPORTED_VERSIONS[0];
+}
+
+/** Picks the value for `version` (falling back to the latest for anything unexpected). */
+export function byVersion<T>(version: string, values: Record<OdooVersion, T>): T {
+    return values[(SUPPORTED_VERSIONS as readonly string[]).includes(version) ? version as OdooVersion : LATEST_VERSION];
+}
+
+/** Whether `version` is `min` or newer. */
+export function isAtLeast(version: string, min: OdooVersion): boolean {
+    return Number(version) >= Number(min);
+}
+
 function parseReleasePy(text: string): string | null {
-    const m = text.match(/version_info\s*=\s*\(\s*(\d+)\s*,\s*(\d+)\s*,/);
+    // version_info = (20, 0, 0, FINAL, 0, '') or, on SaaS branches, ('saas~19', 1, 0, ...)
+    const m = text.match(/version_info\s*=\s*\(\s*(?:(\d+)|['"]saas~(\d+)['"])\s*,/);
     if (!m) return null;
-    const major = m[1];
-    return major === '19' ? '19' : '18';
+    return toSupportedVersion(Number(m[1] ?? m[2]));
 }
 
 async function findInWorkspace(): Promise<string | null> {
@@ -52,14 +75,15 @@ async function detectFromRequirements(): Promise<string | null> {
         for (const uri of reqs) {
             const buf = await vscode.workspace.fs.readFile(uri);
             const text = Buffer.from(buf).toString('utf8');
-            if (/odoo[^=\n]*[=><~!]+\s*19/i.test(text)) return '19';
-            if (/odoo[^=\n]*[=><~!]+\s*18/i.test(text)) return '18';
+            const m = text.match(/odoo[^=\n]*[=><~!]+\s*(\d{2})/i);
+            if (m) return toSupportedVersion(Number(m[1]));
         }
     } catch (_) { }
     return null;
 }
 
 let cachedVersion: string | null = null;
+let detecting: Promise<string> | null = null;
 
 export function clearCache() {
     cachedVersion = null;
@@ -69,7 +93,7 @@ export async function getOdooVersion(): Promise<string> {
     const cfg = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
     const setting = String(cfg.get('odooVersion', 'auto'));
     // If manually set, always return the manual setting (don't use cache)
-    if (['18', '19'].includes(setting)) {
+    if ((SUPPORTED_VERSIONS as readonly string[]).includes(setting)) {
         // Clear cache when switching to manual mode to ensure fresh detection if switched back to auto
         if (cachedVersion && cachedVersion !== setting) {
             cachedVersion = null;
@@ -77,12 +101,15 @@ export async function getOdooVersion(): Promise<string> {
         return setting;
     }
 
-    // For 'auto' mode, use cache if available, otherwise detect
+    // For 'auto' mode, use cache if available, otherwise detect (once, even if asked concurrently)
     if (cachedVersion) return cachedVersion;
-    let v = await findInWorkspace();
-    if (!v) v = await detectFromKnownPaths();
-    if (!v) v = await detectFromRequirements();
-    cachedVersion = v || '19';
+    detecting ??= (async () => {
+        let v = await findInWorkspace();
+        if (!v) v = await detectFromKnownPaths();
+        if (!v) v = await detectFromRequirements();
+        return v || LATEST_VERSION;
+    })().finally(() => detecting = null);
+    cachedVersion = await detecting;
     return cachedVersion;
 }
 

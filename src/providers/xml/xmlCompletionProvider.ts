@@ -117,7 +117,8 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
 
                     if (recordModel === 'ir.actions.act_window') {
                         if (attrs['name'] === 'view_mode') {
-                            return ['tree', 'form', 'kanban', 'list', 'pivot', 'graph', 'calendar'].map(mode => {
+                            // action view types of every supported version (`tree` is gone since 18)
+                            return ['list', 'form', 'kanban', 'pivot', 'graph', 'calendar', 'activity', 'hierarchy'].map(mode => {
                                 const item = new vscode.CompletionItem(mode, vscode.CompletionItemKind.EnumMember);
                                 item.insertText = mode;
                                 return item;
@@ -234,7 +235,7 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
 
         // Generic tag and attribute completions
         const currentLine = document.lineAt(position).text;
-        const tagMatch = /<([^>]*)$/.exec(currentLine);
+        const tagMatch = /<([\w.-]*)$/.exec(currentLine);  // still typing the tag name
         if (tagMatch) {
             return this.provideTagCompletions(tagMatch[1]);
         }
@@ -259,9 +260,6 @@ export class OdooXmlCompletionProvider implements vscode.CompletionItemProvider 
 
     provideAttributeCompletions(tagName: string, partialAttribute: string): vscode.CompletionItem[] {
         const attributes = this.attributes[tagName] || [];
-        if (!attributes.includes('widget')) {
-            attributes.push('widget');
-        }
         return attributes
             .filter(attr => attr.startsWith(partialAttribute))
             .map(attr => {

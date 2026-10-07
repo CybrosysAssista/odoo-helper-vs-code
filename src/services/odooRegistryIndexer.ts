@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import { getJavaScriptParserService } from './javascriptParserService';
-import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { EXCLUDE_ASSETS_GLOB, FileChange, FileMetadata, watchFiles } from '../utils/indexing';
+import { indexFiles } from '../indexer/indexer';
+import type { FileResult } from '../indexer/protocol';
+import { indexNeeded } from '../indexer/trigger';
 
 export interface RegistryEntry {
     category: string;
@@ -17,9 +17,41 @@ export interface RegistryEntry {
  * Service to index Odoo JavaScript registry registrations
  */
 export class OdooRegistryIndexer {
-    private registryEntries: RegistryEntry[] = [];
-    private fileMetadata: Map<string, { mtime: number, size: number }> = new Map();
+    private fileEntries: Map<string, RegistryEntry[]> = new Map(); // filePath -> entries it registers
+    private fileMetadata: Map<string, FileMetadata> = new Map();
+    private allEntries: RegistryEntry[] | null = null;
     private isScanning: boolean = false;
+    private dirty = false;
+
+    /** Keeps the index current as JavaScript files change (bundled `static/lib` code is ignored). */
+    initialize(): vscode.Disposable {
+        return watchFiles('**/*.js', changes => this.applyChanges(changes), { assets: true });
+    }
+
+    private isEnabled(): boolean {
+        return vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper').get<boolean>('indexing.enableRegistryIndexing', true);
+    }
+
+    private async applyChanges(changes: Map<string, FileChange>) {
+        const enabled = this.isEnabled();
+        const changed: string[] = [];
+        for (const [fsPath, change] of changes) {
+            if (change === 'deleted') {
+                this.removeFile(vscode.Uri.file(fsPath));
+            } else if (enabled) {
+                changed.push(fsPath);
+            }
+        }
+        await this.indexPaths(changed);
+    }
+
+    private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
+        return indexFiles(
+            paths.map(path => ({ path, kind: 'javascript' as const, meta: this.fileMetadata.get(path) })),
+            result => this.applyResult(result),
+            progress && { report: value => progress.report(value), label: 'JS Registry' }
+        );
+    }
 
     /**
      * Start initial background scan of the workspace
@@ -28,33 +60,15 @@ export class OdooRegistryIndexer {
         if (this.isScanning) return;
         this.isScanning = true;
 
-        // console.log('[OdooRegistryIndexer] Refreshing workspace (incremental)...');
-
         try {
-            // Updated exclusion patterns to avoid indexing venv and other huge/irrelevant folders
-            const jsFiles = await vscode.workspace.findFiles('**/*.js', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
-            const totalFiles = jsFiles.length;
-            let filesProcessed = 0;
-
-            for (const file of jsFiles) {
-                filesProcessed++;
-                if (progress) {
-                    progress.report({
-                        message: `JS Registry: ${filesProcessed}/${totalFiles}`,
-                        increment: (1 / totalFiles) * 100
-                    });
-                }
-                await this.indexFile(file);
-
-                // Prevent blocking the event loop too long during huge scans
-                if (filesProcessed % 20 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 10));
+            const jsFiles = await vscode.workspace.findFiles('**/*.js', EXCLUDE_ASSETS_GLOB);
+            const seen = new Set(jsFiles.map(file => file.fsPath));
+            await this.indexPaths([...seen], progress);
+            for (const filePath of [...this.fileMetadata.keys()]) {
+                if (!seen.has(filePath)) {
+                    this.removeFile(vscode.Uri.file(filePath));
                 }
             }
-
-            await this.cleanupDeletedFiles();
-
-            // console.log(`[OdooRegistryIndexer] Scan complete. Indexed ${this.registryEntries.length} registry entries.`);
         } catch (error) {
             console.error('[OdooRegistryIndexer] Scan failed:', error);
         } finally {
@@ -62,47 +76,18 @@ export class OdooRegistryIndexer {
         }
     }
 
-    /**
-     * Index a single JavaScript file
-     */
-    async indexFile(uri: vscode.Uri): Promise<void> {
-        // 1. Check if it's inside a valid Odoo module
-        const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
-        if (!moduleRoot) return;
-
-        try {
-            const stats = await vscode.workspace.fs.stat(uri);
-            const cachedMetadata = this.fileMetadata.get(uri.fsPath);
-
-            if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
-                return;
+    private applyResult(result: FileResult) {
+        if (result.status === 'missing') {
+            this.removeFile(vscode.Uri.file(result.path));
+        } else if (result.status === 'parsed') {
+            this.removeFile(vscode.Uri.file(result.path));
+            if (result.module && result.registry && result.registry.length > 0) {
+                const moduleName = result.module;
+                this.fileEntries.set(result.path, result.registry.map(call => ({ ...call, moduleName, filePath: result.path })));
+                this.allEntries = null;
             }
-
-            const moduleName = path.basename(moduleRoot.fsPath);
-            const content = fs.readFileSync(uri.fsPath, 'utf8');
-            const jsParser = getJavaScriptParserService();
-
-            if (!jsParser.isInitialized()) return;
-
-            // 2. Extract registry calls using Tree-sitter
-            const calls = jsParser.findRegistryCalls(content);
-
-            // 3. Remove existing entries for this file
-            this.removeFile(uri);
-
-            // 4. Add new entries
-            for (const call of calls) {
-                this.registryEntries.push({
-                    ...call,
-                    moduleName,
-                    filePath: uri.fsPath
-                });
-            }
-
-            // Update metadata
-            this.fileMetadata.set(uri.fsPath, { mtime: stats.mtime, size: stats.size });
-        } catch (error) {
-            console.warn(`[OdooRegistryIndexer] Failed to index ${uri.fsPath}:`, error);
+            this.fileMetadata.set(result.path, result.meta);
+            this.dirty = true;
         }
     }
 
@@ -110,53 +95,70 @@ export class OdooRegistryIndexer {
      * Remove entries for a specific file
      */
     removeFile(uri: vscode.Uri): void {
-        this.registryEntries = this.registryEntries.filter(e => e.filePath !== uri.fsPath);
+        if (this.fileEntries.delete(uri.fsPath)) {
+            this.allEntries = null;
+            this.dirty = true;
+        }
+        if (this.fileMetadata.delete(uri.fsPath)) {
+            this.dirty = true;
+        }
     }
 
     /**
      * Get all registry entries for a specific category
      */
     getEntriesByCategory(category: string): RegistryEntry[] {
-        return this.registryEntries.filter(e => e.category === category);
+        return this.getAllEntries().filter(e => e.category === category);
     }
 
     /**
      * Find a specific registry entry by ID
      */
     getEntryById(id: string): RegistryEntry | undefined {
-        return this.registryEntries.find(e => e.id === id);
+        return this.getAllEntries().find(e => e.id === id);
     }
 
     /**
      * Get all indexed entries
      */
     getAllEntries(): RegistryEntry[] {
-        return this.registryEntries;
+        indexNeeded();
+        if (!this.allEntries) {
+            this.allEntries = ([] as RegistryEntry[]).concat(...this.fileEntries.values());
+        }
+        return this.allEntries;
     }
 
     /**
      * Clear the index
      */
     clear(): void {
-        this.registryEntries = [];
+        this.fileEntries.clear();
+        this.allEntries = null;
+    }
+
+    isDirty(): boolean {
+        return this.dirty;
     }
 
     getState() {
+        this.dirty = false;
         return {
-            entries: this.registryEntries,
+            entries: this.getAllEntries(),
             metadata: Array.from(this.fileMetadata.entries())
         };
     }
 
     loadState(state: any) {
+        let entries: RegistryEntry[] = [];
         try {
             if (Array.isArray(state)) {
                 // Old format: direct array
-                this.registryEntries = state;
+                entries = state;
             } else if (state && typeof state === 'object') {
                 // New format: { entries: [], metadata: [] }
                 if (Array.isArray(state.entries)) {
-                    this.registryEntries = state.entries;
+                    entries = state.entries;
                 }
                 if (Array.isArray(state.metadata)) {
                     this.fileMetadata = new Map(state.metadata);
@@ -164,20 +166,18 @@ export class OdooRegistryIndexer {
             }
         } catch (e) {
             console.error('[OdooRegistryIndexer] Failed to load state:', e);
-            this.registryEntries = [];
             this.fileMetadata = new Map();
         }
-    }
-
-    async cleanupDeletedFiles() {
-        for (const filePath of this.fileMetadata.keys()) {
-            try {
-                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-            } catch (e) {
-                this.registryEntries = this.registryEntries.filter(e => e.filePath !== filePath);
-                this.fileMetadata.delete(filePath);
+        this.fileEntries = new Map();
+        for (const entry of entries) {
+            const list = this.fileEntries.get(entry.filePath);
+            if (list) {
+                list.push(entry);
+            } else {
+                this.fileEntries.set(entry.filePath, [entry]);
             }
         }
+        this.allEntries = null;
     }
 }
 

@@ -1,9 +1,5 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import { getPythonParserService } from './pythonParserService';
-import modelIndexService, { ModelInfo } from './modelIndexService';
-import moduleIndexService from './moduleIndexService';
+import modelIndexService, { ParsedFileEvent } from './modelIndexService';
+import { indexNeeded } from '../indexer/trigger';
 
 export interface FunctionInfo {
     functionName: string;
@@ -20,165 +16,75 @@ export interface FunctionInfo {
 
 class FunctionIndexService {
     private functionCache: Map<string, FunctionInfo[]> = new Map(); // modelName -> FunctionInfo[]
-    private watcher: vscode.FileSystemWatcher | null = null;
-    private isIndexing: boolean = false;
+    private fileModelNames: Map<string, Set<string>> = new Map(); // filePath -> models that file has entries for
+    private dirty = false;
 
     constructor() { }
 
     initialize() {
         // Listen to model index changes to stay in sync
-        modelIndexService.onDidIndexRichFile(event => this.indexFromTree(event.tree, event.models));
-        modelIndexService.onDidDeleteFile(uri => this.removeFile(uri));
+        modelIndexService.onDidParseFile(event => this.indexParsedFile(event));
+        modelIndexService.onDidDeleteFile(uri => this.removeFileEntries(uri.fsPath));
     }
 
-    public indexFromTree(tree: any, models: ModelInfo[]) {
-        if (models.length > 0) {
-            this.removeFileEntries(models[0].filePath);
-            this.parseFunctionsFromFile(tree, models);
+    public indexParsedFile({ filePath, models, parsed }: ParsedFileEvent) {
+        this.removeFileEntries(filePath);
+        for (const modelInfo of models) {
+            const entries = parsed.functions.filter(entry => entry.className === modelInfo.className);
+            if (entries.length === 0) continue;
+            const inheritsFromModule = modelIndexService.resolveInheritedModule(modelInfo);
+            this.add(filePath, modelInfo.modelName, entries.map(entry => ({
+                ...entry,
+                modelName: modelInfo.modelName,
+                moduleName: modelInfo.moduleName,
+                isInherited: modelInfo.isInherited,
+                inheritsFromModule,
+                filePath
+            })));
         }
     }
 
-    async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        if (this.isIndexing) return;
-        this.isIndexing = true;
-        // console.log('[FunctionIndex] Refreshing function cache (incremental)...');
-        // DO NOT CLEAR anymore
-        this.isIndexing = false;
-    }
-
-    async indexFile(uri: vscode.Uri) {
-        try {
-            const text = fs.readFileSync(uri.fsPath, 'utf8');
-            const pythonParser = getPythonParserService();
-            if (!pythonParser.isInitialized()) return;
-
-            const tree = pythonParser.parse(text);
-            if (!tree) return;
-
-            const models = modelIndexService.getModelsByFile(uri.fsPath);
-            this.indexFromTree(tree, models);
-            tree.delete();
-        } catch (error) {
-            console.error(`[FunctionIndex] Error indexing file ${uri.fsPath}:`, error);
+    private add(filePath: string, modelName: string, entries: FunctionInfo[]) {
+        const existing = this.functionCache.get(modelName);
+        if (existing) {
+            existing.push(...entries);
+        } else {
+            this.functionCache.set(modelName, entries);
         }
+        const models = this.fileModelNames.get(filePath);
+        if (models) {
+            models.add(modelName);
+        } else {
+            this.fileModelNames.set(filePath, new Set([modelName]));
+        }
+        this.dirty = true;
     }
 
-    private removeFile(uri: vscode.Uri) {
-        this.removeFileEntries(uri.fsPath);
-    }
-
+    /** Removes the entries from `filePath`. Cost is proportional to that file's models only. */
     private removeFileEntries(filePath: string) {
-        for (const [key, list] of this.functionCache.entries()) {
+        const models = this.fileModelNames.get(filePath);
+        if (!models) return;
+        this.fileModelNames.delete(filePath);
+        for (const modelName of models) {
+            const list = this.functionCache.get(modelName);
+            if (!list) continue;
             const filtered = list.filter(f => f.filePath !== filePath);
             if (filtered.length === 0) {
-                this.functionCache.delete(key);
+                this.functionCache.delete(modelName);
             } else {
-                this.functionCache.set(key, filtered);
+                this.functionCache.set(modelName, filtered);
             }
         }
-    }
-
-    private parseFunctionsFromFile(tree: any, models: ModelInfo[]) {
-        const pythonParser = getPythonParserService();
-        const language = pythonParser.getLanguage();
-        if (!language) return;
-
-        const query = new (require('web-tree-sitter')).Query(language, `
-            (class_definition
-                name: (identifier) @class_name
-                body: (block) @body
-            )
-        `);
-
-        const matches = query.matches(tree.rootNode);
-        for (const match of matches) {
-            const classNameNode = match.captures.find((c: any) => c.name === 'class_name')?.node;
-            const bodyNode = match.captures.find((c: any) => c.name === 'body')?.node;
-
-            if (classNameNode && bodyNode) {
-                const className = classNameNode.text;
-                const modelInfo = models.find(m => m.className === className);
-                if (!modelInfo) continue;
-
-                // Resolution Logic for Multiple Models:
-                let inheritsFromModule: string | undefined;
-                if (modelInfo.isInherited) {
-                    const allModulesDefiningModel = modelIndexService.getModelsByName(modelInfo.modelName)
-                        .map(m => m.moduleName);
-
-                    const currentModuleInfo = moduleIndexService.getModuleInfo(modelInfo.moduleName);
-                    if (currentModuleInfo && currentModuleInfo.depends) {
-                        // Find a module that exists in both the model definitions and the current module's dependencies
-                        inheritsFromModule = currentModuleInfo.depends.find((dep: string) => allModulesDefiningModel.includes(dep));
-
-                        // Fallback: if not found in direct dependencies, it might be core 'base' 
-                        // if we only have one other definition
-                        if (!inheritsFromModule && allModulesDefiningModel.length === 2) {
-                            inheritsFromModule = allModulesDefiningModel.find(m => m !== modelInfo.moduleName);
-                        }
-                    }
-                }
-
-                const functions: FunctionInfo[] = [];
-
-                for (const child of bodyNode.children) {
-                    if (child.type === 'function_definition') {
-                        const nameNode = child.childForFieldName('name');
-                        const paramsNode = child.childForFieldName('parameters');
-
-                        if (nameNode) {
-                            const functionName = nameNode.text;
-                            const parameters: string[] = [];
-
-                            if (paramsNode) {
-                                // Extract parameter names
-                                for (const param of paramsNode.namedChildren) {
-                                    let paramName = '';
-                                    if (param.type === 'identifier') {
-                                        paramName = param.text;
-                                    } else {
-                                        const idNode = param.childForFieldName('name') || param.firstChild;
-                                        if (idNode && idNode.type === 'identifier') {
-                                            paramName = idNode.text;
-                                        } else {
-                                            paramName = param.text;
-                                        }
-                                    }
-                                    if (paramName) {
-                                        parameters.push(paramName);
-                                    }
-                                }
-                            }
-
-                            functions.push({
-                                functionName,
-                                parameters,
-                                className: modelInfo.className,
-                                modelName: modelInfo.modelName,
-                                moduleName: modelInfo.moduleName,
-                                inheritsFromModule: inheritsFromModule,
-                                isInherited: modelInfo.isInherited,
-                                filePath: modelInfo.filePath,
-                                line: nameNode.startPosition.row,
-                                character: nameNode.startPosition.column
-                            });
-                        }
-                    }
-                }
-
-                if (functions.length > 0) {
-                    const existing = this.functionCache.get(modelInfo.modelName) || [];
-                    this.functionCache.set(modelInfo.modelName, [...existing, ...functions]);
-                }
-            }
-        }
+        this.dirty = true;
     }
 
     public getFunctionsForModel(modelName: string): FunctionInfo[] {
+        indexNeeded();
         return this.functionCache.get(modelName) || [];
     }
 
     public getAllFunctions(): FunctionInfo[] {
+        indexNeeded();
         const all: FunctionInfo[] = [];
         for (const funcs of this.functionCache.values()) {
             all.push(...funcs);
@@ -186,30 +92,42 @@ class FunctionIndexService {
         return all;
     }
 
-    public getState(): [string, FunctionInfo[]][] {
-        return Array.from(this.functionCache.entries());
+    public isDirty(): boolean {
+        return this.dirty;
+    }
+
+    public getState() {
+        this.dirty = false;
+        return {
+            functions: Array.from(this.functionCache.entries())
+        };
     }
 
     public loadState(state: any) {
+        let entries: [string, FunctionInfo[]][] = [];
         try {
             if (Array.isArray(state)) {
                 // Old format
-                this.functionCache = new Map(state);
-            } else if (state && typeof state === 'object') {
+                entries = state;
+            } else if (state && typeof state === 'object' && Array.isArray(state.functions)) {
                 // New format
-                if (Array.isArray(state.functions)) {
-                    this.functionCache = new Map(state.functions);
-                }
+                entries = state.functions;
             }
         } catch (e) {
             console.error('[FunctionIndex] Failed to load state:', e);
-            this.functionCache = new Map();
         }
-    }
-
-    public dispose() {
-        if (this.watcher) {
-            this.watcher.dispose();
+        this.functionCache = new Map();
+        this.fileModelNames = new Map();
+        for (const [modelName, list] of entries) {
+            this.functionCache.set(modelName, list);
+            for (const entry of list) {
+                const models = this.fileModelNames.get(entry.filePath);
+                if (models) {
+                    models.add(modelName);
+                } else {
+                    this.fileModelNames.set(entry.filePath, new Set([modelName]));
+                }
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
-import { getPythonParserService } from './pythonParserService';
+import { EXCLUDE_GLOB, FileMetadata, watchFiles } from '../utils/indexing';
+import { indexFiles } from '../indexer/indexer';
+import { OdooModuleUtils } from '../utils/odooModuleUtils';
+import { indexNeeded } from '../indexer/trigger';
 
 export interface ModuleInfo {
     id: number;
@@ -10,77 +12,113 @@ export interface ModuleInfo {
     depends: string[];
 }
 
+const MANIFEST_GLOB = '**/{__manifest__.py,__openerp__.py}';
+
 class ModuleIndexService {
     private moduleCache: Map<string, ModuleInfo> = new Map();
-    private fileMetadata: Map<string, { mtime: number, size: number }> = new Map();
-    private watcher: vscode.FileSystemWatcher | null = null;
+    private modulesByPath: Map<string, string> = new Map(); // module directory -> module name
+    private fileMetadata: Map<string, FileMetadata> = new Map();
+    private watcher: vscode.Disposable | null = null;
+    private modulesArray: ModuleInfo[] | null = null;
+    private reindexing: Promise<void> | null = null;
+    private dirty = false;
+
+    private _onDidChange = new vscode.EventEmitter<void>();
+    public readonly onDidChange = this._onDidChange.event;
 
     constructor() { }
 
     public initialize() {
-        this.watcher = vscode.workspace.createFileSystemWatcher('**/{__manifest__.py,__openerp__.py,__init__.py}');
-        this.watcher.onDidChange(() => this.reindex());
-        this.watcher.onDidCreate(() => this.reindex());
-        this.watcher.onDidDelete(() => this.reindex());
+        // Only manifests decide what a module is and what it depends on.
+        this.watcher = watchFiles(MANIFEST_GLOB, () => this.reindex(), { delayMs: 500 });
     }
 
-    public async reindex(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        const manifestFiles = await vscode.workspace.findFiles('**/{__manifest__.py,__openerp__.py}', '**/{node_modules,venv,.venv,__pycache__,dist,out,build}/**');
-        const totalManifests = manifestFiles.length;
-        let counter = 1;
+    /**
+     * Brings the module list up to date. Unchanged manifests (same mtime and size) are not read
+     * again, and modules whose manifest has disappeared are dropped.
+     */
+    public reindex(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
+        // Concurrent callers share one pass.
+        if (!this.reindexing) {
+            this.reindexing = this.doReindex(progress).finally(() => this.reindexing = null);
+        }
+        return this.reindexing;
+    }
 
-        const pythonParser = getPythonParserService();
+    private async doReindex(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
+        const manifestFiles = await vscode.workspace.findFiles(MANIFEST_GLOB, EXCLUDE_GLOB);
+        const found = new Set(manifestFiles.map(uri => uri.fsPath));
+        let changed = false;
 
-        for (const manifestUri of manifestFiles) {
-            if (progress) {
-                progress.report({
-                    message: `Modules: ${counter}/${totalManifests}`,
-                    increment: (1 / totalManifests) * 100
-                });
-            }
-            counter++;
-            const moduleDir = path.dirname(manifestUri.fsPath);
-            const initFileUri = vscode.Uri.file(path.join(moduleDir, '__init__.py'));
-
-            try {
-                const stats = await vscode.workspace.fs.stat(manifestUri);
-                const cachedMetadata = this.fileMetadata.get(manifestUri.fsPath);
-
-                if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
-                    continue;
+        await indexFiles(
+            [...found].map(path => ({ path, kind: 'manifest' as const, meta: this.fileMetadata.get(path) })),
+            result => {
+                if (result.status === 'missing') {
+                    found.delete(result.path);
+                } else if (result.status === 'parsed') {
+                    const moduleDir = path.dirname(result.path);
+                    // A module also needs an __init__.py next to its manifest.
+                    if (result.moduleRoot === moduleDir) {
+                        this.setModule({ id: this.moduleCache.size + 1, name: result.module!, path: moduleDir, depends: result.manifest?.depends ?? [] });
+                    } else {
+                        this.removeModuleAt(moduleDir);
+                    }
+                    this.fileMetadata.set(result.path, result.meta);
+                    changed = true;
                 }
+            },
+            progress && { report: value => progress.report(value), label: 'Modules' }
+        );
 
-                // Check if __init__.py exists in the same directory
-                await vscode.workspace.fs.stat(initFileUri);
-                const moduleName = path.basename(moduleDir);
-
-                // Read and parse manifest for dependencies
-                let depends: string[] = [];
-                try {
-                    const content = fs.readFileSync(manifestUri.fsPath, 'utf8');
-                    depends = pythonParser.getManifestData(content, 'depends');
-                } catch (e) {
-                    console.error(`[ModuleIndex] Failed to parse manifest for ${moduleName}:`, e);
-                }
-
-                this.moduleCache.set(moduleName, {
-                    id: counter,
-                    name: moduleName,
-                    path: moduleDir,
-                    depends: depends
-                });
-                this.fileMetadata.set(manifestUri.fsPath, { mtime: stats.mtime, size: stats.size });
-            } catch (error) {
-                // Not a valid Odoo module
+        // Drop modules whose manifest is gone.
+        for (const manifestPath of [...this.fileMetadata.keys()]) {
+            if (!found.has(manifestPath)) {
+                this.fileMetadata.delete(manifestPath);
+                this.removeModuleAt(path.dirname(manifestPath));
+                changed = true;
             }
         }
+
+        if (changed) {
+            this.modulesArray = null;
+            this.dirty = true;
+            OdooModuleUtils.clearCache();
+            this._onDidChange.fire();
+        }
+    }
+
+    private removeModuleAt(moduleDir: string) {
+        const name = this.modulesByPath.get(moduleDir);
+        if (name && this.moduleCache.get(name)?.path === moduleDir) {
+            this.moduleCache.delete(name);
+        }
+        this.modulesByPath.delete(moduleDir);
+    }
+
+    private setModule(info: ModuleInfo) {
+        const previous = this.moduleCache.get(info.name);
+        if (previous && previous.path !== info.path) {
+            this.modulesByPath.delete(previous.path);
+        }
+        this.moduleCache.set(info.name, info);
+        this.modulesByPath.set(info.path, info.name);
     }
 
     public async getModules(progress?: vscode.Progress<{ message?: string; increment?: number }>): Promise<ModuleInfo[]> {
+        indexNeeded();
         if (this.moduleCache.size === 0) {
             await this.reindex(progress);
         }
-        return Array.from(this.moduleCache.values());
+        return this.getModulesSync();
+    }
+
+    /** The modules known right now, without triggering a scan. */
+    public getModulesSync(): ModuleInfo[] {
+        indexNeeded();
+        if (!this.modulesArray) {
+            this.modulesArray = Array.from(this.moduleCache.values());
+        }
+        return this.modulesArray;
     }
 
     public async getModuleNames(): Promise<string[]> {
@@ -96,7 +134,32 @@ class ModuleIndexService {
         return this.moduleCache.get(name);
     }
 
+    /** The indexed module containing `fsPath`, found by walking up its parent folders. */
+    public getModuleForPath(fsPath: string): ModuleInfo | undefined {
+        let dir = fsPath;
+        while (true) {
+            const name = this.modulesByPath.get(dir);
+            if (name) {
+                return this.moduleCache.get(name);
+            }
+            const parent = path.dirname(dir);
+            if (parent === dir) {
+                return undefined;
+            }
+            dir = parent;
+        }
+    }
+
+    public hasModules(): boolean {
+        return this.moduleCache.size > 0;
+    }
+
+    public isDirty(): boolean {
+        return this.dirty;
+    }
+
     public getState() {
+        this.dirty = false;
         return {
             modules: Array.from(this.moduleCache.entries()),
             metadata: Array.from(this.fileMetadata.entries())
@@ -120,6 +183,8 @@ class ModuleIndexService {
             this.moduleCache = new Map();
             this.fileMetadata = new Map();
         }
+        this.modulesByPath = new Map([...this.moduleCache.values()].map(m => [m.path, m.name]));
+        this.modulesArray = null;
     }
 
     public dispose() {

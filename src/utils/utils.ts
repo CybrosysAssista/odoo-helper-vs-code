@@ -93,6 +93,8 @@ export class helperUtils {
                     }
 
                     const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+                    // The parser loads in the background at activation; wait for it rather than skip the update.
+                    await getPythonParserService().whenReady();
                     const parser = getPythonParserService().getManifestParser();
                     if (!parser) {
                         messages.push(`${child.name} created, but manifest update failed. (Python parser not ready)`);

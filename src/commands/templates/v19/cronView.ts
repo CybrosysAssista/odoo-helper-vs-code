@@ -10,7 +10,6 @@ export const getCronViewTemplate = (pureName: string, modelDotName: string, mode
         </field>
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
-        <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
     </record>
 </odoo>`;

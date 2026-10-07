@@ -19,12 +19,12 @@ const fieldSnippets: FieldSnippet[] = [
     },
     {
         label: 'Odoo Binary Field',
-        insertText: 'fields.Binary(string="${1:Name}", help="${2:Help text}", attachment=True, max_size=10)',
+        insertText: 'fields.Binary(string="${1:Name}", help="${2:Help text}", attachment=True)',
         detail: 'Binary Field',
         documentation: 'Used to store binary data like files with size limit.\n\n' +
             '**Example:**\n' +
             '```python\n' +
-            'file_data = fields.Binary(string="File", help="Upload a file", attachment=True, max_size=10)\n' +
+            'file_data = fields.Binary(string="File", help="Upload a file", attachment=True)\n' +
             '```'
     },
     // Char

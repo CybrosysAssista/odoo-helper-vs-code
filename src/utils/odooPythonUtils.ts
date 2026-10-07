@@ -31,105 +31,85 @@ export class OdooPythonUtils {
 
         try {
             // 1. Check if inside a valid Odoo module
-            const moduleRoot = await OdooModuleUtils.getModuleRoot(uri);
+            const moduleRoot = OdooModuleUtils.getModuleRootPath(uri.fsPath);
             if (!moduleRoot) return failContext;
-            const moduleName = path.basename(moduleRoot.fsPath);
+            const moduleName = path.basename(moduleRoot);
 
-            // 2. Parse Python file
+            // 2. Parse Python file: the open editor's text (including unsaved edits), else the file on disk
             const pythonParser = getPythonParserService();
             if (!pythonParser.isInitialized()) return failContext;
 
-            const text = fs.readFileSync(uri.fsPath, 'utf8');
-            const tree = pythonParser.parse(text);
-            if (!tree) return failContext;
+            const openDocument = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
+            const text = openDocument ? openDocument.getText() : await fs.promises.readFile(uri.fsPath, 'utf8');
 
-            const language = pythonParser.getLanguage();
-            if (!language) {
-                tree.delete();
-                return failContext;
-            }
+            return pythonParser.withTree(text, tree => {
+                // 3. Find the class containment
+                const nodeAtPosition = tree.rootNode.descendantForPosition({
+                    row: position.line,
+                    column: position.character
+                });
 
-            // 3. Find the class containment
-            const rootNode = tree.rootNode;
-            let nodeAtPosition = rootNode.descendantForPosition({
-                row: position.line,
-                column: position.character
-            });
+                // Walk up to find the class definition
+                let classNode = nodeAtPosition;
+                while (classNode && classNode.type !== 'class_definition') {
+                    classNode = classNode.parent;
+                }
+                if (!classNode) return failContext;
 
-            // Walk up to find the class definition
-            let classNode = nodeAtPosition;
-            while (classNode && classNode.type !== 'class_definition') {
-                classNode = classNode.parent;
-            }
-
-            if (!classNode) {
-                tree.delete();
-                return failContext;
-            }
-
-            // 4. Check if it extends Odoo Models
-            // (class_definition name: (identifier) superclasses: (argument_list (attribute object: (identifier) attribute: (identifier))))
-            const superclassesNode = classNode.childForFieldName('superclasses');
-            let isOdooModel = false;
-            if (superclassesNode) {
-                for (const arg of superclassesNode.namedChildren) {
-                    const text = arg.text;
-                    if (['models.Model', 'models.TransientModel', 'models.AbstractModel', 'Model', 'TransientModel', 'AbstractModel'].includes(text)) {
-                        isOdooModel = true;
-                        break;
+                // 4. Check if it extends Odoo Models
+                // (class_definition name: (identifier) superclasses: (argument_list (attribute object: (identifier) attribute: (identifier))))
+                const superclassesNode = classNode.childForFieldName('superclasses');
+                let isOdooModel = false;
+                if (superclassesNode) {
+                    for (const arg of superclassesNode.namedChildren) {
+                        if (['models.Model', 'models.TransientModel', 'models.AbstractModel', 'Model', 'TransientModel', 'AbstractModel'].includes(arg.text)) {
+                            isOdooModel = true;
+                            break;
+                        }
                     }
                 }
-            }
+                if (!isOdooModel) return failContext;
 
-            if (!isOdooModel) {
-                tree.delete();
-                return failContext;
-            }
+                // 5. Extract _name and _inherit
+                const bodyNode = classNode.childForFieldName('body');
+                let modelName = '';
+                let inheritNames: string[] = [];
+                let hasName = false;
 
-            // 5. Extract _name and _inherit
-            const bodyNode = classNode.childForFieldName('body');
-            let modelName = '';
-            let inheritNames: string[] = [];
-            let hasName = false;
+                if (bodyNode) {
+                    for (const child of bodyNode.children) {
+                        if (child.type === 'expression_statement') {
+                            const assignment = child.firstChild;
+                            if (assignment?.type === 'assignment') {
+                                const left = assignment.childForFieldName('left');
+                                const right = assignment.childForFieldName('right');
 
-            if (bodyNode) {
-                for (const child of bodyNode.children) {
-                    if (child.type === 'expression_statement') {
-                        const assignment = child.firstChild;
-                        if (assignment?.type === 'assignment') {
-                            const left = assignment.childForFieldName('left');
-                            const right = assignment.childForFieldName('right');
-
-                            if (left?.text === '_name') {
-                                hasName = true;
-                                modelName = this.extractStringValue(right);
-                            } else if (left?.text === '_inherit') {
-                                inheritNames = this.extractInheritValue(right);
+                                if (left?.text === '_name') {
+                                    hasName = true;
+                                    modelName = this.extractStringValue(right);
+                                } else if (left?.text === '_inherit') {
+                                    inheritNames = this.extractInheritValue(right);
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            tree.delete();
+                // Result Logic:
+                // if _name exists, take it.
+                // else if _inherit exists, take it.
+                // "Inherited" in this context means ONLY _inherit (no _name).
+                const finalModelName = modelName || (inheritNames.length > 0 ? inheritNames[0] : '');
+                if (!finalModelName) return failContext;
 
-            // Result Logic:
-            // if _name exists, take it.
-            // else if _inherit exists, take it.
-            // if _name exists, isInherited = !!inheritName (optional, but Odoo usually considers _name + _inherit as extension with new table)
-            // But per request: "if not a inherited module return isinherited false and module name if inherited return true and module name"
-            // Usually "inherited" in this context means ONLY _inherit (no _name).
-
-            const finalModelName = modelName || (inheritNames.length > 0 ? inheritNames[0] : '');
-            if (!finalModelName) return failContext;
-
-            return {
-                valid: true,
-                isInherited: !hasName, // If no _name, it's a pure inheritance
-                modelName: finalModelName,
-                moduleName: moduleName,
-                inheritedModels: inheritNames
-            };
+                return {
+                    valid: true,
+                    isInherited: !hasName, // If no _name, it's a pure inheritance
+                    modelName: finalModelName,
+                    moduleName: moduleName,
+                    inheritedModels: inheritNames
+                };
+            }) ?? failContext;
 
         } catch (error) {
             console.error('[OdooPythonUtils] Error identifying model context:', error);

@@ -1,250 +1,32 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
+import modelIndexService from '../services/modelIndexService';
+import fieldIndexService from '../services/fieldIndexService';
 
-interface FieldInfo {
+interface FieldMeta {
     type: string;
     related: string | null;
 }
 
-interface ModelFields {
-    [fieldName: string]: FieldInfo;
-}
+const RELATIONAL_TYPES = new Set(['Many2one', 'One2many', 'Many2many']);
 
-interface ModelData {
-    [modelName: string]: ModelFields;
-}
-
-interface ModelClass {
-    name: string;
-    startIndex: number;
-    bases: string;
-}
-
-// Parse model names and fields
-export function getAllModelData(workspaceFolders: readonly vscode.WorkspaceFolder[]): ModelData {
-    const modelData: ModelData = {}; // { 'model.name': { fieldName: FieldInfo } }
-
-    // More precise class detection - handles inheritance and multiple base classes
-    const classRegex = /class\s+([\w_]+)\s*\(\s*([^)]*(?:models\.(?:Model|AbstractModel|TransientModel))[^)]*)\s*\):/g;
-
-    // Enhanced model name regex - handles various formats and edge cases
-    const modelNameRegex = /^\s*(_name|_inherit|_inherits)\s*=\s*(?:['"]([^'"]+)['"]|\[([^\]]+)\])/gm;
-
-    // Improved field regex - handles multiline definitions, various field types, and edge cases
-    const fieldRegex = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*fields\.([A-Z][a-zA-Z0-9_]*)\s*\(([^)]*)\)/gm;
-
-    // More comprehensive field types for validation
-    const validFieldTypes = new Set([
-        'Boolean', 'Integer', 'Float', 'Monetary', 'Char', 'Text', 'Html',
-        'Date', 'Datetime', 'Binary', 'Image', 'Selection', 'Reference',
-        'Many2one', 'One2many', 'Many2many', 'Json'
-    ]);
-
-    // Directories to ignore during walk
-    const IGNORED_DIRS = new Set(['venv', '.venv', 'env', '.env', '__pycache__', 'node_modules']);
-
-    const isPrivateOrSpecialMethod = (name: string) => {
-        return name.startsWith('_') ||
-            name === 'self' ||
-            name === 'cls' ||
-            name.includes('__');
-    };
-
-    const isCommonFalsePositive = (name: string) => {
-        // Common variable names that aren't fields
-        const falsePositives = new Set([
-            'result', 'value', 'data', 'record', 'records', 'model',
-            'field', 'fields', 'domain', 'context', 'args', 'kwargs'
-        ]);
-        return falsePositives.has(name);
-    };
-
-    const extractModelNames = (classContent: string): string[] => {
-        const modelNames: string[] = [];
-        modelNameRegex.lastIndex = 0;
-
-        let nameMatch;
-        while ((nameMatch = modelNameRegex.exec(classContent)) !== null) {
-            const attribute = nameMatch[1];
-            const singleValue = nameMatch[2];
-            const listValue = nameMatch[3];
-
-            if (singleValue) {
-                modelNames.push(singleValue);
-            } else if (listValue && (attribute === '_inherit' || attribute === '_inherits')) {
-                // Handle list format: _inherit = ['model1', 'model2']
-                const listItems = listValue.match(/['"]([^'"]+)['"]/g);
-                if (listItems) {
-                    for (const item of listItems) {
-                        const cleanItem = item.replace(/['"]/g, '');
-                        if (cleanItem) modelNames.push(cleanItem);
-                    }
-                }
-            }
-        }
-
-        return [...new Set(modelNames)]; // Remove duplicates
-    };
-
-    const extractFields = (classContent: string): ModelFields => {
-        const fields: ModelFields = {}; // { fieldName: { type: 'Char', related: 'res.partner' } }
-        fieldRegex.lastIndex = 0;
-
-        let fieldMatch;
-        while ((fieldMatch = fieldRegex.exec(classContent)) !== null) {
-            const fieldName = fieldMatch[1];
-            const fieldType = fieldMatch[2];
-
-            if (!validFieldTypes.has(fieldType) || isPrivateOrSpecialMethod(fieldName) || isCommonFalsePositive(fieldName)) {
-                continue;
-            }
-
-            fields[fieldName] = { type: fieldType, related: null };
-
-            // Find the full argument list inside parentheses after the fieldType
-            // Start index is right after fieldType
-            const startIndex = classContent.indexOf('(', fieldMatch.index);
-            if (startIndex === -1) continue;
-
-            // We want to extract the balanced parentheses content (handle multiline)
-            let openParens = 1;
-            let endIndex = startIndex + 1;
-            while (endIndex < classContent.length && openParens > 0) {
-                const char = classContent[endIndex];
-                if (char === '(') openParens++;
-                else if (char === ')') openParens--;
-                endIndex++;
-            }
-
-            if (openParens !== 0) {
-                // Unbalanced parentheses, skip this field
-                continue;
-            }
-
-            const argsContent = classContent.slice(startIndex + 1, endIndex - 1);
-
-            if (['Many2one', 'One2many', 'Many2many'].includes(fieldType)) {
-                // Try to match comodel_name param or first argument string inside argsContent
-                const comodelMatch = argsContent.match(
-                    /comodel_name\s*=\s*["']([^"']+)["']|^\s*["']([^"']+)["']/
-                );
-
-                if (comodelMatch) {
-                    fields[fieldName].related = comodelMatch[1] || comodelMatch[2];
-                }
-            }
-        }
-
-        return fields;
-    };
-
-    const processFile = (content: string, filePath: string) => {
-        // Reset regex lastIndex to avoid issues with global regexes
-        classRegex.lastIndex = 0;
-
-        // Find all model classes in the file
-        const modelClasses: ModelClass[] = [];
-        let classMatch;
-        while ((classMatch = classRegex.exec(content)) !== null) {
-            modelClasses.push({
-                name: classMatch[1],
-                startIndex: classMatch.index,
-                bases: classMatch[2]
-            });
-        }
-
-        if (modelClasses.length === 0) return;
-
-        // For each model class, extract its specific model names and fields
-        for (let i = 0; i < modelClasses.length; i++) {
-            const currentClass = modelClasses[i];
-            const nextClass = modelClasses[i + 1];
-
-            // Get the content of this specific class
-            const classStartIndex = currentClass.startIndex;
-            const classEndIndex = nextClass ? nextClass.startIndex : content.length;
-            const classContent = content.substring(classStartIndex, classEndIndex);
-
-            // Extract model names for this specific class
-            const modelNames = extractModelNames(classContent);
-
-            // Extract fields for this specific class
-            const fields = extractFields(classContent);
-
-            // Associate fields with model names
-            for (const modelName of modelNames) {
-                if (!modelData[modelName]) {
-                    modelData[modelName] = {};
-                }
-                for (const [fieldName, fieldInfo] of Object.entries(fields)) {
-                    modelData[modelName][fieldName] = fieldInfo;
-                }
-            }
-        }
-    };
-
-    const walk = (dir: string) => {
-        const files = fs.readdirSync(dir);
-        for (const file of files) {
-            const fullPath = path.join(dir, file);
-            let stat;
-            try {
-                stat = fs.statSync(fullPath);
-            } catch (err) {
-                // Skip files/dirs that can't be stat'ed (e.g., broken symlinks)
-                continue;
-            }
-
-            if (stat.isDirectory()) {
-                // Skip known venv/caches and any directory containing pyvenv.cfg (Python venv)
-                if (
-                    IGNORED_DIRS.has(file) ||
-                    fs.existsSync(path.join(fullPath, 'pyvenv.cfg'))
-                ) continue;
-                walk(fullPath);
-            } else if (stat.isFile() && file.endsWith('.py')) {
-                try {
-                    const content = fs.readFileSync(fullPath, 'utf8');
-
-                    // Quick check if file contains model classes
-                    if (!content.includes('models.Model') &&
-                        !content.includes('models.AbstractModel') &&
-                        !content.includes('models.TransientModel')) {
-                        continue;
-                    }
-
-                    processFile(content, fullPath);
-                } catch (err: any) {
-                    console.warn(`Failed to read ${fullPath}:`, err.message);
-                }
-            }
-        }
-    };
-
-    // Process all workspace folders
-    for (const folder of workspaceFolders) {
-        walk(folder.uri.fsPath);
+/**
+ * Fields of `modelName` across every module that defines or extends it, from the field index.
+ * Built per request from that one model's entries, so nothing is scanned and nothing goes stale.
+ */
+function fieldsOf(modelName: string): { [fieldName: string]: FieldMeta } | undefined {
+    const fields = fieldIndexService.getFieldsForModel(modelName);
+    if (fields.length === 0) return undefined;
+    const result: { [fieldName: string]: FieldMeta } = {};
+    for (const field of fields) {
+        result[field.fieldName] = {
+            type: field.fieldType,
+            related: RELATIONAL_TYPES.has(field.fieldType) ? field.attributes['comodel_name'] || null : null
+        };
     }
-
-    // Convert Sets to Arrays and sort for consistent output
-    const result: ModelData = {};
-    for (const [modelName, fieldsSet] of Object.entries(modelData)) {
-        result[modelName] = Object.fromEntries(
-            Object.entries(fieldsSet).sort(([a], [b]) => a.localeCompare(b))
-        );
-    }
-
     return result;
 }
 
-
 export function registerModelProviders(context: vscode.ExtensionContext) {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) return;
-
-    let modelDataCache = getAllModelData(workspaceFolders);
-    let modelNamesCache = Object.keys(modelDataCache);
 
     // Python: model names for _inherit or env[...] 
     const ModelProvider = vscode.languages.registerCompletionItemProvider(
@@ -268,7 +50,7 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                return modelNamesCache.map(name => {
+                return modelIndexService.getAllModelNames().map(name => {
                     const item = new vscode.CompletionItem(`'${name}'`, vscode.CompletionItemKind.Value);
                     const lastChar = textBefore.trim().slice(-1);
                     item.insertText = (lastChar === `'` || lastChar === `"`) ? name : `'${name}'`;
@@ -286,7 +68,6 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
             provideCompletionItems(document, position) {
                 const lineText = document.lineAt(position.line).text;
                 const textBefore = lineText.substring(0, position.character);
-                const fullText = document.getText();
 
                 let comodelName: string | null = null;
                 let partial = '';
@@ -307,6 +88,7 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
 
                 if (!comodelName) return;
 
+                const fullText = document.getText();
                 // Find the current model name (_name or _inherit)
                 let modelName: string | null = null;
                 let nameMatch = fullText.match(/_name\s*=\s*['"]([^'"]+)['"]/);
@@ -318,7 +100,7 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
                 }
                 if (!modelName) return;
 
-                const fieldsMap = modelDataCache[comodelName];
+                const fieldsMap = fieldsOf(comodelName);
                 if (!fieldsMap) return;
 
                 // Only suggest Many2one fields whose related matches the current model
@@ -343,6 +125,9 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
         'python',
         {
             provideCompletionItems(document, position) {
+                // Only after a dot; checked first so other keystrokes cost nothing.
+                if (!document.lineAt(position).text.substring(0, position.character).endsWith('.')) return;
+
                 const fullText = document.getText();
                 const lines = fullText.split('\n');
                 const aliasMap: { [key: string]: string | null } = { self: null }; // Track alias to chain
@@ -384,15 +169,17 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
                 if (!modelName) return;
 
                 // Step 4: Traverse fields along the chain
-                let fields = modelDataCache[modelName];
+                let fields = fieldsOf(modelName);
                 for (let i = 1; i < fullFieldChain.length; i++) {
                     const field = fullFieldChain[i];
                     if (!fields?.[field]) return;
                     const related = fields[field].related;
-                    if (!related || !modelDataCache[related]) return;
+                    if (!related) return;
                     modelName = related;
-                    fields = modelDataCache[modelName];
+                    fields = fieldsOf(modelName);
+                    if (!fields) return;
                 }
+                if (!fields) return;
 
                 // Step 5: Suggest fields
                 return Object.entries(fields).map(([fieldName, meta]) => {
@@ -412,12 +199,10 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
         {
             provideCompletionItems(document, position) {
                 const line = document.lineAt(position.line).text;
-                const textBefore = line.substring(0, position.character);
-                const fullText = document.getText();
-
                 // Check if inside @api.onchange or @api.depends decorator
                 const decoratorLine = line.trim();
                 if (!decoratorLine.startsWith('@api.onchange') && !decoratorLine.startsWith('@api.depends')) return;
+                const fullText = document.getText();
 
                 // Find the current model name (_name or _inherit)
                 let modelName: string | null = null;
@@ -430,8 +215,7 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
                 }
                 if (!modelName) return;
 
-                // Use the modelDataCache from the closure
-                const fieldsMap = modelDataCache[modelName];
+                const fieldsMap = fieldsOf(modelName);
                 if (!fieldsMap) return;
 
                 // Suggest all field names
@@ -451,19 +235,4 @@ export function registerModelProviders(context: vscode.ExtensionContext) {
     context.subscriptions.push(InverseNameProvider);
     //    context.subscriptions.push(One2manyInverseProvider);
     context.subscriptions.push(ApiDecoratorFieldProvider);
-
-    // Watch for changes
-    const watcher = vscode.workspace.createFileSystemWatcher('**/*.py');
-    const updateModelCache = () => {
-        modelDataCache = getAllModelData(workspaceFolders);
-        modelNamesCache = Object.keys(modelDataCache);
-    };
-    watcher.onDidChange(updateModelCache);
-    watcher.onDidCreate(updateModelCache);
-    watcher.onDidDelete(updateModelCache);
-    context.subscriptions.push(watcher);
-
-    return {
-        getAllModelData
-    };
 }

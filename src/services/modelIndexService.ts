@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { getPythonParserService } from './pythonParserService';
 import moduleIndexService from './moduleIndexService';
+import { EXCLUDE_GLOB, FileChange, FileMetadata, watchFiles } from '../utils/indexing';
+import { indexFiles } from '../indexer/indexer';
+import type { FileResult } from '../indexer/protocol';
+import type { ParsedPythonFile } from '../parsing/python';
+import { indexNeeded } from '../indexer/trigger';
 
 export interface ModelInfo {
     modelName: string;
@@ -14,287 +17,208 @@ export interface ModelInfo {
     moduleDepends: string[];
 }
 
-export interface RichIndexEvent {
-    uri: vscode.Uri;
-    tree: any;
+/** A Python file that was parsed again, with what it declares now (nothing if it left a module). */
+export interface ParsedFileEvent {
+    filePath: string;
     models: ModelInfo[];
+    parsed: ParsedPythonFile;
 }
+
+const NOTHING: ParsedPythonFile = { models: [], fields: [], functions: [] };
+
+/**
+ * Bumped when parsing changes in a way that makes saved results wrong. A saved index from another
+ * version keeps answering until every file has been parsed again (fields and functions included,
+ * since they are parsed from the same pass).
+ */
+const STATE_VERSION = 2;
 
 class ModelIndexService {
     private modelCache: Map<string, ModelInfo[]>; // modelName -> ModelInfo[] (since multiple modules can inherit/define)
-    private fileMetadata: Map<string, { mtime: number, size: number }>; // filePath -> metadata
-    private watcher: vscode.FileSystemWatcher | null;
+    private fileModels: Map<string, ModelInfo[]>; // filePath -> ModelInfo[] declared in that file
+    private fileMetadata: Map<string, FileMetadata>; // filePath -> metadata
+    private watcher: vscode.Disposable | null;
     private isIndexing: boolean = false;
-    private _onDidIndexFile = new vscode.EventEmitter<vscode.Uri>();
-    public readonly onDidIndexFile = this._onDidIndexFile.event;
+    private modelNames: string[] | null = null;
+    private dirty = false;
+    private _version = 0;
     private _onDidDeleteFile = new vscode.EventEmitter<vscode.Uri>();
     public readonly onDidDeleteFile = this._onDidDeleteFile.event;
 
-    private _onDidIndexRichFile = new vscode.EventEmitter<RichIndexEvent>();
-    public readonly onDidIndexRichFile = this._onDidIndexRichFile.event;
+    /**
+     * Fired for every Python file parsed again, so the field and function indexes take their part
+     * of the same parse. Also fired when a file now declares nothing, so they drop its old entries.
+     */
+    private _onDidParseFile = new vscode.EventEmitter<ParsedFileEvent>();
+    public readonly onDidParseFile = this._onDidParseFile.event;
 
     constructor() {
         this.modelCache = new Map();
+        this.fileModels = new Map();
         this.fileMetadata = new Map();
         this.watcher = null;
     }
 
     initialize() {
-        this.watcher = vscode.workspace.createFileSystemWatcher('**/*.py');
-        this.watcher.onDidChange(uri => this.indexFile(uri));
-        this.watcher.onDidCreate(uri => this.indexFile(uri));
-        this.watcher.onDidDelete(uri => this.removeFile(uri));
+        this.watcher = watchFiles('**/*.py', changes => this.applyChanges(changes));
+    }
+
+    private async applyChanges(changes: Map<string, FileChange>) {
+        if (!this.isCoreIndexingEnabled()) {
+            return;
+        }
+        const changed: string[] = [];
+        for (const [fsPath, change] of changes) {
+            if (change === 'deleted') {
+                this.removeFile(vscode.Uri.file(fsPath));
+            } else {
+                changed.push(fsPath);
+            }
+        }
+        await this.indexPaths(changed);
+    }
+
+    private isCoreIndexingEnabled(): boolean {
+        return vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper').get<boolean>('indexing.enableCoreIndexing', true);
+    }
+
+    /** Has the background indexer parse the files that changed since they were last indexed. */
+    private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
+        return indexFiles(
+            paths.map(path => ({ path, kind: 'python' as const, meta: this.fileMetadata.get(path) })),
+            result => this.applyResult(result),
+            progress && { report: value => progress.report(value), label: 'Models' }
+        );
     }
 
     async buildCache(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
-        if (this.isIndexing) return;
+        if (this.isIndexing || !this.isCoreIndexingEnabled()) return;
         this.isIndexing = true;
 
-        // console.log('[ModelIndex] Refreshing model cache (incremental)...');
-        // DO NOT CLEAR modelCache anymore!
+        try {
+            // One search for the whole workspace; the indexer works out each file's module.
+            const pythonFiles = await vscode.workspace.findFiles('**/*.py', EXCLUDE_GLOB);
+            const seen = new Set(pythonFiles.map(file => file.fsPath));
+            await this.indexPaths([...seen], progress);
 
-        if (progress) {
-            progress.report({ message: "Finding Odoo Modules..." });
-        }
-        const modules = await moduleIndexService.getModules(progress);
-        const totalModules = modules.length;
-        let modulesProcessed = 0;
-
-        for (const module of modules) {
-            modulesProcessed++;
-
-            // Find all python files in this module
-            const pattern = new vscode.RelativePattern(module.path, '**/*.py');
-            const pythonFiles = await vscode.workspace.findFiles(pattern, '**/{node_modules,venv,.venv,__pycache__}/**');
-            const totalFiles = pythonFiles.length;
-            let filesProcessed = 0;
-
-            for (const file of pythonFiles) {
-                filesProcessed++;
-                if (progress) {
-                    progress.report({
-                        message: `Models: ${filesProcessed}/${totalFiles}`,
-                        increment: (1 / (totalModules * (totalFiles || 1))) * 100
-                    });
+            // Drop files that no longer exist.
+            for (const filePath of [...this.fileMetadata.keys()]) {
+                if (!seen.has(filePath)) {
+                    this.removeFile(vscode.Uri.file(filePath));
                 }
-                await this.indexFile(file, module.name);
             }
-
-            // Yield to main thread occasionally
-            await new Promise(resolve => setTimeout(resolve, 0));
+        } finally {
+            this.isIndexing = false;
         }
-
-        // Cleanup: Remove entries for files that no longer exist
-        this.cleanupDeletedFiles();
-
-        this.isIndexing = false;
-        // console.log(`[ModelIndex] Finished: Indexed ${this.modelCache.size} models across ${modules.length} modules.`);
     }
 
-    async indexFile(uri: vscode.Uri, moduleName?: string) {
-        const config = vscode.workspace.getConfiguration('cybrosys-assista-odoo-helper');
-        if (!config.get<boolean>('indexing.enableCoreIndexing', true)) {
+    private applyResult(result: FileResult) {
+        if (result.status === 'missing') {
+            this.removeFile(vscode.Uri.file(result.path));
             return;
         }
-
-        try {
-            const stats = await vscode.workspace.fs.stat(uri);
-            const cachedMetadata = this.fileMetadata.get(uri.fsPath);
-
-            // Skip if file hasn't changed
-            if (cachedMetadata && cachedMetadata.mtime === stats.mtime && cachedMetadata.size === stats.size) {
-                // If we already have models for this file, skip parsing
-                const models = this.getModelsByFile(uri.fsPath);
-                if (models.length > 0 || this.hasMetadata(uri.fsPath)) {
-                    return;
-                }
+        if (result.status !== 'parsed') {
+            if (result.status === 'error') {
+                console.error(`[ModelIndex] Error indexing file ${result.path}: ${result.message}`);
             }
-
-            if (!moduleName) {
-                // Try to find module name if not provided
-                const modules = await moduleIndexService.getModules();
-                const module = modules.find(m => uri.fsPath.startsWith(m.path));
-                if (!module) return; // Not in a valid Odoo module
-                moduleName = module.name;
-            }
-
-            const content = await vscode.workspace.fs.readFile(uri);
-            const text = Buffer.from(content).toString('utf8');
-
-            const pythonParser = getPythonParserService();
-            if (!pythonParser.isInitialized()) return;
-
-            const tree = pythonParser.parse(text);
-            if (!tree) return;
-
-            // Remove old entries for this file
-            this.removeFileEntries(uri.fsPath);
-
-            // Parse classes
-            const moduleInfo = moduleIndexService.getModuleInfo(moduleName);
-            const moduleDepends = moduleInfo?.depends || [];
-            const models = this.parseModelsFromTree(tree, uri.fsPath, moduleName, moduleDepends);
-
-            // Update metadata
-            this.fileMetadata.set(uri.fsPath, { mtime: stats.mtime, size: stats.size });
-
-            // Notify others with the parsed tree
-            this._onDidIndexRichFile.fire({ uri, tree, models });
-            this._onDidIndexFile.fire(uri);
-
-            // CRITICAL: Delete tree only after everyone is done
-            tree.delete();
-
-        } catch (error) {
-            console.error(`[ModelIndex] Error indexing file ${uri.fsPath}:`, error);
+            return;
         }
+        this.removeFileEntries(result.path);
+        const parsed = result.module && result.python ? result.python : NOTHING;
+        const moduleName = result.module ?? '';
+        const moduleDepends = moduleIndexService.getModuleInfo(moduleName)?.depends || [];
+        const models: ModelInfo[] = parsed.models.map(model => ({ ...model, moduleName, filePath: result.path, moduleDepends }));
+        this.addFileModels(result.path, models);
+        this.fileMetadata.set(result.path, result.meta);
+        this.changed();
+        this._onDidParseFile.fire({ filePath: result.path, models, parsed });
     }
 
-    private parseModelsFromTree(tree: any, filePath: string, moduleName: string, moduleDepends: string[]): ModelInfo[] {
-        const rootNode = tree.rootNode;
-        const pythonParser = getPythonParserService();
-        const language = pythonParser.getLanguage();
-        const foundModels: ModelInfo[] = [];
-
-        if (!language) return [];
-
-        // Query to find classes
-        const classQuery = new (require('web-tree-sitter')).Query(language, `
-            (class_definition
-                name: (identifier) @class_name
-                body: (block) @body
-            )
-        `);
-
-        const matches = classQuery.matches(rootNode);
-        for (const match of matches) {
-            const classNameNode = match.captures.find((c: any) => c.name === 'class_name')?.node;
-            const bodyNode = match.captures.find((c: any) => c.name === 'body')?.node;
-
-            if (classNameNode && bodyNode) {
-                const className = classNameNode.text;
-                let modelNameValue: string | null = null;
-                let inheritValue: string | string[] | null = null;
-                let hasName = false;
-
-                // Look for _name and _inherit assignments in the class body
-                for (const child of bodyNode.children) {
-                    if (child.type === 'expression_statement') {
-                        const assignment = child.firstChild;
-                        if (assignment?.type === 'assignment') {
-                            const left = assignment.childForFieldName('left');
-                            const right = assignment.childForFieldName('right');
-
-                            if (left?.text === '_name') {
-                                hasName = true;
-                                modelNameValue = this.extractString(right);
-                            } else if (left?.text === '_inherit') {
-                                inheritValue = this.extractValue(right);
-                            }
-                        }
-                    }
-                }
-
-                // Logic to determine model name as requested
-                let finalModelName: string | null = null;
-                if (hasName) {
-                    finalModelName = modelNameValue;
-                } else if (inheritValue) {
-                    if (Array.isArray(inheritValue)) {
-                        finalModelName = inheritValue[0];
-                    } else {
-                        finalModelName = inheritValue;
-                    }
-                }
-
-                if (finalModelName) {
-                    const modelInfo: ModelInfo = {
-                        modelName: finalModelName,
-                        moduleName: moduleName,
-                        className: className,
-                        filePath: filePath,
-                        line: classNameNode.startPosition.row,
-                        character: classNameNode.startPosition.column,
-                        isInherited: !hasName,
-                        moduleDepends: moduleDepends
-                    };
-
-                    const existing = this.modelCache.get(finalModelName) || [];
-                    existing.push(modelInfo);
-                    this.modelCache.set(finalModelName, existing);
-                    foundModels.push(modelInfo);
-                }
+    private addFileModels(filePath: string, models: ModelInfo[]) {
+        if (models.length === 0) return;
+        this.fileModels.set(filePath, models);
+        for (const model of models) {
+            const existing = this.modelCache.get(model.modelName);
+            if (existing) {
+                existing.push(model);
+            } else {
+                this.modelCache.set(model.modelName, [model]);
             }
         }
-        return foundModels;
-    }
-
-    private extractString(node: any): string | null {
-        if (!node) return null;
-        if (node.type === 'string') {
-            return node.text.slice(1, -1);
-        }
-        return null;
-    }
-
-    private extractValue(node: any): string | string[] | null {
-        if (!node) return null;
-        if (node.type === 'string') {
-            return node.text.slice(1, -1);
-        }
-        if (node.type === 'list' || node.type === 'tuple') {
-            const values: string[] = [];
-            for (const child of node.namedChildren) {
-                if (child.type === 'string') {
-                    values.push(child.text.slice(1, -1));
-                }
-            }
-            return values;
-        }
-        return null;
     }
 
     private removeFile(uri: vscode.Uri) {
-        this.removeFileEntries(uri.fsPath);
-        this._onDidDeleteFile.fire(uri);
+        const known = this.fileMetadata.delete(uri.fsPath);
+        if (this.removeFileEntries(uri.fsPath) || known) {
+            this.changed();
+            this._onDidDeleteFile.fire(uri);
+        }
     }
 
-    private removeFileEntries(filePath: string) {
-        for (const [key, list] of this.modelCache.entries()) {
+    /** Removes the models declared in `filePath`. Cost is proportional to that file's models only. */
+    private removeFileEntries(filePath: string): boolean {
+        const models = this.fileModels.get(filePath);
+        if (!models) return false;
+        this.fileModels.delete(filePath);
+        for (const model of models) {
+            const list = this.modelCache.get(model.modelName);
+            if (!list) continue;
             const filtered = list.filter(m => m.filePath !== filePath);
             if (filtered.length === 0) {
-                this.modelCache.delete(key);
+                this.modelCache.delete(model.modelName);
             } else {
-                this.modelCache.set(key, filtered);
+                this.modelCache.set(model.modelName, filtered);
             }
         }
+        this.changed();
+        return true;
+    }
+
+    private changed() {
+        this.modelNames = null;
+        this.dirty = true;
+        this._version++;
+    }
+
+    /** Increases on every change, so callers can cheaply tell whether derived data is stale. */
+    public get version(): number {
+        return this._version;
+    }
+
+    public isDirty(): boolean {
+        return this.dirty;
+    }
+
+    /** For an extension (`_inherit` only): the module it extends, among the ones it depends on. */
+    public resolveInheritedModule(modelInfo: ModelInfo): string | undefined {
+        if (!modelInfo.isInherited) return undefined;
+        const allModulesDefiningModel = this.getModelsByName(modelInfo.modelName).map(m => m.moduleName);
+        const currentModuleInfo = moduleIndexService.getModuleInfo(modelInfo.moduleName);
+        if (!currentModuleInfo || !currentModuleInfo.depends) return undefined;
+        // Find a module that exists in both the model definitions and the current module's dependencies
+        const inherited = currentModuleInfo.depends.find((dep: string) => allModulesDefiningModel.includes(dep));
+        // Fallback: if not found in direct dependencies, it might be core 'base' if we only have one other definition
+        if (!inherited && allModulesDefiningModel.length === 2) {
+            return allModulesDefiningModel.find(m => m !== modelInfo.moduleName);
+        }
+        return inherited;
     }
 
     public getModelsByName(modelName: string): ModelInfo[] {
+        indexNeeded();
         return this.modelCache.get(modelName) || [];
     }
 
-    private hasMetadata(filePath: string): boolean {
-        return this.fileMetadata.has(filePath);
-    }
-
-    private async cleanupDeletedFiles() {
-        for (const filePath of this.fileMetadata.keys()) {
-            try {
-                await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
-            } catch (e) {
-                // File deleted
-                this.removeFileEntries(filePath);
-                this.fileMetadata.delete(filePath);
-            }
-        }
-    }
-
     public getAllModelNames(): string[] {
-        return Array.from(this.modelCache.keys());
+        indexNeeded();
+        if (!this.modelNames) {
+            this.modelNames = Array.from(this.modelCache.keys());
+        }
+        return this.modelNames;
     }
 
     public getAllModels(): ModelInfo[] {
+        indexNeeded();
         const all: ModelInfo[] = [];
         for (const models of this.modelCache.values()) {
             all.push(...models);
@@ -303,43 +227,63 @@ class ModelIndexService {
     }
 
     public getModelsByFile(filePath: string): ModelInfo[] {
-        const results: ModelInfo[] = [];
-        for (const models of this.modelCache.values()) {
-            for (const model of models) {
-                if (model.filePath === filePath) {
-                    results.push(model);
-                }
-            }
-        }
-        return results;
+        return this.fileModels.get(filePath) || [];
     }
 
     public getState() {
+        this.dirty = false;
+        // `moduleDepends` is the module's own depends list; it is restored from the module index on
+        // load instead of being written out once per model.
         return {
-            models: Array.from(this.modelCache.entries()),
+            version: STATE_VERSION,
+            models: Array.from(this.modelCache.entries(), ([name, models]) =>
+                [name, models.map(({ moduleDepends, ...rest }) => rest)]),
             metadata: Array.from(this.fileMetadata.entries())
         };
     }
 
+    /** Call after the module index has loaded its state, so `moduleDepends` can be restored. */
     public loadState(state: any) {
         try {
+            let entries: [string, ModelInfo[]][] = [];
             if (Array.isArray(state)) {
                 // Old format: direct array
-                this.modelCache = new Map(state);
+                entries = state;
             } else if (state && typeof state === 'object') {
                 // New format: { models: [], metadata: [] }
                 if (Array.isArray(state.models)) {
-                    this.modelCache = new Map(state.models);
+                    entries = state.models;
                 }
-                if (Array.isArray(state.metadata)) {
+                // Metadata from another version is dropped, so every file is parsed again.
+                if (Array.isArray(state.metadata) && state.version === STATE_VERSION) {
                     this.fileMetadata = new Map(state.metadata);
                 }
+            }
+            this.modelCache = new Map();
+            this.fileModels = new Map();
+            const byFile = new Map<string, ModelInfo[]>();
+            for (const [, models] of entries) {
+                for (const model of models) {
+                    model.moduleDepends = moduleIndexService.getModuleInfo(model.moduleName)?.depends || model.moduleDepends || [];
+                    const list = byFile.get(model.filePath);
+                    if (list) {
+                        list.push(model);
+                    } else {
+                        byFile.set(model.filePath, [model]);
+                    }
+                }
+            }
+            for (const [filePath, models] of byFile) {
+                this.addFileModels(filePath, models);
             }
         } catch (e) {
             console.error('[ModelIndex] Failed to load state:', e);
             this.modelCache = new Map();
+            this.fileModels = new Map();
             this.fileMetadata = new Map();
         }
+        this.modelNames = null;
+        this._version++;
     }
 
     public dispose() {

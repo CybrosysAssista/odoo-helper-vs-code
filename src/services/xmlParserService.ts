@@ -1,6 +1,4 @@
-import * as vscode from 'vscode';
-import { getLanguageService, HTMLDocument, Node } from 'vscode-html-languageservice';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import type { HTMLDocument, LanguageService, Node } from 'vscode-html-languageservice';
 
 export interface XmlNode extends Node {
     tag: string;
@@ -8,14 +6,25 @@ export interface XmlNode extends Node {
 }
 
 export class XmlParserService {
-    private ls = getLanguageService();
+    // Loaded on first use: the HTML language service takes tens of milliseconds to load, and most
+    // sessions only need it once an XML file is edited.
+    private ls: LanguageService = require('vscode-html-languageservice').getLanguageService();
+    private lastText: string | undefined;
+    private lastDocument: HTMLDocument | undefined;
 
     /**
-     * Parse XML content using HTML language service
+     * Parse XML content using HTML language service. The last result is reused while the text is
+     * unchanged: completion and navigation ask for the same document many times in a row.
      */
     public parse(text: string): HTMLDocument {
+        if (this.lastDocument && text === this.lastText) {
+            return this.lastDocument;
+        }
+        const { TextDocument } = require('vscode-languageserver-textdocument');
         const document = TextDocument.create('untitled://example.xml', 'xml', 0, text);
-        return this.ls.parseHTMLDocument(document);
+        this.lastDocument = this.ls.parseHTMLDocument(document);
+        this.lastText = text;
+        return this.lastDocument;
     }
 
     /**
