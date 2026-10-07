@@ -465,6 +465,7 @@
     "@types/glob": "^8.1.0",
     "@types/node": "20.x",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^4.0.0",
     "eslint": "^8.54.0",
     "glob": "^10.3.10",
     "typescript": "^5.9.3"
