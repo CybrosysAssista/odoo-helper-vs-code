@@ -4,6 +4,13 @@ All notable changes to the **cybrosys-assista-odoo-helper** extension will be do
 
 Check out [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) for guidelines.
 
+## [3.1.1] - 2026-10-08
+### Changed
+- Open VSX and the Assista IDE: published as `cybrosys-assista-ltd.cybrosys-assista-odoo-helper`.
+
+### Fixed
+- README logo: the "Assista" text was invisible on VS Code's extension page in dark themes.
+
 ## [3.1.0] - 2026-10-08
 ### Changed
 - The extension ships as an esbuild bundle: 22 files (about 600 KB) instead of about 800, for faster activation.

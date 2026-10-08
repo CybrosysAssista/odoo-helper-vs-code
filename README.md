@@ -1,10 +1,8 @@
 <p align="center">
-  <a href="https://assista.cybrosys.com">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="logo/assista-logo-title.png"/>
-      <img src="logo/assista-logo-title-ink.png" alt="Cybrosys Assista" width="300"/>
-    </picture>
-  </a>
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/CybrosysAssista/odoo-helper-vs-code/raw/HEAD/logo/assista-logo-title-ink.png"/>
+    <img src="https://github.com/CybrosysAssista/odoo-helper-vs-code/raw/HEAD/logo/assista-logo-title.png" alt="Cybrosys Assista" width="300"/>
+  </picture>
 </p>
 
 <h1 align="center">Cybrosys Assista: Odoo Helper</h1>
