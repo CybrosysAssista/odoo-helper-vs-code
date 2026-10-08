@@ -454,19 +454,33 @@ async function saveChangedIndexes(ids: readonly IndexId[]): Promise<void> {
  * files that changed since the last session are parsed again.
  */
 async function startIndexing(context: vscode.ExtensionContext): Promise<void> {
-    const states = await Promise.all(INDEX_IDS.map(id => persistenceService.load<unknown>(id)));
-
-    // The module index goes first: the model index restores each model's module dependencies from it.
+    // One index at a time, yielding after each parse and each restore, so loading megabytes of
+    // saved index never holds up the editor in one go. The module index goes first: the model
+    // index restores each model's module dependencies from it.
     const all = indexes();
-    for (const [i, id] of INDEX_IDS.entries()) {
-        if (states[i]) {
-            all[id].loadState(states[i]);
-            await new Promise<void>(resolve => setImmediate(resolve));
+    const yieldToEditor = () => new Promise<void>(resolve => setImmediate(resolve));
+    for (const id of INDEX_IDS) {
+        const state = await persistenceService.load<unknown>(id);
+        await yieldToEditor();
+        if (state) {
+            all[id].loadState(state);
+            await yieldToEditor();
         }
     }
 
-    // Loaded now, while idle, rather than on the first XML keystroke.
-    getXmlParserService();
+    // The XML parser (the HTML language service) is only loaded once an XML file is open, and then
+    // right away rather than on the first keystroke. Python-only sessions never load it.
+    const preloadXml = (document: vscode.TextDocument) => {
+        if (document.languageId !== 'xml') return false;
+        getXmlParserService();
+        return true;
+    };
+    if (!vscode.workspace.textDocuments.some(preloadXml)) {
+        const listener = vscode.workspace.onDidOpenTextDocument(document => {
+            if (preloadXml(document)) listener.dispose();
+        });
+        context.subscriptions.push(listener);
+    }
 
     // Keep the indexes current. Started after loading, so the loaded state can't overwrite updates.
     fieldIndexService.initialize();
@@ -480,6 +494,16 @@ async function startIndexing(context: vscode.ExtensionContext): Promise<void> {
         templateIndexService,
         getOdooRegistryIndexer().initialize(),
         CssClassIndexer.getInstance().initialize(),
+        // Files under a folder that became (or stopped being) a module belong to a different module now.
+        moduleIndexService.onDidChangeModuleFolders(async folders => {
+            for (const folder of folders) {
+                await modelIndexService.reindexUnder(folder);
+                await templateIndexService.reindexUnder(folder);
+                await getOdooRegistryIndexer().reindexUnder(folder);
+                await CssClassIndexer.getInstance().reindexUnder(folder);
+            }
+            await saveChangedIndexes(['modelIndex', 'fieldIndex', 'functionIndex', 'templateIndex', 'registryIndex', 'cssIndex']);
+        }),
     );
 
     // Silent: indexing runs in a low-priority background process, so it shows no status-bar progress.

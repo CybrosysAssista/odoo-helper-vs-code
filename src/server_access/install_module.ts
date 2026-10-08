@@ -67,12 +67,14 @@ export async function installModule(uri: vscode.Uri): Promise<void> {
                 const actionLabel = isInstalled ? 'Upgrade' : 'Install';
                 const method = isInstalled ? 'button_immediate_upgrade' : 'button_immediate_install';
 
+                // Modal: a plain notification can sit unseen under the progress notification.
                 const confirmInstallation = await vscode.window.showInformationMessage(
-                    `Module "${moduleName}" is ${mod.state}. Do you want to ${actionLabel} it?`,
-                    'Yes', 'Cancel'
+                    `Module "${moduleName}" is ${mod.state}. Do you want to ${actionLabel.toLowerCase()} it on ${config.db}?`,
+                    { modal: true },
+                    actionLabel
                 );
 
-                if (confirmInstallation === 'Yes') {
+                if (confirmInstallation === actionLabel) {
                     progress.report({ message: `${actionLabel}ing "${moduleName}"...` });
                     await rpc.functionCaller(uid, 'ir.module.module', method, [mod.id]);
                     vscode.window.showInformationMessage(`Module "${moduleName}" ${actionLabel.toLowerCase()}ed successfully!`);

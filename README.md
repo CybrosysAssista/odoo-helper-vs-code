@@ -161,7 +161,7 @@ Completions in `.xml` files.
 In `__manifest__.py`:
 
 - **`depends`** — module names from your workspace when you open a quote on a line containing `depends`. *index*
-- **`data`, `demo` and `assets` paths** — the module's files and folders as you type a path; choosing a folder continues into it.
+- **`data`, `demo` and `assets` paths** — the module's files and folders as you type a path; choosing a folder continues into it. Asset paths start with the module name (`my_module/static/src/…`), as Odoo expects.
 
 ---
 
@@ -509,11 +509,14 @@ Optional warnings based on Odoo's coding guidelines. **Off by default** — turn
 
 The extension is built to stay out of your way:
 
-- It activates only in Odoo workspaces and loads its commands the first time you use them.
+- It activates only in Odoo workspaces, and loads its commands the first time you use them. It ships as a small bundle, so activation takes tens of milliseconds.
 - Indexing runs in a separate process at the lowest OS priority. It starts a few seconds after the window opens and stops when idle. The editor, the debugger and your Odoo server always come first.
 - The index is saved between sessions; afterwards only changed files are read again. File changes are batched.
+- Saving and loading the index is done in small steps, so the editor never waits on it for long.
 - Indexing is silent — no status bar progress and no notifications.
-- Completions work from the index and per-keystroke work is kept small, so typing stays responsive in large files.
+- Completions work from the index, and per-keystroke work is kept small, so typing stays responsive in large files.
+
+As a reference, indexing the complete Odoo 20 source (all of `addons/` and `odoo/addons/`) for the first time takes about half a minute in the background, and the editor stays responsive throughout.
 
 Large workspaces can turn off parts of the index in the [settings](#settings).
 

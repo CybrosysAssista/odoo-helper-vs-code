@@ -15,15 +15,16 @@ export function extractXmlEntries(xmlText: string, moduleName: string): XmlEntry
     const newlines = newlineOffsets(xmlText);
     const qualify = (name: string) => name.includes('.') ? name : `${moduleName}.${name}`;
     // <template id="..." ...>: a template, and an XML id
-    const templateIdRegex = /<template[^>]*id=["']([^"']+)["']/g;
+    // `\sid` so that `inherit_id="..."` is never taken for the template's own id
+    const templateIdRegex = /<template\b[^>]*?\sid\s*=\s*["']([^"']+)["']/g;
     let match;
     while ((match = templateIdRegex.exec(xmlText)) !== null) {
         const line = lineAt(newlines, match.index);
-        entries.push([`${moduleName}.${match[1]}`, line, EntryKind.Template]);
+        entries.push([qualify(match[1]), line, EntryKind.Template]);
         entries.push([qualify(match[1]), line, EntryKind.XmlId]);
     }
     // <t t-name="..." ...>
-    const tNameRegex = /<t[^>]*t-name=["']([^"']+)["']/g;
+    const tNameRegex = /<t\b[^>]*?\st-name\s*=\s*["']([^"']+)["']/g;
     while ((match = tNameRegex.exec(xmlText)) !== null) {
         entries.push([qualify(match[1]), lineAt(newlines, match.index), EntryKind.Template]);
     }

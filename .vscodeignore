@@ -12,3 +12,16 @@ vsc-extension-quickstart.md
 !resources/**
 # SVG sources of the PNG logos
 logo/*.svg
+# Bundled into dist/ by esbuild: ship the bundle, not the sources or the tsc output
+src/**
+out/**
+esbuild.mjs
+tsconfig.json
+node_modules/**
+# ...except web-tree-sitter, loaded at runtime with its WASM runtime
+!node_modules/web-tree-sitter/web-tree-sitter.cjs
+!node_modules/web-tree-sitter/web-tree-sitter.wasm
+!node_modules/web-tree-sitter/package.json
+*.vsix
+# Internal developer notes
+docs/**

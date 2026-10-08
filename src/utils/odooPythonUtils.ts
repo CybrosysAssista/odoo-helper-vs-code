@@ -13,6 +13,14 @@ export interface OdooModelContext {
     inheritedModels: string[];
 }
 
+interface ClassRange {
+    startRow: number;
+    startColumn: number;
+    endRow: number;
+    endColumn: number;
+    context: OdooModelContext | undefined;
+}
+
 export class OdooPythonUtils {
     /**
      * Checks if the given position in a Python file is inside a valid Odoo model.
@@ -40,81 +48,72 @@ export class OdooPythonUtils {
             if (!pythonParser.isInitialized()) return failContext;
 
             const openDocument = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
-            const text = openDocument ? openDocument.getText() : await fs.promises.readFile(uri.fsPath, 'utf8');
 
-            return pythonParser.withTree(text, tree => {
-                // 3. Find the class containment
-                const nodeAtPosition = tree.rootNode.descendantForPosition({
-                    row: position.line,
-                    column: position.character
-                });
-
-                // Walk up to find the class definition
-                let classNode = nodeAtPosition;
-                while (classNode && classNode.type !== 'class_definition') {
-                    classNode = classNode.parent;
+            // The model classes of an open document are worked out once per version of its text, so
+            // moving the cursor is a lookup rather than a parse.
+            const key = uri.toString();
+            const cached = openDocument ? this.classCache.get(key) : undefined;
+            let classes: ClassRange[];
+            if (cached && cached.version === openDocument!.version) {
+                classes = cached.classes;
+            } else {
+                const text = openDocument ? openDocument.getText() : await fs.promises.readFile(uri.fsPath, 'utf8');
+                classes = pythonParser.withTree(text, tree =>
+                    tree.rootNode.descendantsOfType('class_definition').map((node: any): ClassRange => ({
+                        startRow: node.startPosition.row, startColumn: node.startPosition.column,
+                        endRow: node.endPosition.row, endColumn: node.endPosition.column,
+                        context: this.classContext(node, moduleName),
+                    }))) ?? [];
+                if (openDocument) {
+                    this.classCache.delete(key);
+                    this.classCache.set(key, { version: openDocument.version, classes });
+                    if (this.classCache.size > 20) this.classCache.delete(this.classCache.keys().next().value!);
                 }
-                if (!classNode) return failContext;
-
-                // 4. Check if it extends Odoo Models
-                // (class_definition name: (identifier) superclasses: (argument_list (attribute object: (identifier) attribute: (identifier))))
-                const superclassesNode = classNode.childForFieldName('superclasses');
-                let isOdooModel = false;
-                if (superclassesNode) {
-                    for (const arg of superclassesNode.namedChildren) {
-                        if (['models.Model', 'models.TransientModel', 'models.AbstractModel', 'Model', 'TransientModel', 'AbstractModel'].includes(arg.text)) {
-                            isOdooModel = true;
-                            break;
-                        }
-                    }
-                }
-                if (!isOdooModel) return failContext;
-
-                // 5. Extract _name and _inherit
-                const bodyNode = classNode.childForFieldName('body');
-                let modelName = '';
-                let inheritNames: string[] = [];
-                let hasName = false;
-
-                if (bodyNode) {
-                    for (const child of bodyNode.children) {
-                        if (child.type === 'expression_statement') {
-                            const assignment = child.firstChild;
-                            if (assignment?.type === 'assignment') {
-                                const left = assignment.childForFieldName('left');
-                                const right = assignment.childForFieldName('right');
-
-                                if (left?.text === '_name') {
-                                    hasName = true;
-                                    modelName = this.extractStringValue(right);
-                                } else if (left?.text === '_inherit') {
-                                    inheritNames = this.extractInheritValue(right);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Result Logic:
-                // if _name exists, take it.
-                // else if _inherit exists, take it.
-                // "Inherited" in this context means ONLY _inherit (no _name).
-                const finalModelName = modelName || (inheritNames.length > 0 ? inheritNames[0] : '');
-                if (!finalModelName) return failContext;
-
-                return {
-                    valid: true,
-                    isInherited: !hasName, // If no _name, it's a pure inheritance
-                    modelName: finalModelName,
-                    moduleName: moduleName,
-                    inheritedModels: inheritNames
-                };
-            }) ?? failContext;
+            }
+            // The innermost class around the position, as before.
+            let found: ClassRange | undefined;
+            for (const range of classes) {
+                const after = position.line > range.startRow || (position.line === range.startRow && position.character >= range.startColumn);
+                const before = position.line < range.endRow || (position.line === range.endRow && position.character <= range.endColumn);
+                if (after && before && (!found || range.startRow >= found.startRow)) found = range;
+            }
+            return found?.context ?? failContext;
 
         } catch (error) {
             console.error('[OdooPythonUtils] Error identifying model context:', error);
             return failContext;
         }
+    }
+
+    private static readonly classCache = new Map<string, { version: number; classes: ClassRange[] }>();
+
+    /** The Odoo model a class defines or extends, or undefined when it is not an Odoo model. */
+    private static classContext(classNode: any, moduleName: string): OdooModelContext | undefined {
+        const superclassesNode = classNode.childForFieldName('superclasses');
+        const isOdooModel = !!superclassesNode && superclassesNode.namedChildren.some((arg: any) =>
+            ['models.Model', 'models.TransientModel', 'models.AbstractModel', 'Model', 'TransientModel', 'AbstractModel'].includes(arg.text));
+        if (!isOdooModel) return undefined;
+
+        const bodyNode = classNode.childForFieldName('body');
+        let modelName = '';
+        let inheritNames: string[] = [];
+        let hasName = false;
+        for (const child of bodyNode?.children ?? []) {
+            const assignment = child.type === 'expression_statement' ? child.firstChild : null;
+            if (assignment?.type !== 'assignment') continue;
+            const left = assignment.childForFieldName('left');
+            const right = assignment.childForFieldName('right');
+            if (left?.text === '_name') {
+                hasName = true;
+                modelName = this.extractStringValue(right);
+            } else if (left?.text === '_inherit') {
+                inheritNames = this.extractInheritValue(right);
+            }
+        }
+        // _name if set, else the first _inherit; "inherited" means _inherit without _name.
+        const finalModelName = modelName || inheritNames[0] || '';
+        if (!finalModelName) return undefined;
+        return { valid: true, isInherited: !hasName, modelName: finalModelName, moduleName, inheritedModels: inheritNames };
     }
 
     private static extractStringValue(node: any): string {

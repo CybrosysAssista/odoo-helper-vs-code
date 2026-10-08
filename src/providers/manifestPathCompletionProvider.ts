@@ -41,7 +41,7 @@ export class ManifestPathCompletionProvider implements vscode.CompletionItemProv
             return [];
         }
 
-        const items = await this.getPathCompletions(document, position, partialInfo);
+        const items = await this.getPathCompletions(document, position, partialInfo, manifestKey === 'assets');
 
         // Return as incomplete list so VS Code re-triggers on every character
         return new vscode.CompletionList(items, true);
@@ -109,19 +109,24 @@ export class ManifestPathCompletionProvider implements vscode.CompletionItemProv
     private async getPathCompletions(
         document: vscode.TextDocument,
         position: vscode.Position,
-        info: { dirRelPath: string; searchPrefix: string; documentUri: vscode.Uri }
+        info: { dirRelPath: string; searchPrefix: string; documentUri: vscode.Uri },
+        isAsset: boolean
     ): Promise<vscode.CompletionItem[]> {
         const moduleRoot = await OdooModuleUtils.getModuleRoot(info.documentUri);
         if (!moduleRoot) return [];
+        const moduleName = path.basename(moduleRoot.fsPath);
 
-        const searchPath = path.join(moduleRoot.fsPath, info.dirRelPath);
-
-        if (!fs.existsSync(searchPath) || !fs.statSync(searchPath).isDirectory()) {
-            return [];
-        }
+        // Asset paths start with the module name (`my_module/static/...`): resolve them from the
+        // addons folder. `data`/`demo` paths are relative to the module.
+        const [first] = info.dirRelPath.split('/');
+        const base = isAsset && first === moduleName ? path.dirname(moduleRoot.fsPath) : moduleRoot.fsPath;
+        const searchPath = path.join(base, info.dirRelPath);
 
         try {
-            const entries = fs.readdirSync(searchPath, { withFileTypes: true });
+            const entries: fs.Dirent[] = isAsset && info.dirRelPath === ''
+                ? [] // the first segment of an asset path is the module itself
+                : await listDirectory(searchPath);
+            const extra = isAsset && info.dirRelPath === '' ? [moduleName] : [];
 
             // Critical: The range must cover exactly the part of the word already typed
             const replacementRange = new vscode.Range(
@@ -129,7 +134,16 @@ export class ManifestPathCompletionProvider implements vscode.CompletionItemProv
                 position
             );
 
-            return entries
+            const folderItems = extra
+                .filter(name => name.toLowerCase().startsWith(info.searchPrefix.toLowerCase()))
+                .map(name => {
+                    const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Folder);
+                    item.range = new vscode.Range(position.translate(0, -info.searchPrefix.length), position);
+                    item.insertText = name + '/';
+                    item.command = { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions' };
+                    return item;
+                });
+            return folderItems.concat(entries
                 .filter(entry => !entry.name.startsWith('.'))
                 .filter(entry => entry.name.toLowerCase().startsWith(info.searchPrefix.toLowerCase()))
                 .map(entry => {
@@ -147,9 +161,23 @@ export class ManifestPathCompletionProvider implements vscode.CompletionItemProv
                     }
 
                     return item;
-                });
+                }));
         } catch (error) {
             return [];
         }
     }
+}
+
+/** Directory listings, kept for a moment: completion asks again on every keystroke. */
+const listings = new Map<string, { at: number; entries: Promise<fs.Dirent[]> }>();
+const LISTING_TTL_MS = 2000;
+
+function listDirectory(dir: string): Promise<fs.Dirent[]> {
+    const now = Date.now();
+    const cached = listings.get(dir);
+    if (cached && now - cached.at < LISTING_TTL_MS) return cached.entries;
+    const entries = fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
+    listings.set(dir, { at: now, entries });
+    if (listings.size > 50) listings.delete(listings.keys().next().value!);
+    return entries;
 }

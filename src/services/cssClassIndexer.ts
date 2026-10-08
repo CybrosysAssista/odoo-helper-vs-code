@@ -65,6 +65,14 @@ export class CssClassIndexer {
         await this.indexPaths(changed);
     }
 
+    /** Parses the files under `dir` again: a module was created or removed there, so they now belong to a different module. */
+    public reindexUnder(dir: string): Promise<void> {
+        const prefix = dir.endsWith(path.sep) ? dir : dir + path.sep;
+        const paths = [...this.fileMetadata.keys()].filter(file => file.startsWith(prefix));
+        paths.forEach(file => this.fileMetadata.delete(file));
+        return this.indexPaths(paths);
+    }
+
     private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         return indexFiles(
             paths.filter(path => !isIgnoredPath(path)).map(path => ({ path, kind: 'css' as const, meta: this.fileMetadata.get(path) })),
@@ -97,7 +105,7 @@ export class CssClassIndexer {
         const seen = new Set(allFiles);
         await this.indexPaths([...seen], progress);
         for (const filePath of [...this.fileMetadata.keys()]) {
-            if (!seen.has(filePath)) {
+            if (!seen.has(filePath) && !fs.existsSync(filePath)) {  // a file the watcher added meanwhile stays
                 this.removeFile(filePath);
             }
         }

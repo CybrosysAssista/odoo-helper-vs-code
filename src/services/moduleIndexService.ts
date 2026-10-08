@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { EXCLUDE_GLOB, FileMetadata, watchFiles } from '../utils/indexing';
@@ -19,18 +20,34 @@ class ModuleIndexService {
     private modulesByPath: Map<string, string> = new Map(); // module directory -> module name
     private fileMetadata: Map<string, FileMetadata> = new Map();
     private watcher: vscode.Disposable | null = null;
+    private initWatcher: vscode.Disposable | null = null;
     private modulesArray: ModuleInfo[] | null = null;
     private reindexing: Promise<void> | null = null;
     private dirty = false;
 
     private _onDidChange = new vscode.EventEmitter<void>();
     public readonly onDidChange = this._onDidChange.event;
+    private _onDidChangeModuleFolders = new vscode.EventEmitter<string[]>();
+    /** Folders that became, or stopped being, a module: the files under them change module. */
+    public readonly onDidChangeModuleFolders = this._onDidChangeModuleFolders.event;
 
     constructor() { }
 
     public initialize() {
-        // Only manifests decide what a module is and what it depends on.
+        // Only manifests decide what a module is and what it depends on...
         this.watcher = watchFiles(MANIFEST_GLOB, () => this.reindex(), { delayMs: 500 });
+        // ...together with the __init__.py next to them: re-check a manifest whose __init__.py
+        // appeared or went away.
+        this.initWatcher = watchFiles('**/__init__.py', changes => {
+            let recheck = false;
+            for (const [file, change] of changes) {
+                if (change === 'changed') continue;
+                for (const name of ['__manifest__.py', '__openerp__.py']) {
+                    recheck = this.fileMetadata.delete(path.join(path.dirname(file), name)) || recheck;
+                }
+            }
+            return recheck ? this.reindex() : undefined;
+        }, { delayMs: 500 });
     }
 
     /**
@@ -46,6 +63,7 @@ class ModuleIndexService {
     }
 
     private async doReindex(progress?: vscode.Progress<{ message?: string; increment?: number }>) {
+        const foldersBefore = new Set(this.modulesByPath.keys());
         const manifestFiles = await vscode.workspace.findFiles(MANIFEST_GLOB, EXCLUDE_GLOB);
         const found = new Set(manifestFiles.map(uri => uri.fsPath));
         let changed = false;
@@ -72,7 +90,7 @@ class ModuleIndexService {
 
         // Drop modules whose manifest is gone.
         for (const manifestPath of [...this.fileMetadata.keys()]) {
-            if (!found.has(manifestPath)) {
+            if (!found.has(manifestPath) && !fs.existsSync(manifestPath)) {  // a manifest added meanwhile stays
                 this.fileMetadata.delete(manifestPath);
                 this.removeModuleAt(path.dirname(manifestPath));
                 changed = true;
@@ -84,6 +102,12 @@ class ModuleIndexService {
             this.dirty = true;
             OdooModuleUtils.clearCache();
             this._onDidChange.fire();
+            const foldersAfter = new Set(this.modulesByPath.keys());
+            const changedFolders = [...foldersAfter].filter(dir => !foldersBefore.has(dir))
+                .concat([...foldersBefore].filter(dir => !foldersAfter.has(dir)));
+            if (changedFolders.length) {
+                this._onDidChangeModuleFolders.fire(changedFolders);
+            }
         }
     }
 
@@ -188,9 +212,9 @@ class ModuleIndexService {
     }
 
     public dispose() {
-        if (this.watcher) {
-            this.watcher.dispose();
-        }
+        this.watcher?.dispose();
+        this.initWatcher?.dispose();
+        this._onDidChangeModuleFolders.dispose();
     }
 }
 

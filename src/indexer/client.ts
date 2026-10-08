@@ -6,16 +6,23 @@ import type { FileRequest, FileResult, WorkerResponse } from './protocol';
 
 /** The process is stopped after this long without work; it restarts on the next request. */
 const IDLE_TIMEOUT_MS = 60_000;
-/** After this many crashes in a row, parsing moves into the extension host for the session. */
-const MAX_CRASHES = 3;
+/** Worker crashes allowed per session; after that, files that would need the worker are skipped. */
+const MAX_CRASHES = 50;
+
+/** The worker process died while it had work. */
+class WorkerCrash extends Error { }
+/** The worker process could not be started at all. */
+class WorkerUnavailable extends Error { }
 
 /**
  * Hands parsing to a background process (`worker.ts`) running at the lowest CPU priority. Parsing
  * then never competes with typing, completion or anything else on the extension host's thread, and
  * tree-sitter's memory, which never shrinks, is given back whenever the process stops.
  *
- * If the process can't be started or keeps crashing, files are parsed in the extension host
- * instead, yielding between files, so the features keep working.
+ * A file that crashes the process (a parser bug on unusual input) is found by splitting the batch
+ * and retrying the halves; that one file is then skipped for the session and everything else keeps
+ * parsing in the background. Only if the process can't be started at all, or answers with an error,
+ * are files parsed in the extension host instead, yielding between files.
  */
 export class IndexerClient {
     private child: ChildProcess | undefined;
@@ -23,6 +30,9 @@ export class IndexerClient {
     private readonly pending = new Map<number, { resolve: (results: FileResult[]) => void; reject: (error: Error) => void }>();
     private idleTimer: NodeJS.Timeout | undefined;
     private crashes = 0;
+    /** Files that crashed the process: skipped for the rest of the session. */
+    private readonly crashingFiles = new Set<string>();
+    private unavailable = false;
     private inProcess: Promise<FileProcessor> | undefined;
     private disposed = false;
 
@@ -35,18 +45,46 @@ export class IndexerClient {
         if (items.length === 0 || this.disposed) {
             return [];
         }
-        // A crashed process is restarted and the batch retried, up to MAX_CRASHES times in a row.
-        while (this.crashes < MAX_CRASHES) {
-            const crashesBefore = this.crashes;
-            try {
-                return await this.processInChild(items);
-            } catch (error) {
-                console.error('[OdooIndexer] Background indexer failed:', error);
-                if (this.crashes === crashesBefore) {
-                    break; // It answered with an error rather than crashing: parse this batch here.
-                }
-            }
+        const skipped = items.filter(item => this.crashingFiles.has(item.path));
+        const results = skipped.map(item => crashedResult(item.path));
+        return results.concat(await this.processSafely(skipped.length ? items.filter(item => !this.crashingFiles.has(item.path)) : items));
+    }
+
+    private async processSafely(items: FileRequest[]): Promise<FileResult[]> {
+        if (items.length === 0 || this.disposed) {
+            return [];
         }
+        if (this.unavailable) {
+            return this.processInExtensionHost(items);
+        }
+        try {
+            return await this.processInChild(items);
+        } catch (error) {
+            if (error instanceof WorkerUnavailable) {
+                console.error('[OdooIndexer] Background indexer unavailable, parsing in the extension host:', error);
+                this.unavailable = true;
+                return this.processInExtensionHost(items);
+            }
+            if (!(error instanceof WorkerCrash)) {
+                console.error('[OdooIndexer] Background indexer failed:', error);
+                return this.processInExtensionHost(items);  // it answered with an error: parse this batch here
+            }
+            if (++this.crashes > MAX_CRASHES) {
+                return items.map(item => crashedResult(item.path));
+            }
+            if (items.length === 1) {
+                console.error(`[OdooIndexer] Skipping ${items[0].path}: it crashes the indexer.`);
+                this.crashingFiles.add(items[0].path);
+                return [crashedResult(items[0].path)];
+            }
+            // Find the file that crashed it: retry each half in a fresh process.
+            const middle = Math.ceil(items.length / 2);
+            const first = await this.processSafely(items.slice(0, middle));
+            return first.concat(await this.processSafely(items.slice(middle)));
+        }
+    }
+
+    private async processInExtensionHost(items: FileRequest[]): Promise<FileResult[]> {
         this.inProcess ??= FileProcessor.create(this.extensionPath);
         return (await this.inProcess).process(items, this.yieldToEditor);
     }
@@ -79,8 +117,12 @@ export class IndexerClient {
         }
         child.stderr?.on('data', (chunk: Buffer) => console.error('[OdooIndexer] worker:', chunk.toString()));
         child.on('message', (response: WorkerResponse) => this.onResponse(response));
+        let spawned = false;
+        child.on('spawn', () => spawned = true);
         child.on('exit', (code, signal) => this.onExit(child, code, signal));
-        child.on('error', error => this.onExit(child, null, null, error));
+        // Before 'spawn' an error means it could not start; afterwards (e.g. sending to a process
+        // that just died) it is treated like the crash it is.
+        child.on('error', error => this.onExit(child, null, null, spawned ? undefined : error));
         child.send({ type: 'init', extensionPath: this.extensionPath });
         this.child = child;
         return child;
@@ -91,7 +133,6 @@ export class IndexerClient {
         if (!entry) return;
         this.pending.delete(response.id);
         if (response.ok) {
-            this.crashes = 0;
             entry.resolve(response.results);
         } else {
             entry.reject(new Error(response.error));
@@ -106,9 +147,10 @@ export class IndexerClient {
         this.child = undefined;
         this.clearIdleTimer();
         if (this.pending.size > 0) {
-            // It died with work outstanding: a crash, not an idle stop.
-            this.crashes++;
-            const failure = error ?? new Error(`Indexer process exited (code ${code}, signal ${signal})`);
+            // It died with work outstanding: a crash, or it never started; not an idle stop.
+            const failure = error
+                ? new WorkerUnavailable(error.message)
+                : new WorkerCrash(`Indexer process exited (code ${code}, signal ${signal})`);
             for (const entry of this.pending.values()) {
                 entry.reject(failure);
             }
@@ -138,4 +180,8 @@ export class IndexerClient {
         this.child?.kill();
         this.child = undefined;
     }
+}
+
+function crashedResult(path: string): FileResult {
+    return { path, status: 'error', message: 'Skipped: this file crashes the indexer' };
 }

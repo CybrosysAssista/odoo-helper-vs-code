@@ -464,18 +464,20 @@
       }
     }
   },
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "lint": "eslint src --ext ts"
+    "vscode:prepublish": "npm run check-types && node esbuild.mjs --production",
+    "compile": "tsc -p ./ && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "lint": "eslint src --ext ts",
+    "check-types": "tsc -p ./ --noEmit"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/node": "20.x",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
     "eslint": "^8.54.0",
     "glob": "^10.3.10",
     "typescript": "^5.9.3"

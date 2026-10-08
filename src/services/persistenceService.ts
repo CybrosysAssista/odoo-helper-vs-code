@@ -42,8 +42,9 @@ export class PersistenceService {
             await vscode.workspace.fs.createDirectory(this.context.storageUri);
 
             const fileUri = vscode.Uri.joinPath(this.context.storageUri, `${id}.json`);
-            // Compact: index files run to megabytes, and are parsed again at every startup.
-            const content = Buffer.from(JSON.stringify(data), 'utf8');
+            // Compact: index files run to megabytes, and are parsed again at every startup. Serialised
+            // in slices, so a large index never holds up the editor for more than a few milliseconds.
+            const content = await serializeYielding(data);
 
             await vscode.workspace.fs.writeFile(fileUri, content);
             // console.log(`[PersistenceService] Saved data for index: ${id}`);
@@ -66,7 +67,7 @@ export class PersistenceService {
 
         try {
             const content = await vscode.workspace.fs.readFile(fileUri);
-            const text = Buffer.from(content).toString('utf8');
+            const text = Buffer.from(content.buffer, content.byteOffset, content.byteLength).toString('utf8');  // no copy
             return JSON.parse(text) as T;
         } catch (error) {
             // Silently fail if file doesn't exist (expected for first run)
@@ -133,3 +134,48 @@ export class PersistenceService {
 
 // Export a singleton instance
 export const persistenceService = PersistenceService.getInstance();
+
+/** Longest stretch of serialising before giving the editor its turn. */
+const SLICE_MS = 8;
+
+/**
+ * `JSON.stringify(value)` as UTF-8 bytes, produced in slices with a yield in between. Large
+ * arrays (up to two levels deep: `{ fields: [[name, [...]], ...] }`) are split per item; the
+ * output is the same as `JSON.stringify`.
+ */
+async function serializeYielding(value: unknown): Promise<Buffer> {
+    const parts: Buffer[] = [];
+    let sliceStart = Date.now();
+    const pause = async () => {
+        if (Date.now() - sliceStart >= SLICE_MS) {
+            await new Promise<void>(resolve => setImmediate(resolve));
+            sliceStart = Date.now();
+        }
+    };
+    const emit = (text: string) => parts.push(Buffer.from(text, 'utf8'));
+    const write = async (item: unknown, depth: number): Promise<void> => {
+        if (Array.isArray(item) && depth < 2) {
+            emit('[');
+            for (let i = 0; i < item.length; i++) {
+                if (i) emit(',');
+                await write(item[i], depth + 1);
+                await pause();
+            }
+            emit(']');
+        } else if (item && typeof item === 'object' && !Array.isArray(item) && depth === 0 && typeof (item as any).toJSON !== 'function') {
+            emit('{');
+            let first = true;
+            for (const [key, child] of Object.entries(item)) {
+                if (child === undefined || typeof child === 'function' || typeof child === 'symbol') continue;
+                emit((first ? '' : ',') + JSON.stringify(key) + ':');
+                first = false;
+                await write(child, depth + 1);
+            }
+            emit('}');
+        } else {
+            emit(JSON.stringify(item) ?? 'null');
+        }
+    };
+    await write(value, 0);
+    return Buffer.concat(parts);
+}

@@ -1,3 +1,5 @@
+import * as path from 'path';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import moduleIndexService from './moduleIndexService';
 import { EXCLUDE_GLOB, FileChange, FileMetadata, watchFiles } from '../utils/indexing';
@@ -83,6 +85,14 @@ class ModelIndexService {
     }
 
     /** Has the background indexer parse the files that changed since they were last indexed. */
+    /** Parses the files under `dir` again: a module was created or removed there, so they now belong to a different module. */
+    public reindexUnder(dir: string): Promise<void> {
+        const prefix = dir.endsWith(path.sep) ? dir : dir + path.sep;
+        const paths = [...this.fileMetadata.keys()].filter(file => file.startsWith(prefix));
+        paths.forEach(file => this.fileMetadata.delete(file));
+        return this.indexPaths(paths);
+    }
+
     private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         return indexFiles(
             paths.map(path => ({ path, kind: 'python' as const, meta: this.fileMetadata.get(path) })),
@@ -103,7 +113,7 @@ class ModelIndexService {
 
             // Drop files that no longer exist.
             for (const filePath of [...this.fileMetadata.keys()]) {
-                if (!seen.has(filePath)) {
+                if (!seen.has(filePath) && !fs.existsSync(filePath)) {  // a file the watcher added meanwhile stays
                     this.removeFile(vscode.Uri.file(filePath));
                 }
             }

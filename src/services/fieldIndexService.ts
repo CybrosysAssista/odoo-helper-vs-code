@@ -1,3 +1,4 @@
+import { packEntries, unpackEntries } from './compactState';
 import modelIndexService, { ParsedFileEvent } from './modelIndexService';
 import { indexNeeded } from '../indexer/trigger';
 
@@ -98,9 +99,8 @@ class FieldIndexService {
 
     public getState() {
         this.dirty = false;
-        return {
-            fields: Array.from(this.fieldCache.entries())
-        };
+        const { files, rows } = packEntries(this.fieldCache.entries());
+        return { format: 2, files, fields: rows };
     }
 
     public loadState(state: any) {
@@ -109,9 +109,14 @@ class FieldIndexService {
             if (Array.isArray(state)) {
                 // Old format
                 entries = state;
+                this.dirty = true;
+            } else if (state?.format === 2 && Array.isArray(state.files) && Array.isArray(state.fields)) {
+                // Compact format (file paths in a table)
+                entries = unpackEntries<FieldInfo>(state.files, state.fields);
             } else if (state && typeof state === 'object' && Array.isArray(state.fields)) {
-                // New format
+                // Previous format: written again in the compact one at the next save
                 entries = state.fields;
+                this.dirty = true;
             }
         } catch (e) {
             console.error('[FieldIndex] Failed to load state:', e);

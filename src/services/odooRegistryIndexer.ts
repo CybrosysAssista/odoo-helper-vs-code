@@ -1,3 +1,5 @@
+import * as path from 'path';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { EXCLUDE_ASSETS_GLOB, FileChange, FileMetadata, watchFiles } from '../utils/indexing';
 import { indexFiles } from '../indexer/indexer';
@@ -16,6 +18,9 @@ export interface RegistryEntry {
 /**
  * Service to index Odoo JavaScript registry registrations
  */
+
+/** Bumped when the parser finds more (or different) registrations, so saved results are refreshed. */
+const STATE_VERSION = 2;
 export class OdooRegistryIndexer {
     private fileEntries: Map<string, RegistryEntry[]> = new Map(); // filePath -> entries it registers
     private fileMetadata: Map<string, FileMetadata> = new Map();
@@ -45,6 +50,14 @@ export class OdooRegistryIndexer {
         await this.indexPaths(changed);
     }
 
+    /** Parses the files under `dir` again: a module was created or removed there, so they now belong to a different module. */
+    public reindexUnder(dir: string): Promise<void> {
+        const prefix = dir.endsWith(path.sep) ? dir : dir + path.sep;
+        const paths = [...this.fileMetadata.keys()].filter(file => file.startsWith(prefix));
+        paths.forEach(file => this.fileMetadata.delete(file));
+        return this.indexPaths(paths);
+    }
+
     private indexPaths(paths: string[], progress?: vscode.Progress<{ message?: string; increment?: number }>) {
         return indexFiles(
             paths.map(path => ({ path, kind: 'javascript' as const, meta: this.fileMetadata.get(path) })),
@@ -65,7 +78,7 @@ export class OdooRegistryIndexer {
             const seen = new Set(jsFiles.map(file => file.fsPath));
             await this.indexPaths([...seen], progress);
             for (const filePath of [...this.fileMetadata.keys()]) {
-                if (!seen.has(filePath)) {
+                if (!seen.has(filePath) && !fs.existsSync(filePath)) {  // a file the watcher added meanwhile stays
                     this.removeFile(vscode.Uri.file(filePath));
                 }
             }
@@ -144,6 +157,7 @@ export class OdooRegistryIndexer {
     getState() {
         this.dirty = false;
         return {
+            version: STATE_VERSION,
             entries: this.getAllEntries(),
             metadata: Array.from(this.fileMetadata.entries())
         };
@@ -160,7 +174,8 @@ export class OdooRegistryIndexer {
                 if (Array.isArray(state.entries)) {
                     entries = state.entries;
                 }
-                if (Array.isArray(state.metadata)) {
+                // Metadata from an older parser is dropped, so every file is read again with this one.
+                if (Array.isArray(state.metadata) && state.version === STATE_VERSION) {
                     this.fileMetadata = new Map(state.metadata);
                 }
             }

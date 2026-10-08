@@ -1,3 +1,4 @@
+import { packEntries, unpackEntries } from './compactState';
 import modelIndexService, { ParsedFileEvent } from './modelIndexService';
 import { indexNeeded } from '../indexer/trigger';
 
@@ -98,9 +99,8 @@ class FunctionIndexService {
 
     public getState() {
         this.dirty = false;
-        return {
-            functions: Array.from(this.functionCache.entries())
-        };
+        const { files, rows } = packEntries(this.functionCache.entries());
+        return { format: 2, files, functions: rows };
     }
 
     public loadState(state: any) {
@@ -109,9 +109,14 @@ class FunctionIndexService {
             if (Array.isArray(state)) {
                 // Old format
                 entries = state;
+                this.dirty = true;
+            } else if (state?.format === 2 && Array.isArray(state.files) && Array.isArray(state.functions)) {
+                // Compact format (file paths in a table)
+                entries = unpackEntries<FunctionInfo>(state.files, state.functions);
             } else if (state && typeof state === 'object' && Array.isArray(state.functions)) {
-                // New format
+                // Previous format: written again in the compact one at the next save
                 entries = state.functions;
+                this.dirty = true;
             }
         } catch (e) {
             console.error('[FunctionIndex] Failed to load state:', e);
