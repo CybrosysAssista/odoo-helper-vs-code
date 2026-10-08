@@ -9,7 +9,6 @@ export class RelationalFieldCompletionProvider implements vscode.CompletionItemP
     }
 
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] {
-        const textUntilPosition = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
         const currentLine = document.lineAt(position).text;
 
         // Check if we're in a fields.Many2one, fields.One2many, or fields.Many2many definition
@@ -21,11 +20,9 @@ export class RelationalFieldCompletionProvider implements vscode.CompletionItemP
         }
 
         // Check if we're in a compute or inverse method
-        const methodMatch = /def\s+(_compute_|_inverse_|_search_)([^_]*)$/.exec(currentLine);
+        const methodMatch = /def\s+(_compute_|_inverse_|_search_)(\w*)$/.exec(currentLine);
         if (methodMatch) {
-            const methodType = methodMatch[1];
-            const partialField = methodMatch[2];
-            return this.provideFieldCompletions(document, partialField);
+            return this.provideFieldCompletions(document, position.line, methodMatch[2]);
         }
 
         return [];
@@ -43,18 +40,17 @@ export class RelationalFieldCompletionProvider implements vscode.CompletionItemP
             });
     }
 
-    provideFieldCompletions(document: vscode.TextDocument, partialField: string): vscode.CompletionItem[] {
-        const text = document.getText();
-        const classMatch = /class\s+(\w+)\s*\([^)]*Model[^)]*\)[^{]*{([^}]*)}/gs.exec(text);
-        if (!classMatch) return [];
-
-        const classContent = classMatch[2];
-        const fieldRegex = /(\w+)\s*=\s*fields\./g;
-        let fieldMatch;
+    /** Fields declared in the class around `line` (from its `class` line to the next top-level statement). */
+    provideFieldCompletions(document: vscode.TextDocument, line: number, partialField: string): vscode.CompletionItem[] {
+        let start = line;
+        while (start >= 0 && !/^class\s+\w+/.test(document.lineAt(start).text)) start--;
+        if (start < 0) return [];
         const fields: string[] = [];
-
-        while ((fieldMatch = fieldRegex.exec(classContent)) !== null) {
-            fields.push(fieldMatch[1]);
+        for (let i = start + 1; i < document.lineCount; i++) {
+            const text = document.lineAt(i).text;
+            if (/^\S/.test(text)) break;  // next top-level class or statement
+            const field = /^\s+(\w+)\s*=\s*fields\./.exec(text);
+            if (field) fields.push(field[1]);
         }
 
         return fields

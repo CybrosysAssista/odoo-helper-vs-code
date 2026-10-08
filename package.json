@@ -2,7 +2,7 @@
   "name": "cybrosys-assista-odoo-helper",
   "displayName": "Cybrosys Assista: Odoo Helper",
   "icon": "logo/logo.png",
-  "description": "VS Code extension focused on Odoo 18 and 19 development. Includes code completions, model/view scaffolding, XML/Python snippets, and decorator intelligence.",
+  "description": "VS Code extension for Odoo 18, 19 and 20 development. Includes code completions, model/view scaffolding, XML/Python snippets, and decorator intelligence.",
   "version": "3.0.0",
   "publisher": "CybrosysTechnologiesOdooOfficialPartner",
   "author": {
@@ -21,6 +21,7 @@
     "odoo",
     "odoo18",
     "odoo19",
+    "odoo20",
     "odoo18-dev",
     "odoo-dev",
     "vscode",
@@ -182,7 +183,7 @@
         },
         {
           "command": "cybrosys-assista-odoo-helper.showModelInheritanceGraph",
-          "when": "false"
+          "when": "editorLangId == python && cybrosys-assista-odoo-helper.isOdooModel"
         }
       ],
       "explorer/context": [
@@ -235,6 +236,10 @@
         {
           "command": "cybrosys-assista-odoo-helper.createReport",
           "group": "tools@3"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.showModelInheritanceGraph",
+          "group": "tools@4"
         }
       ],
       "cybrosys-assista-odoo-helper.mainMenu": [
@@ -267,6 +272,11 @@
           "command": "cybrosys-assista-odoo-helper.installModule",
           "group": "5_install",
           "title": "Install Module"
+        },
+        {
+          "command": "cybrosys-assista-odoo-helper.showDependencyGraph",
+          "when": "explorerResourceIsFolder",
+          "group": "5_install@2"
         }
       ],
       "cybrosys-assista-odoo-helper.createOwlComponentsSubmenu": [

@@ -153,18 +153,6 @@ export async function handleCreateReport(uri: vscode.Uri): Promise<void> {
     const modelName = modelTechnicalName.replace(/\./g, '_');
 
     const reportDir = path.join(moduleRoot.fsPath, 'report');
-    if (!fs.existsSync(reportDir)) {
-        fs.mkdirSync(reportDir);
-    }
-
-    const fileName = `${modelName}_pdf_report.xml`;
-    const filePath = path.join(reportDir, fileName);
-
-    if (fs.existsSync(filePath)) {
-        vscode.window.showWarningMessage(`Report file '${fileName}' already exists.`);
-        return;
-    }
-
     const reportOptions: ViewOption[] = [
         {
             label: 'PDF Report',
@@ -187,6 +175,14 @@ export async function handleCreateReport(uri: vscode.Uri): Promise<void> {
     );
 
     if (!reportType) return;
+
+    const fileName = `${modelName}_${reportType.id}_report.xml`;  // e.g. sale_order_pdf_report.xml
+    const filePath = path.join(reportDir, fileName);
+    if (fs.existsSync(filePath)) {
+        vscode.window.showWarningMessage(`Report file '${fileName}' already exists.`);
+        return;
+    }
+    fs.mkdirSync(reportDir, { recursive: true });  // only once a report type was chosen
 
     const currentModuleName = path.basename(moduleRoot.fsPath);
     const allFields = fieldIndexService.getFieldsForModel(modelTechnicalName);

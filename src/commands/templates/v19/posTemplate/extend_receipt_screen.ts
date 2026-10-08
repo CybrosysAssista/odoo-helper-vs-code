@@ -25,18 +25,9 @@ patch(ReceiptScreen.prototype, {
         });
     },
 
-    async orderDone() {
-        console.log("Custom logic before creating new order");
-
-        return super.orderDone();
-    },
-
-    async printReceipt() {
-        console.log("Custom receipt printing logic");
-
-        if (super.printReceipt) {
-            return super.printReceipt();
-        }
+    actionSendReceiptOnEmail() {
+        console.log("Custom logic before emailing the receipt");
+        return super.actionSendReceiptOnEmail(...arguments);
     },
 });`;
     }

@@ -4,6 +4,33 @@ All notable changes to the **cybrosys-assista-odoo-helper** extension will be do
 
 Check out [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) for guidelines.
 
+## [3.0.0] - 2026-10-07
+### Added
+- Full Odoo 20 support: snippets, completions, view/report/security/settings/cron templates, module scaffolds, OWL 3 components and POS templates generate Odoo 20 code (`ir.access`, `res.groups.privilege`, `models.Constraint`, kanban `card`, Material Symbols, `jsonrpc` routes, `GeneratePrinterData` receipts).
+- XML tag and attribute completions generated from each Odoo version's schemas and core views; Odoo 20 `card` view.
+- Field-name completion inside every view type (calendar, graph, card, activity, hierarchy).
+
+### Changed
+- README rewritten.
+- Indexing moved to a low-priority background process with a saved, incremental index; activation only in Odoo workspaces; commands load lazily.
+- Indexing no longer shows status-bar progress.
+- Default Odoo version is 20 when none is detected.
+- New extension icon and logo.
+
+### Fixed
+- XML attribute completion never appeared; `widget` was suggested on every tag; `view_mode` suggested `tree`.
+- Search view group-by `<group>` used `expand`/`string`, rejected since Odoo 19.
+- Window actions from "Create Views" opened on a blank form.
+- Cron templates used the removed `numbercall` field; report templates bound to the wrong model.
+- Odoo 19 security groups used `category_id`/`groups_id`; settings view referenced a missing view.
+- Snippets: `states=` buttons, Binary `max_size`, `_sql_constraints` on 19, `notify_*` utilities, empty view-inherit body.
+- `def _compute_` / `_inverse_` / `_search_` field-name suggestions never appeared; they now list the fields of the enclosing class.
+- Module Dependency Graph and Model Inheritance Graph were not reachable from any menu (now in the Explorer **Assista Odoo** menu and **Odoo Model Tools**).
+- HTML reports were saved as `*_pdf_report.xml`; the report folder was created even when the command was cancelled.
+- Odoo 18/19: data lists generated from Odoo's code (missing field types, removed `states`/`track_visibility`, non-existent decorators), kanban `card` templates, settings and cron templates, POS screen patches, OWL dashboard controller (`auth='user'`, `_read_group`).
+- Install Module pointed to a settings sidebar that does not exist.
+- "Create Access Right" no longer writes a rule with an empty group (open to everyone); generated reports label fields with their Odoo labels instead of technical names.
+
 ## [2.1.1] - 2026-02-02
 ### Added
 - POS component creation.

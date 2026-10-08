@@ -1,9 +1,7 @@
+// The field classes `odoo.fields` exports in Odoo 18 (`Id` is internal and left out).
 const fieldTypes: string[] = [
-    "Char", "Text", "Integer", "Float", "Boolean", "Date", "Datetime",
-    "Many2one", "One2many", "Many2many", "Selection", "Binary", "Monetary", "Html",
-    "Reference", "Json", "Image"
+    "Binary", "Boolean", "Char", "Date", "Datetime", "Float", "Html", "Image",
+    "Integer", "Json", "Many2many", "Many2one", "Many2oneReference", "Monetary", "One2many", "Properties",
+    "PropertiesDefinition", "Reference", "Selection", "Text"
 ];
 export default fieldTypes;
-
-
-

@@ -26,10 +26,9 @@ patch(ProductScreen.prototype, {
         });
     },
     
-    async _onClickPay() {
-        console.log("Custom logic before payment");
-        // Call the original method
-        return super._onClickPay(...arguments);
+    async addProductToOrder(product) {
+        console.log("Custom logic before adding", product.display_name);
+        return super.addProductToOrder(...arguments);
     },
 });`;
     }

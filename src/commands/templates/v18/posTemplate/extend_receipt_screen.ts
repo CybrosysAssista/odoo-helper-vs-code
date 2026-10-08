@@ -31,12 +31,9 @@ patch(ReceiptScreen.prototype, {
         return super.orderDone();
     },
 
-    async printReceipt() {
-        console.log("Custom receipt printing logic");
-
-        if (super.printReceipt) {
-            return super.printReceipt();
-        }
+    actionSendReceiptOnEmail() {
+        console.log("Custom logic before emailing the receipt");
+        return super.actionSendReceiptOnEmail(...arguments);
     },
 });`;
     }

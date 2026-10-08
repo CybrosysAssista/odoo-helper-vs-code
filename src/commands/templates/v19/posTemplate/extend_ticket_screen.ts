@@ -76,14 +76,10 @@ patch(TicketScreen.prototype, {
             </button>
         </xpath>
 
-        <xpath expr="//div[contains(@class, 'header-row')]/div[contains(@class, 'end')]" position="before">
-            <div class="col narrow p-2">Type</div>
-        </xpath>
-
-        <xpath expr="//div[contains(@class, 'order-row')]/div[contains(@class, 'end')]" position="before">
-            <div class="col narrow p-2">
+        <xpath expr="//td[hasclass('order-name')]" position="after">
+            <td class="align-middle">
                 <span class="badge bg-info text-dark">POS</span>
-            </div>
+            </td>
         </xpath>
 
     </t>

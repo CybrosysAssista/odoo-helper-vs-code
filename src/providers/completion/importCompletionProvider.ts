@@ -57,7 +57,7 @@ export class ImportCompletionProvider implements vscode.CompletionItemProvider {
                 insertText: 'from odoo import http'
             },
             {
-                label: 'odoo import  http request',
+                label: 'odoo import http request',
                 detail: 'Access HTTP request object',
                 insertText: 'from odoo.http import request'
             },

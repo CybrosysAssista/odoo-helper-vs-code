@@ -103,10 +103,10 @@ const modelSnippets: ModelSnippet[] = [
             'class ${1:ModelName}(models.Model):\n' +
             '    _inherit = \'${2:model.to.extend}\'\n' +
             '\n' +
-            '    @api.model\n' +
-            '    def create(self, vals):\n' +
+            '    @api.model_create_multi\n' +
+            '    def create(self, vals_list):\n' +
             '        # Custom logic before creation\n' +
-            '        res = super().create(vals)\n' +
+            '        res = super().create(vals_list)\n' +
             '        # Custom logic after creation\n' +
             '        return res\n\n' +
             '    ${0}',
@@ -122,9 +122,9 @@ const modelSnippets: ModelSnippet[] = [
             '\n' +
             'class SaleOrder(models.Model):\n' +
             '    _inherit = \'sale.order\'\n\n' +
-            '    @api.model\n' +
-            '    def create(self, vals):\n' +
-            '        res = super().create(vals)\n' +
+            '    @api.model_create_multi\n' +
+            '    def create(self, vals_list):\n' +
+            '        res = super().create(vals_list)\n' +
             '        # Add custom logic\n' +
             '        return res\n' +
             '```\n'

@@ -51,10 +51,9 @@ patch(TicketScreen.prototype, {
         );
     },
 
-    async onDeleteOrder(order) {
-        console.log("Custom delete check for order:", order.name);
-
-        return super.onDeleteOrder ? super.onDeleteOrder(order) : undefined;
+    async onDoRefund() {
+        console.log("Custom logic before refunding the selected order");
+        return super.onDoRefund(...arguments);
     },
 });`;
     }

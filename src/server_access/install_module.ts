@@ -41,7 +41,7 @@ export async function installModule(uri: vscode.Uri): Promise<void> {
         try {
             const config = await persistenceService.load<any>('odoo_server_config');
             if (!config || !config.url || !config.db || !config.email || !config.password) {
-                vscode.window.showErrorMessage('Odoo Server configuration is missing. Please configure it in the "Odoo Configurations" sidebar.');
+                vscode.window.showErrorMessage('Odoo Server configuration is missing. Run "Assista: Update Odoo Server Settings" (or click the Odoo Server item in the status bar).');
                 return;
             }
 

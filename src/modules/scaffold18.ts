@@ -126,8 +126,8 @@ class ${moduleName
             <kanban>
                 <field name="name"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click">
+                    <t t-name="card">
+                        <div>
                             <strong><field name="name"/></strong><br/>
                             <field name="state"/>
                         </div>
@@ -326,8 +326,8 @@ class ${moduleName
             <kanban>
                 <field name="name"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click">
+                    <t t-name="card">
+                        <div>
                             <strong><field name="name"/></strong><br/>
                             <field name="state"/>
                         </div>
@@ -664,23 +664,16 @@ from odoo.http import Controller, route, request
 
 class OwlDashboard(Controller):
 
-    @route('/apply/filter', type='json', auth='public', csrf=False)
-    def apply_filter(self, date):
+    @route('/apply/filter', type='json', auth='user')
+    def apply_filter(self, date=None):
+        """Totals per partner for the dashboard charts (optionally for one date)."""
         domain = [('date', '=', date)] if date else []
-        partner_data = request.env['${modelName}'].read_group(
-            domain=domain,
-            fields=['amount'],
-            groupby=['partner_id'],
-            lazy=False,
-        )
-        result = [{
-            'partner': data['partner_id'][1],
-            'total_records': data['__count'],
-            'total_amount': data['amount'],
-        } for data in partner_data]
-        return result
-
-    
+        groups = request.env['${modelName}']._read_group(domain, ['partner_id'], ['__count', 'amount:sum'])
+        return [{
+            'partner': partner.display_name,
+            'total_records': count,
+            'total_amount': amount,
+        } for partner, count, amount in groups]
     `;
 
         const modelPy = `# -*- coding: utf-8 -*-
@@ -818,8 +811,8 @@ class ${moduleName
             <kanban>
                 <field name="name"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click">
+                    <t t-name="card">
+                        <div>
                             <strong><field name="name"/></strong><br/>
                             <field name="state"/>
                         </div>

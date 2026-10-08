@@ -1,1034 +1,561 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="logo/assista-logo-title.png"/>
-    <img src="logo/assista-logo-title-ink.png" alt="Cybrosys Assista Logo" width="400"/>
-  </picture>
+  <a href="https://assista.cybrosys.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="logo/assista-logo-title.png"/>
+      <img src="logo/assista-logo-title-ink.png" alt="Cybrosys Assista" width="300"/>
+    </picture>
+  </a>
 </p>
 
-##  Supercharge Your Odoo Development with **Cybrosys Assista** 
+<h1 align="center">Cybrosys Assista: Odoo Helper</h1>
 
-**Cybrosys Assista** is an AI-powered developer toolkit and a **comprehensive ecosystem designed to streamline everything from Odoo development assistance to Odoo deployment and monitoring**. By blending intelligence and automation within popular IDEs like VS Code and PyCharm—as well as through its exclusive standalone Assista IDE—it provides complete lifecycle support for Odoo projects. From intelligent code generation and smart navigation to automated module scaffolding, Assista is built to boost productivity and simplify even the most complex full-stack tasks.
+<p align="center"><b>Odoo tooling inside VS Code</b> — for Odoo 18, 19 and 20</p>
 
-### The Complete Odoo Ecosystem
-
-*   **Precision Development**: Boost your productivity with the **[Assista IDE](https://assista.cybrosys.com)** or our powerful **plugins for PyCharm and VS Code**, featuring AI-driven completions, instant scaffolding, and OWL/POS development mastery.
-*   **Efficient Deployment with Easy Instance**: Streamline your release cycle with **[Easy Instance](https://easyinstance.com)**—an advanced Odoo SaaS platform equipped with Odoo-focused features for seamless, high-performance deployment.
-*   **Monitoring & Quality with Assista Performance**: Ensure excellence with **[Assista Performance](https://performance.cybrosys.com)**, dedicated to real-time monitoring, code quality audits, and deep performance insights for your Odoo projects.
-*   **Unified 360° Navigation**: Seamlessly navigate your entire stack with intelligent "Go-To-Definition" and cross-reference logic bridging XML, Python, and JavaScript.
-
-**Transform your Odoo development workflow—faster, smarter, and more reliable.**
-
----
-
-
-# Cybrosys-Assista-Odoo-Helper
-
-Odoo extension for Visual Studio Code
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=CybrosysTechnologiesOdooOfficialPartner.cybrosys-assista-odoo-helper">VS Code Marketplace</a> ·
+  <a href="https://assista.cybrosys.com/helper-for-vs-code">Website</a> ·
+  <a href="https://assista.cybrosys.com/contact">Contact</a> ·
+  <a href="mailto:assista@cybrosys.com">assista@cybrosys.com</a> ·
+  <a href="https://github.com/CybrosysAssista/odoo-helper-vs-code/issues">Report an issue</a>
+</p>
 
 ---
 
-Cybrosys Assista Odoo Helper provides a collection of intelligent code shortcuts designed to accelerate Odoo development. Below is the categorized reference of all available keywords (shortcuts) with descriptions and examples.
+**Cybrosys Assista** is a family of tools for Odoo developers and teams, built by [Cybrosys Technologies](https://www.cybrosys.com/) — from writing code in your editor to deploying and running Odoo.
+
+**Cybrosys Assista: Odoo Helper** brings Assista's Odoo tooling into VS Code: completions, model and view scaffolding, and Odoo-aware XML and Python snippets. It understands your Odoo project — models, fields, methods, XML IDs, QWeb templates, JavaScript registries and CSS classes — and uses them to suggest the right names as you type, jump to definitions, and generate views, reports, security files, OWL components and whole modules for the Odoo version you work on.
+
+### The Cybrosys Assista family
+
+| Product | |
+|---|---|
+| **[Assista IDE](https://assista.cybrosys.com/assista-ide)** | An Odoo-native IDE with the Assista agent built in: code assistance, one-click environments, templates and module review in one workspace. |
+| **[Cybrosys Assista: Odoo Helper](https://assista.cybrosys.com/helper-for-vs-code)** for VS Code | This extension. |
+| **[Cybrosys Assista: Odoo Helper](https://plugins.jetbrains.com/plugin/27635-cybrosys-assista-odoo-helper/)** for PyCharm | The same Odoo tooling inside PyCharm. |
+| **[EasyInstance](https://easyinstance.com/)** | Set up Odoo instances in one click, then track performance, activity logs and subscriptions from one dashboard. |
+| **[Assista X](https://x.cybrosys.com)** | An AI chat assistant for your Odoo data: answers, charts and reports. |
+| **[Assista Air](https://assista.cybrosys.com/assista-air)** | Chrome extensions for Odoo: tab management, one-click user switching and smart record filtering. |
+
+## Contents
+
+- [Highlights](#highlights)
+- [Getting started](#getting-started)
+- [Odoo version support](#odoo-version-support)
+- [Python intelligence](#python-intelligence)
+- [XML intelligence](#xml-intelligence)
+- [Manifest intelligence](#manifest-intelligence)
+- [Go to Definition](#go-to-definition)
+- [Snippets](#snippets)
+- [Generate code from a model](#generate-code-from-a-model)
+- [Explorer menu: files, modules, components](#explorer-menu-files-modules-components)
+- [Other commands](#other-commands)
+- [Odoo server connection](#odoo-server-connection)
+- [Code standards linter](#code-standards-linter)
+- [Performance](#performance)
+- [Settings](#settings)
+- [Known limitations](#known-limitations)
+- [Contact and support](#contact-and-support)
 
 ---
 
-## Version-aware snippets and completions (Odoo 18 and 19)
+## Highlights
 
-- The extension now selects version-specific data for many completions and snippets:
-  - Field types, attributes, decorators, and XML metadata are already versioned.
-  - Code snippet providers are versioned: fields, models, methods, utilities.
-
-- Selection is automatic based on your configured/detected Odoo version (Settings → "Assista: Odoo Version").
-- In addition to built-in VS Code snippets, the extension registers versioned snippet completion providers for XML and Python at runtime.
-- **Intelligent Manifest Suggestions**: Smarter auto-completion for `__manifest__.py` files, including file paths and module dependencies.
+- **Version-aware** — every suggestion, snippet and generated file follows the Odoo version of your project (18, 19 or 20), detected automatically.
+- **Project-aware completions** — models, fields, methods, XML IDs, templates, widgets, client actions and CSS classes come from an index of *your* workspace, including Odoo's own source when it is in the workspace.
+- **Go to Definition** across XML and Python: from a view to the field, from a button to the method, from `_inherit` to the model, from a manifest entry to the file.
+- **Generators** — create views, QWeb reports and access rights straight from a model class; scaffold six kinds of modules, OWL components and POS screen extensions.
+- **Lightweight** — indexing runs in a separate, low-priority background process; typing never waits for it.
 
 ---
 
-## 🔧 Odoo Methods
+## Getting started
 
-Commonly used method templates to simplify the logic inside Odoo models.
+1. Install **Cybrosys Assista: Odoo Helper** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=CybrosysTechnologiesOdooOfficialPartner.cybrosys-assista-odoo-helper), or search for it in the Extensions view, or run `ext install CybrosysTechnologiesOdooOfficialPartner.cybrosys-assista-odoo-helper` in Quick Open (**Ctrl+P**). For a `.vsix` file, use **Extensions: Install from VSIX…**. Requires VS Code 1.85 or newer.
+2. Open a folder that contains Odoo modules. The extension activates when the workspace contains a `__manifest__.py` or an `odoo/release.py`.
+3. Check the Odoo version in the status bar (for example `Odoo v20 (Auto)`). Click it to change the version.
+4. Start typing — completions appear automatically. Right-click a folder in the Explorer and choose **Assista Odoo** for the generators.
 
-- **Odoo Create Method**  
-  Used to override `create()` method in Odoo models. Lets you modify values or add logic during record creation.  
-  _Example:_
-  ```python
-  @api.model_create_multi
-  def create(self, vals_list):
-      # Pre-create logic (optional)
-      records = super().create(vals_list)
-      # Post-create logic (optional)
-      return records
-  ```
+A few seconds after the window opens, the extension indexes the workspace in the background. Completions that depend on the index (model and field names, for example) are available as soon as it is ready. The next time you open the workspace, the saved index is reused and only changed files are read again.
 
-- **Odoo Write Method**  
-  Customizes the `write()` method to apply logic during updates. Useful for auditing or validations.  
-  _Example:_
-  ```python
-  def write(self, values):
-      # Pre-write logic (optional)
-      res = super().write(values)
-      # Post-write logic (optional)
-      return res
-  ```
-
-- **Odoo Unlink Method**  
-  Overrides `unlink()` to define behavior when deleting records. Often used for soft deletes or preventing deletion.  
-  _Example:_
-  ```python
-  def unlink(self):
-      # Pre-unlink logic (optional)
-      res = super().unlink()
-      # Post-unlink logic (optional)
-      return res
-  ```
-
-- **Odoo Onchange Method**  
-  Adds dynamic behavior in forms. Automatically updates fields when dependent values change.  
-  _Example:_
-  ```python
-  @api.onchange('field_name')
-  def _onchange_field_name(self):
-      if self.field_name:
-          self.target_field = value
-  ```
-
-- **Odoo Compute Method**  
-  Used to calculate field values dynamically using dependent fields. Triggers only when dependencies change.  
-  _Example:_
-  ```python
-  field_name = fields.FieldType(string='Field Label', compute='_compute_field_name', store=True)
-
-  @api.depends('dependency_field')
-  def _compute_field_name(self):
-      for rec in self:
-          # Compute logic
-          rec.field_name = value
-  ```
-
-- **Odoo Constraints Method**  
-  Adds validations at the model level that are enforced during create/write operations.  
-  _Example:_
-  ```python
-  @api.constrains('field_name')
-  def _check_field_name(self):
-      for rec in self:
-          if not rec.field_name:
-              raise ValidationError("field_name must be set")
-  ```
-
-- **Odoo Search Method**  
-  Implements custom search behavior for the model. Useful for custom name search or complex search logic.  
-  _Example:_
-  ```python
-  @api.model
-  def _search_name(self, name, args=None, operator='ilike', limit=100, name_get_uid=None):
-      args = args or []
-      domain = []
-      if name:
-          domain = ['|', '|',
-              ('name', operator, name),
-              ('field_name', operator, name),
-              ('field_name2', operator, name)]
-      return self._search(domain + args, limit=limit, access_rights_uid=name_get_uid)
-  ```
-
-- **Odoo Default Get Method**  
-  Sets default values for fields when creating new records.  
-  _Example:_
-  ```python
-  @api.model
-  def default_get(self, fields_list):
-      res = super().default_get(fields_list)
-      res.update({
-          'field_name': default_value,
-      })
-      return res
-  ```
-
-- **Odoo Action Method**  
-  Creates a method that returns an action dictionary for opening views or performing actions.  
-  _Example:_
-  ```python
-  def action_action_name(self):
-      self.ensure_one()
-      return {
-          'name': _('Action Title'),
-          'type': 'ir.actions.act_window',
-          'res_model': 'model.name',
-          'view_mode': 'list,form',
-          'domain': [('field', '=', self.field)],
-          'context': {'default_field': self.field},
-      }
-  ```
-
-- **Odoo SQL Constraints**  
-  Adds database-level constraints to ensure data integrity.  
-  _Example:_
-  ```python
-  _sql_constraints = [
-      ('constraint_name', 'constraint_type', 'message')
-  ]
-  ```
+> **Tip:** add the Odoo source (the folder with `odoo/` and `addons/`) to your workspace, so that core models, fields and templates are suggested too.
 
 ---
 
-## 🧩 Odoo Models
+## Odoo version support
 
-Templates for creating different types of Odoo models.
+Completions, snippets, generators and scaffolds support **Odoo 18, 19 and 20**.
 
-- **Odoo Abstract Model**  
-  Creates a model that serves as a base for other models.  
-  _Example:_
-  ```python
-  from odoo import api,fields,models
+**How the version is chosen** — setting `cybrosys-assista-odoo-helper.odooVersion`:
 
-  class ModelName(models.AbstractModel):
-      _name = 'model.name'
-      _description = 'Model Description'
+- `18`, `19` or `20` — always used as set.
+- `auto` (default) — detected, in this order:
+  1. `odoo/release.py` found in the workspace;
+  2. `odoo/release.py` under the **Odoo Source Path** setting, then under `$ODOO_HOME`;
+  3. an `odoo` version pin in `requirements*.txt`, `.in` or `.ini` files;
+  4. otherwise **20**.
 
-      name = fields.Char(string='Name', required=True)
-      active = fields.Boolean(string='Active', default=True)
-  ```
+  `saas~N` versions are recognised. Versions above 20 are treated as 20, older ones as 18.
 
-- **Odoo Transient Model**  
-  Creates a temporary model for wizard-like functionality.  
-  _Example:_
-  ```python
-  from odoo import api,fields,models
+Change the version from the status bar item or with **Assista: Set Odoo Version**.
 
-  class ModelName(models.TransientModel):
-      _name = 'model.name'
-      _description = 'Model Description'
+**What changes with the version** — examples:
 
-      name = fields.Char(string='Name', required=True)
-      active = fields.Boolean(string='Active', default=True)
-  ```
-
-- **Odoo New Model Class**  
-  Creates a new Odoo model class with basic structure.
-
-  _Example:_
-  ```python
-  from odoo import fields,models 
-
-  class ModelName(models.Model):
-      _name = 'model.name'
-      _description = 'Model Description'
-
-      name = fields.Char(string='Name', required=True)
-  ```
-
-- **Odoo Classical Inherited Model Class**  
-  Creates an inherited Odoo model class to extend an existing model.
-
-  _Example:_
-  ```python
-  from odoo import fields,models
-
-  class ModelName(models.Model):
-      _name = 'model.name'
-      _inherit = 'model.to.inherit'
-      _description = 'Model Description'
-
-      new_field = fields.Char(string='New Field')
-  ```
-
-- **Odoo Delegated Inherited Model Class**  
-  Creates a new delegated Odoo model class that inherits fields from another model.
-
-  _Example:_
-  ```python
-  from odoo import fields, models
-
-  class ModelName(models.Model):
-      _name = 'model.name'
-      _inherits = {'parent.model': 'parent_id'}
-      _description = 'Model Description'
-
-      parent_id = fields.Many2one('parent.model', required=True, ondelete="cascade")
-  ```
-
-- **Odoo Extended Inherited Model Class**  
-  Extends an existing model with custom methods.
-
-  _Example:_
-  ```python
-  from odoo import fields, models, api
-
-  class ModelName(models.Model):
-      _inherit = 'model.to.extend'
-
-      @api.model
-      def create(self, vals):
-          # Custom logic before creation
-          res = super().create(vals)
-          # Custom logic after creation
-          return res
-  ```
+| Topic | Odoo 18 | Odoo 19 | Odoo 20 |
+|---|---|---|---|
+| Access rights file | `ir.model.access.csv` | `ir.model.access.csv` | `ir.access.csv` (`ir.access`, with `operation` and `domain`) |
+| Security groups | `category_id` | `privilege_id` (`res.groups.privilege`) | `privilege_id` |
+| SQL constraints | `_sql_constraints` | `models.Constraint` | `models.Constraint`, `models.Index`, `models.UniqueIndex` |
+| JSON routes | `type='json'` | `type='jsonrpc'` | `type='jsonrpc'` |
+| OWL | OWL 2 | OWL 2 | OWL 3 |
+| Report action | with `report_file` | with `report_file` | without `report_file` |
+| Manifest version | `18.0.1.0.0` | `19.0.1.0.0` | `20.0.1.0.0` |
 
 ---
 
-## 📋 Odoo Views
+## Python intelligence
 
-Templates for creating and inheriting Odoo views.
+Completions in `.py` files. Items marked *index* need the background index.
 
-### Basic Views
-
-- **Odoo Form View**  
-  Creates a basic form view with essential elements.  
-  _Example:_
-  ```xml
-  <record id="model_name_view_form" model="ir.ui.view">
-      <field name="name">model.name.view.form</field>
-      <field name="model">model.name</field>
-      <field name="arch" type="xml">
-          <form string="Form Title">
-              <sheet>
-                  <group>
-                      <field name="name"/>
-                      <!-- Add your fields here -->
-                  </group>
-              </sheet>
-          </form>
-      </field>
-  </record>
-  ```
-- **Odoo List View**  
-  Creates a basic list view for displaying records.  
-  _Example:_
-  ```xml
-  <record id="model_name_view_list" model="ir.ui.view">
-      <field name="name">model.name.view.list</field>
-      <field name="model">model.name</field>
-      <field name="arch" type="xml">
-          <list string="List Title">
-              <field name="name"/>
-              <!-- Add your fields here -->
-          </list>
-      </field>
-  </record>
-  ```
-
-- **Odoo Search View**  
-  Creates a search view with filters and grouping options.  
-  _Example:_
-  ```xml
-  <record id="model_name_view_search" model="ir.ui.view">
-      <field name="name">model.name.view.search</field>
-      <field name="model">model.name</field>
-      <field name="arch" type="xml">
-          <search string="Search Title">
-              <field name="name"/>
-              <!-- Add your fields here -->
-              <filter string="Filter Name" name="filter_name" domain="[('field', '=', value)]"/>
-              <group expand="0" string="Group By">
-                  <filter string="Group By Name" name="group_by_name" context="{'group_by': 'field'}"/>
-              </group>
-          </search>
-      </field>
-  </record>
-  ```
-
-- **Odoo Calendar View**  
-  Creates a calendar view for date-based records.  
-  _Example:_
-  ```xml
-  <record id="model_name_view_calendar" model="ir.ui.view">
-      <field name="name">model.name.view.calendar</field>
-      <field name="model">model.name</field>
-      <field name="arch" type="xml">
-          <calendar string="Calendar Title" date_start="start_date_field" date_stop="end_date_field" mode="month">
-              <field name="name"/>
-              <!-- Add your fields here -->
-          </calendar>
-      </field>
-  </record>
-  ```
-
-- **Odoo Kanban View**  
-  Creates a kanban view for card-based display.  
-  _Example:_
-  ```xml
-  <record id="model_name_view_kanban" model="ir.ui.view">
-      <field name="name">model.name.view.kanban</field>
-      <field name="model">model.name</field>
-      <field name="arch" type="xml">
-          <kanban string="Kanban Title" class="o_kanban_small_column">
-              <field name="name"/>
-              <!-- Add your fields here -->
-              <templates>
-                  <t t-name="kanban-box">
-                      <div class="oe_kanban_global_click">
-                          <div class="oe_kanban_details">
-                              <strong class="o_kanban_record_title">
-                                  <field name="name"/>
-                              </strong>
-                          </div>
-                      </div>
-                  </t>
-              </templates>
-          </kanban>
-      </field>
-  </record>
-  ```
-
-### View Inheritance
-
-- **Odoo View Inherit**  
-  Creates a view that inherits and modifies an existing view.  
-  _Example:_
-  ```xml
-  <record id="model_name_view_view_type_inherit" model="ir.ui.view">
-      <field name="name">model.name.inherit.view_type</field>
-      <field name="model">model.name</field>
-      <field name="inherit_id" ref="module.view_id"/>
-      <field name="arch" type="xml">
-          <!-- Add your xpath modifications here -->
-      </field>
-  </record>
-  ```
-
-## 🎯 Common View Elements
-
-- **Odoo Header**  
-  Adds a header with buttons and status bar.  
-  _Example:_
-  ```xml
-  <header>
-      <button name="action_confirm" string="Confirm" type="object" states="draft" class="btn-primary"/>
-      <button name="action_cancel" string="Cancel" type="object" states="confirmed"/>
-      <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
-  </header>
-  ```
-
-- **Odoo Sheet**  
-  Adds a sheet with group and fields.  
-  _Example:_
-  ```xml
-  <sheet>
-      <group>
-          <field name="field_name"/>
-          <!-- Add more fields here -->
-      </group>
-  </sheet>
-  ```
-
-- **Odoo Notebook**  
-  Adds a notebook with pages.  
-  _Example:_
-  ```xml
-  <notebook>
-      <page string="Page Title" name="page_name">
-          <!-- Add your page content here -->
-      </page>
-  </notebook>
-  ```
-
-- **Odoo Chatter**  
-  Adds chatter functionality to a form view.  
-  _Example:_
-  ```xml
-  <chatter/>
-  ```
+| You type | You get |
+|---|---|
+| `fields.` | Field classes of your version (`Char`, `Many2one`, `Properties`, …), inserted as `Char(string="…")`. |
+| `=` inside a `fields.X(...)` call | Field parameters valid for your version (`string`, `required`, `compute`, `ondelete`, `tracking`, …). |
+| `@` | `api.` decorators of your version (`api.depends`, `api.constrains`, `api.onchange`, `api.model_create_multi`, …). |
+| `fields.Many2one('` (also `One2many`, `Many2many`, `comodel_name='`) | Model names. *index* |
+| `_inherit = '` (string, list or tuple) | Model names. *index* |
+| `self.env['` | Model names. *index* |
+| `fields.One2many('model', '` or `inverse_name='` | The `Many2one` fields of that model that point back to the current model. *index* |
+| `self.` and `record.` inside `for record in …` | Fields of the current model; continues through relations (`self.partner_id.` → fields of `res.partner`). *index* |
+| `@api.depends('` / `@api.onchange('` | Fields of the current model. *index* |
+| `def _compute_`, `def _inverse_`, `def _search_` | Field names of the current class, to complete the method name. |
+| `def ` in a class with `_inherit` | Methods of the inherited model; choosing one inserts the override with a `super()` call. *index* |
+| `odoo …` | All Odoo [snippets](#snippets) (models, fields, methods, errors, actions) and import snippets (`odoo common imports`, `odoo import exceptions`, `odoo import http request`, `odoo import logging`, …). |
 
 ---
 
-## 🎨 UI Elements
+## XML intelligence
 
-- **Odoo Smart Button**  
-  Adds a smart button with statistics.  
-  _Example:_
-  ```xml
-  <button name="action_view_records" type="object" class="oe_stat_button" icon="fa-list">
-      <field name="record_count" widget="statinfo" string="Records"/>
-  </button>
-  ```
+Completions in `.xml` files.
 
-- **Odoo Button Box**  
-  Adds a container for smart buttons.  
-  _Example:_
-  ```xml
-  <div class="oe_button_box" name="button_box">
-      <!-- Add smart buttons here -->
-  </div>
-  ```
-
-- **Odoo Action Button**  
-  Adds a button that triggers an action.  
-  _Example:_
-  ```xml
-  <button name="%(action_name)d" string="Button Text" type="action" class="btn-primary"/>
-  ```
-
-- **Odoo Object Button**  
-  Adds a button that calls a method.  
-  _Example:_
-  ```xml
-  <button name="method_name" string="Button Text" type="object" class="btn-primary"/>
-  ```
+| Where the cursor is | You get |
+|---|---|
+| `<` (typing a tag name) | The tags of your version: data tags (`record`, `field`, `menuitem`, `template`, …), every view type (`form`, `list`, `kanban`, `card` on 20, `search`, `calendar`, `graph`, `pivot`, `activity`, `hierarchy`), view elements and QWeb `t`. |
+| Inside a tag | Only the attributes that tag accepts in your version, taken from Odoo's own schemas and core views (for example `card_id` and `dialog_size` on 20, `date_delay` on 18/19). |
+| `<field name="` / `<filter name="` inside a view | Fields of the view's model (the `<field name="model">` of the view record). *index* |
+| `<button name="` with `type="object"` | Methods of the view's model. *index* |
+| `<record model="` | Model names. *index* |
+| Text of `<field name="model">` (views) or `<field name="res_model">` (window actions) | Model names. *index* |
+| Text of `<field name="view_mode">` | `list`, `form`, `kanban`, `pivot`, `graph`, `calendar`, `activity`, `hierarchy`. |
+| Text of `<field name="tag">` in an `ir.actions.client` record | Client action tags registered in JavaScript. *index* |
+| `widget="` on a field | Field widgets registered in JavaScript (`registry.category("fields")`), with their module. *index* |
+| `t-call="` | QWeb template IDs. *index* |
+| `t-component="` / `<owl-component name="` | Public components (`public_components` registry). *index* |
+| `position="` on `<xpath>` | `after`, `before`, `inside`, `replace`, `attributes`. |
+| `class="` | CSS classes, ordered: current module, then `web`, `base`, `mail`, `portal`, then the rest. *index* |
+| `odoo …` | All XML [snippets](#snippets). |
 
 ---
 
-## 🍱 Menu Structure
+## Manifest intelligence
 
-- **Odoo Menu Root**  
-  Creates a root menu item with icon.  
-  _Example:_
-  ```xml
-  <menuitem id="menu_root_name"
-      name="Root Menu Name"
-      web_icon="module_name,static/description/icon.png"
-      sequence="10"/>
-  ```
+In `__manifest__.py`:
 
-- **Odoo Menu Category**  
-  Creates a category menu item.  
-  _Example:_
-  ```xml
-  <menuitem id="menu_category_name"
-      name="Category Name"
-      sequence="10"/>
-  ```
-
-- **Odoo Menu Action**  
-  Creates a menu item that opens an action.  
-  _Example:_
-  ```xml
-  <menuitem id="menu_menu_name"
-      name="Menu Name"
-      action="action_name"
-      parent="parent_menu"
-      sequence="10"/>
-  ```
+- **`depends`** — module names from your workspace when you open a quote on a line containing `depends`. *index*
+- **`data`, `demo` and `assets` paths** — the module's files and folders as you type a path; choosing a folder continues into it.
 
 ---
 
-# 🧩 Odoo Fields
+## Go to Definition
 
-Comprehensive shortcuts to quickly define various field types in your Odoo models with proper syntax and examples.
+Use **F12**, **Ctrl+Click** or **Peek Definition** (**Alt+F12**).
 
-- **Odoo Boolean Field**  
-  Represents a true/false value with tracking support.
+**From XML**
 
-  _Example:_
-  ```python
-  fields.Boolean(string="Name", help="Help text", default=False, tracking=True)
-  ```
+| On | Goes to |
+|---|---|
+| `<field name="…">`, `<filter name="…">` in a view | The field in Python (all definitions, as a peek list when there are several). |
+| `<button name="…" type="object">` | The Python method. |
+| `model="…"`, `<field name="model">…`, `<field name="res_model">…` | The model class. |
+| `ref="…"`, `inherit_id="…"`, `parent="…"`, `action="…"` | The XML record, menu item or template with that ID. |
+| `t-call="…"`, `t-name="…"` | The QWeb template. |
+| `widget="…"` | The JavaScript registration of the widget. |
+| `<field name="tag">…` in a client action | The JavaScript registration of the action. |
+| A class in `class="…"` | Its CSS/SCSS definition in the current module, `web` or `mail` (turn on **Advanced CSS Indexing**). |
 
-- **Odoo Binary Field**  
-  Used to store binary data like files with size limit.
+**From Python**
 
-  _Example:_
-  ```python
-  fields.Binary(string="Name", help="Help text", attachment=True, max_size=10)
-  ```
-
-- **Odoo Char Field**  
-  A basic string field for short text with translation support.
-
-  _Example:_
-  ```python
-  fields.Char(string="Name", help="Help text", required=False, tracking=True, translate=True)
-  ```
-
-- **Odoo Integer Field**  
-  For integer numbers with tracking.
-
-  _Example:_
-  ```python
-  fields.Integer(string="Name", help="Help text", default=0, tracking=True)
-  ```
-
-- **Odoo Image Field**  
-  For storing and managing images with size limits.
-
-  _Example:_
-  ```python
-  fields.Image(string="Name", help="Help text", max_width=1024, max_height=1024)
-  ```
-
-- **Odoo Float Field**  
-  For decimal numbers with precision.
-
-  _Example:_
-  ```python
-  fields.Float(string="Name", help="Help text", digits=(16, 2), tracking=True)
-  ```
-
-- **Odoo Text Field**  
-  Used for longer text strings with translation.
-
-  _Example:_
-  ```python
-  fields.Text(string="Name", help="Help text", translate=True)
-  ```
-
-- **Odoo Html Field**  
-  Used to store HTML content with sanitization.
-
-  _Example:_
-  ```python
-  fields.Html(string="Name", help="Help text", sanitize=True, translate=True)
-  ```
-
-- **Odoo Date Field**  
-  Used for selecting a date with tracking.
-
-  _Example:_
-  ```python
-  fields.Date(string="Name", help="Help text", tracking=True)
-  ```
-
-- **Odoo Datetime Field**  
-  Used for selecting a date and time with tracking.
-
-  _Example:_
-  ```python
-  fields.Datetime(string="Name", help="Help text", tracking=True)
-  ```
-
-- **Odoo Selection Field**  
-  Allows selection from a predefined list with tracking.
-
-  _Example:_
-  ```python
-  fields.Selection([
-      ('draft', 'Draft'),
-      ('confirmed', 'Confirmed'),
-      ('done', 'Done')
-  ],
-  string="Status",
-  default='draft',
-  tracking=True,
-  help="Help text")
-  ```
-
-- **Odoo Many2one Field**  
-  Links to a single record of another model with company check.
-
-  _Example:_
-  ```python
-  fields.Many2one('model.name', string="Name", help="Help text", tracking=True, ondelete='cascade', check_company=True)
-  ```
-
-- **Odoo Many2many Field**  
-  Represents a many-to-many relationship with company check.
-
-  _Example:_
-  ```python
-  fields.Many2many('model.name', string="Name", help="Help text", tracking=True, check_company=True)
-  ```
-
-- **Odoo Monetary Field**  
-  Used for monetary values with currency tracking.
-
-  _Example:_
-  ```python
-  fields.Monetary(string="Name", help="Help text", currency_field="currency_id", tracking=True)
-  ```
-
-- **Odoo One2many Field**  
-  Represents a one-to-many relationship with tracking.
-
-  _Example:_
-  ```python
-  fields.One2many('model.name', 'connection_field', string="Name", help="Help text", tracking=True)
-  ```
-
-- **Odoo Reference Field**  
-  Dynamic reference to any model.
-
-  _Example:_
-  ```python
-  fields.Reference(string="Name", selection=[('model1', 'Model 1'), ('model2', 'Model 2')], help="Help text")
-  ```
-
-- **Odoo Json Field**  
-  Store JSON data in the database.
-
-  _Example:_
-  ```python
-  fields.Json(string="Name", help="Help text")
-  ```
-
-## 🔧 Common Field Parameters
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `string` | Field label displayed in UI | `string="Product Name"` |
-| `help` | Tooltip text for the field | `help="Enter product description"` |
-| `required` | Makes field mandatory | `required=True` |
-| `readonly` | Makes field read-only | `readonly=True` |
-| `default` | Default value for the field | `default=0` or `default=lambda self: self._get_default()` |
-| `tracking` | Enables field change tracking | `tracking=True` |
-| `translate` | Enables field translation | `translate=True` |
-| `ondelete` | Action when related record is deleted | `ondelete='cascade'` |
-| `check_company` | Ensures record belongs to same company | `check_company=True` |
-| `domain` | Filters available records | `domain=[('active', '=', True)]` |
-| `context` | Passes context to related views | `context={'default_type': 'sale'}` |
-
-## 💡 Best Practices
-
-1. **Always use descriptive string labels** for better UX
-2. **Add help text** to explain field purpose
-3. **Use tracking=True** for important fields that need audit trail
-4. **Set appropriate defaults** to improve data quality
-5. **Use ondelete='cascade'** carefully to avoid data loss
-6. **Add check_company=True** for multi-company environments
-7. **Use translate=True** for user-facing text fields in multi-language setups
-8. **Set proper digits** for Float fields to control precision
-...
-
-> 💡 *Tip: Just type the keyword and press `Tab` to auto-expand the snippet inside Assista IDE!*
+| On | Goes to |
+|---|---|
+| A model name in `_inherit` | The model's definitions. |
+| `self.env['model.name']` | The model class. |
+| `self.field_name`, `self.partner_id.name` | The field (or method), following relations. |
+| `related='partner_id.country_id'` | The field at the end of the chain. |
+| A module name in the manifest `depends` | That module's `__manifest__.py`. |
+| A path in the manifest `data`, `demo` or `assets` | The file, or the folder in the Explorer. |
 
 ---
 
-## 🧠 Intelligent Manifest Suggestions
+## Snippets
 
-Assista provides advanced context-aware completions specifically for Odoo's `__manifest__.py` file to prevent typos and speed up configuration.
+Type the snippet prefix — they all start with `odoo` — and pick it from the suggestions. Press **Tab** to move between placeholders. Snippets follow your Odoo version.
 
-### 1. Manifest Path Suggestion
-When adding files to your manifest, the extension provides real-time path suggestions by scanning your module's directory structure.
-- **Trigger**: Inside strings within `data`, `demo`, or `assets` keys.
-- **Features**:
-  - Automatically lists available folders and XML/CSV/JS/CSS files.
-  - Supports deep path navigation (suggests subfolders as you type).
-  - Filters out hidden files (starting with `.`).
+### Python — models
 
-### 2. Module Dependency Suggestion
-Easily find and add Odoo modules to your `depends` list.
-- **Trigger**: Inside the `depends` list when starting a new string.
-- **Features**:
-  - Scans your entire workspace for available Odoo modules.
-  - Provides a searchable list of module technical names.
-  - Helps resolve dependency errors by suggesting only valid module names found in your project.
+| Snippet | 18 | 19 | 20 |
+|---|:-:|:-:|:-:|
+| Odoo New Model Class | ✓ | ✓ | ✓ |
+| Odoo Classical Inherited Model Class (`_name` + `_inherit`) | ✓ | ✓ | ✓ |
+| Odoo Delegated Inherited Model Class (`_inherits`) | ✓ | ✓ | ✓ |
+| Odoo Extended Inherited Model Class (`_inherit`) | ✓ | ✓ | ✓ |
+| `odoo abstract model` | ✓ | ✓ | ✓ |
+| `odoo transient model` | ✓ | ✓ | ✓ |
+| `odoo sql constraints` (`_sql_constraints`) | ✓ | | |
+| `odoo constraint` (`models.Constraint`) | | ✓ | ✓ |
+| `odoo index`, `odoo unique index` | | | ✓ |
+| `odoo controller` (`http` and `jsonrpc` routes) | | | ✓ |
 
----
+### Python — fields
 
-## � Python Inheritance Intelligence
+Odoo Boolean, Char, Text, Html, Integer, Float, Monetary, Date, Datetime, Selection, Many2one, One2many, Many2many, Binary, Image, Reference and Json **Field** in all versions, plus **Many2oneReference Field** on 20.
 
-Assista makes Odoo model inheritance seamless by providing intelligent completions for model names and function overrides.
+### Python — methods
 
-### 1. Model Inheritance Suggestion (`_inherit`)
-When extending an Odoo model, Assista suggests available model names as soon as you start typing the `_inherit` attribute.
-- **Trigger**: Inside quotes or lists assigned to `_inherit` (e.g., `_inherit = "..."` or `_inherit = ["..."]`).
-- **Features**:
-  - Lists all Odoo models indexed in your current workspace.
-  - Supports both single inheritance (string) and multiple inheritance (list).
-  - Helps avoid typos in core or custom model names.
+| Snippet | 18 | 19 | 20 |
+|---|:-:|:-:|:-:|
+| Odoo Create, Write, Unlink Method | ✓ | ✓ | ✓ |
+| Odoo Onchange, Compute, Constraints Method | ✓ | ✓ | ✓ |
+| Odoo Ondelete Method (`@api.ondelete`) | | | ✓ |
+| Odoo Search Name Method (`_search_display_name`) | | | ✓ |
+| Odoo Display Name Method (`_compute_display_name`) | | | ✓ |
+| Odoo Default Get Method | | | ✓ |
+| Odoo Action Method | | | ✓ |
 
-### 2. Intelligent Function Override
-Easily override methods from your inherited models with automatic snippet generation.
-- **Trigger**: Type `def ` inside any class that has an `_inherit` attribute.
-- **Features**:
-  - Automatically identifies the inherited models.
-  - Suggests all methods available in the parent models.
-  - **Auto-Snippet**: When a method is selected, it automatically generates the method signature and the `super()` call with original parameters.
-  
-  _Example:_
-  ```python
-  class SaleOrder(models.Model):
-      _inherit = 'sale.order'
-      
-      def action_confirm(self):
-          res = super().action_confirm()
-          # Your custom logic here
-          return res
-  ```
+Typing `@api.` also offers each decorator as a ready-made method (`@api.depends` with a `def` below it).
 
----
+### Python — errors, notifications and actions
 
-## 💎 XML Intelligence
+In all versions: Odoo Validation Error, User Error, Access Error, Missing Error, Redirect Warning, Notification (`display_notification`), Rainbow Man, Return Action (`ir.actions.act_window`) and URL Action (`ir.actions.act_url`).
 
-Assista provides a highly sophisticated XML intelligence system tailored for Odoo views, actions, and templates.
+### XML
 
-### 1. Smart Model Suggestions
-Find the right model directly within your XML configuration.
-- **Record Model**: Suggests models in `<record model="...">`.
-- **Relational Fields**: Offers model names inside `<field name="model">` for views and `<field name="res_model">` for actions.
-- **Context Search**: Indexes all Odoo models in the workspace for instant lookup.
+In all versions:
 
-### 2. Context-Aware Field Suggestions
-When adding fields to a view, Assista automatically detects the target model based on the parent record or view definition.
-- **View Awareness**: If your field is inside a `<form>`, `<tree>`, or other view tag, it correctly identifies the model from the view's `<field name="model">`.
-- **Automatic Filtering**: Suggests only valid fields belonging to the resolved model.
-- **Support for Inheritance**: If you're inheriting a view, it priority-suggests fields while still allowing discovery of inherited fields.
+| Views | View elements | Fields | Data |
+|---|---|---|---|
+| `odoo form view` | `odoo sheet` | `odoo field` | `odoo record` |
+| `odoo list view` | `odoo header` | `odoo field widget` | `odoo action` |
+| `odoo search view` | `odoo notebook` | `odoo field invisible` | `odoo menu root` |
+| `odoo kanban view` | `odoo page` | `odoo field readonly` | `odoo menu category` |
+| `odoo calendar view` | `odoo chatter` | `odoo field required` | `odoo menu action` |
+| `odoo graph view` | `odoo button box` | `odoo field state` | `odoo groups` |
+| `odoo pivot view` | `odoo smart button` | `odoo domain` | `odoo xml` |
+| `odoo view inherit` | `odoo object button` | `odoo options` | |
+| `odoo xpath` | `odoo action button` | | |
+| | `odoo label` | | |
 
-### 3. Widget Intelligence
-Never guess a widget name again. Assista collects widget registrations directly from the JavaScript registry.
-- **Trigger**: Inside the `widget="..."` attribute of any field.
-- **Source**: Dynamically aggregated from all `registry.category("fields").add()` calls in your JS files.
-- **Metadata**: Shows which module the widget belongs to and its underlying JS component.
+Odoo 20 adds `odoo editable list`, `odoo field optional`, `odoo column invisible`, `odoo ribbon`, `odoo settings` (settings app and block), `odoo report` (report action), `odoo cron` and `odoo access` (`ir.access` rule).
 
-### 4. CSS Class Autocomplete
-Fast and accurate CSS class suggestions for your Odoo components.
-- **Trigger**: Inside the `class="..."` attribute.
-- **Priority**: Suggestions are prioritized from the current module, followed by core Odoo modules (`web`, `base`, `mail`, `portal`), and then global workspace classes.
+### Examples (Odoo 20 output)
 
-### 5. Template & Component Discovery
-- **t-call Suggestion**: Suggests all available QWeb template IDs (e.g., `<t t-call="module.template_id"/>`).
-- **OWL Component ID**:
-    - Suggests public OWL component IDs in `<t t-component="..."/>` and `<owl-component name="..."/>`.
-    - Suggests client action tags in `<field name="tag">...</field>` for `ir.actions.client` records.
-- **Source**: Reliably collected from the Odoo action registry and public component registration.
+`odoo form view`
 
----
+```xml
+<record id="model_name_view_form" model="ir.ui.view">
+    <field name="name">model.name.view.form</field>
+    <field name="model">model.name</field>
+    <field name="arch" type="xml">
+        <form>
+            <sheet>
+                <div class="oe_title">
+                    <h1><field name="name" placeholder="Name"/></h1>
+                </div>
+                <group>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+```
 
-## 🚀 Odoo Navigation (Go-To-Definition)
+`odoo kanban view`
 
-Assista provides powerful "Go-To-Definition" (F12) capabilities that bridge the gap between XML, Python, and JavaScript.
+```xml
+<record id="model_name_view_kanban" model="ir.ui.view">
+    <field name="name">model.name.view.kanban</field>
+    <field name="model">model.name</field>
+    <field name="arch" type="xml">
+        <kanban sample="1">
+            <templates>
+                <t t-name="card">
+                    <field name="name" class="fw-bold fs-5"/>
+                </t>
+            </templates>
+        </kanban>
+    </field>
+</record>
+```
 
-### 1. XML Navigation
-Seamlessly jump from your views to the underlying logic or styling.
-- **Button to Python**: Click on `<button name="method_name" type="object"/>` to jump directly to the Python method definition.
-- **Field to Python**: Click on any `<field name="field_name"/>` to jump to its Python definition (context-aware).
-- **Model to Python**: Click on `model="..."` or `res_model="..."` to reach the model's Python class.
-- **Widget to JS**: Click on `widget="..."` to jump to the JavaScript registration of that widget.
-- **CSS to Styling**: Click on any class inside `class="..."` to jump to its CSS/SCSS definition (requires Advanced CSS Indexing enabled).
-- **Template & Record**:
-    - **t-call**: Jump to the QWeb template definition.
-    - **ref/inherit_id**: Jump to the target XML record.
-    - **Menuitem Parent**: Jump from a submenu to its parent menu definition.
+`odoo access`
 
-### 2. Python Navigation
-Navigate your Odoo backend code with precision.
-- **Model Inheritance**: Click on model names in `_inherit` to jump to the base or inherited model definitions.
-- **Self & Env**:
-    - **self.field_name**: Jump to the field definition.
-    - **self.method_name()**: Jump to the method definition within the model.
-    - **env['model.name']**: Jump directly to the referenced model's Python class.
-- **Manifest Power-Nav**:
-    - **depends**: Click a module name in the dependency list to open its `__manifest__.py`.
-    - **data/demo/assets**: Click any file path to open the file, or click a folder path to reveal it in the VS Code Explorer.
+```xml
+<record id="access_model_name_user" model="ir.access">
+    <field name="name">model.name user</field>
+    <field name="model_id" ref="model_model_name"/>
+    <field name="group_id" ref="base.group_user"/>
+    <field name="operation">crud</field>
+    <field name="domain">[(1, '=', 1)]</field>
+</record>
+```
 
-### 3. Client Action Navigation
-- Jump from `<field name="tag">...</field>` in `ir.actions.client` records directly to the associated JavaScript client action registration.
+Odoo New Model Class
 
----
+```python
+from odoo import api, fields, models
 
-## 🐍 Python Backend Intelligence
 
-Beyond inheritance, Assista optimizes core Python development for Odoo with context-aware triggers and snippets.
+class ModelName(models.Model):
+    _name = 'model.name'
+    _description = 'Model Description'
+    _order = 'name'
 
-### 1. Relational Field & Method Suggestions
-- **Target Model Helper**: When defining `Many2one`, `One2many`, or `Many2many` fields, the extension automatically suggests model names as soon as you open the brackets.
-- **Trigger Suggestions**: When defining `_compute_`, `_inverse_`, or `_search_` methods, the extension suggests field names from the current model to complete the method name.
+    name = fields.Char(string='Name', required=True)
+    active = fields.Boolean(default=True)
 
-### 2. Smart Odoo Imports
-Quickly add essential Odoo imports and common Python utilities with specialized snippets.
-- **Trigger**: Type `import ` or `from ` to see Odoo-specific import suggestions.
-- **Includes**:
-  - `odoo common imports` (api, fields, models)
-  - `odoo import exceptions` (UserError, ValidationError)
-  - `odoo import http` (for controllers & requests)
-  - `odoo import logging` (includes `_logger` initialization)
+    _name_uniq = models.Constraint('unique(name)', 'The name must be unique.')
+```
 
----
+Odoo Ondelete Method
 
-## ⚖️ Odoo Linter & Code Standards
+```python
+@api.ondelete(at_uninstall=False)
+def _unlink_except_done(self):
+    for record in self:
+        if record.state == 'done':
+            raise UserError(self.env._("You cannot delete this record."))
+```
 
-Assista includes a built-in linter that enforces Odoo's official **Technical Guide** standards in real-time.
+Odoo Notification
 
-### 1. XML Standards
-- **Attribute Order**: Flags records where `model` is placed before `id`.
-- **Field Placement**: Ensures `name` is always the first attribute in `<field>` tags.
-- **Tag Usage**: Recommends using `<menuitem>` instead of `<record model="ir.ui.menu">`.
-
-### 2. Naming Conventions
-- Registers warnings for incorrectly named View IDs, Action IDs, and Menu IDs.
-- Validates that Python classes use `CamelCase` and model names are singular.
-- Ensures relational fields follow the `_id` and `_ids` suffix standards.
-
-### 3. Python Best Practices
-- **Import Order**: Enforces the standard order: 1) Stdlib, 2) Odoo Core, 3) Addons.
-- **Translation Safety**: Flags incorrect formatting inside or outside `_()` translation calls.
-- **Code Optimization**: Suggests using `if collection:` instead of `len(collection) > 0`.
-- **Action Validation**: Warns if an `action_` method is missing a `self.ensure_one()` call.
+```python
+return {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': self.env._("Title"),
+        'message': self.env._("Message"),
+        'type': 'success',
+        'sticky': False,
+    },
+}
+```
 
 ---
 
-## 🛠️ Global Utility Commands
+## Generate code from a model
 
-Available via the Command Palette (`Ctrl+Shift+P`) or Context Menu:
+Right-click inside a model class in a Python file and open **Odoo Model Tools**.
 
-- **Assista: Add to Manifest**: Automatically adds the current file to the correct section of your `__manifest__.py` (Data, Demo, or Assets).
-- **Assista: Add to __init__.py**: Right-click any Python file or folder and select **Add to __init__.py** to automatically generate the import statement in the parent `__init__.py`.
-- **Assista: Set Odoo Version**: Manually switch between Odoo 18 and 19 logic if auto-detection is not desired.
+### Create Views
 
----
+Builds a views file for the model.
 
-## 🏗️ Model-Driven Scaffolding
+1. Choose the views: Form, List, Kanban, Search, Calendar, Pivot, Window Action and Menu.
+2. Choose **Quick Create** (all fields) or **Advanced Builder** (pick the fields of each view; for `One2many` fields in the form, pick the columns of the embedded list).
 
-Assista takes productivity to the next level by allowing you to generate entire views, security rules, and reports directly from your Python model definitions.
+The file is written to `views/<model>_views.xml`, added to the manifest `data` list and opened. The output follows your version — `<list>`, a kanban `card` template, `<chatter/>` when the model inherits `mail.thread`, a calendar only when a date field is chosen, and a window action that does not open on the form. Available for models that define `_name`.
 
-### 1. Advanced View Builder
-Right-click inside any Odoo Model class and select **Create Views** to launch the advanced view generator.
-- **Multi-View Generation**: Select and generate Form, List, Kanban, Search, Pivot, and Calendar views in one go.
-- **Smart Field Selection**:
-    - **Quick Create**: Automatically selects all fields and builds standard views.
-    - **Advanced Builder**: Allows you to pick specific fields for each view type.
-- **Relational Intelligence**: For `One2many` fields in form views, it prompts you to select sub-fields for the embedded list view.
-- **Auto-Manifest**: Automatically adds the newly created XML file to your `__manifest__.py`.
+### Create Report
 
-### 2. Intelligent Report Generator
-Generate complex QWeb reports (PDF or HTML) without writing a single line of XML manually.
-- **Header Info**: Select specific fields to display as key information in the report's header.
-- **Dynamic Tables**: Select a relational field (like `order_line`) and pick its sub-fields to generate a beautifully formatted line table.
-- **Action & Template**: Automatically creates the `ir.actions.report` record and the associated localized QWeb template.
+Builds a QWeb report.
 
-### 3. Rapid Access Rights (Security)
-Instantly generate security entries for your models without leaving your Python code.
-- **Automatic CSV**: Appends a new access rule to `ir.model.access.csv` with standard permissions (read, write, create, unlink).
-- **Group Support**: Pre-configures the rule for the target group (defaults to `base.group_user`).
-- **Smart Formatting**: Automatically handles technical model name transformations (e.g., `sale.order` → `model_sale_order`) and manifest registration.
+1. Choose **PDF** or **HTML**.
+2. Choose the title field, the fields shown in the header, and optionally a `One2many` or `Many2many` field with its columns for a line table.
 
-## �🖱️ VSCode Context Menu Features
+Writes `report/<model>_pdf_report.xml` or `report/<model>_html_report.xml` with the `ir.actions.report` record (in the model's **Print** menu) and a template based on `web.external_layout`, and adds it to the manifest.
 
-By default, VSCode shows standard right-click options when you click on any folder in the Explorer. Assista IDE extends this menu by adding two powerful Odoo-specific options:
+### Create Access Right
 
-- **Create Odoo File**
-- **Create Odoo Module**
-- **Create OWL Component**
-- **POS Components**
+Adds an access rule for the model, for internal users (`base.group_user`), with full permissions:
 
+- Odoo 20: a row in `security/ir.access.csv` (`operation` = `crud`);
+- Odoo 18 and 19: a row in `security/ir.model.access.csv`.
 
+The file is created with its header if needed, added to the manifest and opened. Nothing is added when the model already has a rule.
+
+### Model Inheritance Graph
+
+Shows the model at the cursor, every module that extends it, and the fields and methods each one adds. Double-click a node to open its code. Needs an internet connection (the graph library is loaded from unpkg.com).
 
 ---
+
+## Explorer menu: files, modules, components
+
+Right-click a folder in the Explorer and open **Assista Odoo**.
 
 ### Create Odoo File
 
-Clicking on **Create Odoo File** reveals three submenus:
-
-
-
-#### 1. Odoo Model File
-When selected, a search bar appears at the top of VSCode with the following file type options:
-- `__init__.py` – Initializes the Python module
-- `__manifest__.py` – Defines the module metadata
-- `model.py` – Creates a new Python model file
-- `controller.py` – Creates a new controller file for web routes
-
-
-
-#### 2. Odoo View File
-This opens a list of pre-defined view templates. You can choose from:
-- Empty View
-- Basic View
-- Advanced View
-- Inherit View
-- Report View
-- Security Group View
-- Security Rule View
-- Sequence View
-- Settings View
-- Cron Job View
-
-
-
-#### 3. Odoo Security File
-Prompts you to enter a model name and automatically generates a security file with proper access rights configuration.
-
----
+| Entry | Options and result |
+|---|---|
+| **Create Model File** | `__init__`, `__manifest__`, `Odoo Model`, `Odoo Controller`. Model and controller files are created inside a module, not at its root. |
+| **Create View File** | Empty View, Basic View, Advanced View, Inherit View, Report View, Security Group View, Security Rule View, Sequence View, Settings View, Cron Job View. |
+| **Create Security File** | On the module's `security` folder: asks for a model and adds an access row to the access file of your version. |
+| **Add to `__init__.py`** | Adds `from . import <name>` for the file or folder to the parent `__init__.py`. |
 
 ### Create Odoo Module
 
-The **Create Odoo Module** option lets you quickly scaffold a new module from several templates:
+Asks for a technical name (lowercase letters and `_`) and creates the module in the selected folder.
 
+| Module | Contents |
+|---|---|
+| **Create Basic Module** | Manifest, a model, its views and the access file. |
+| **Create Advanced Module** | Basic Module plus sequence and cron data and demo data. |
+| **Create Basic OWL Module** | Basic Module plus an OWL client action (JavaScript and XML template). |
+| **Create Advanced OWL Module** | Advanced Module plus an OWL dashboard with charts, fed by a JSON controller. Odoo 20 uses Chart.js through Odoo's `web.chartjs_lib`; 18 and 19 use Google Charts. |
+| **Create Module with Systray Menu** | A systray item (OWL component and template). |
+| **Create Website Theme** | Layout, header and footer templates for `website`. |
 
+### Create Owl Components
 
-#### 1. Odoo Basic Module
-Generates a basic Odoo module with minimal structure.
+Asks for a component name, creates the files in the current module and adds them to the manifest `assets`.
 
-#### 2. Odoo Advanced Module
-Generates an enhanced module with extra config, views, and features.
+| Component | Created in | Bundle |
+|---|---|---|
+| **Common Component** | `static/src/components/<name>/` (`.js`, `.xml`, `.css`) | `web.assets_backend` |
+| **Field Widget Component** | `static/src/views/fields/<name>/` (`.js`, `.xml`, `.scss`) | `web.assets_backend` |
+| **Public Component** | `static/src/components/<name>/` (`.js`, `.xml`, `.scss`), registered in `public_components` | `web.assets_frontend` on 20, `web.assets_backend` on 18 and 19 |
+| **Owl Service** | `static/src/services/<name>/<name>.js` | `web.assets_backend` |
 
-#### 3. Odoo OWL Basic Module
-Creates a module with minimal OWL (Odoo Web Library) integration.
+The folder name is the component name in lowercase without spaces (`MyWidget` → `mywidget`). Odoo 20 components use OWL 3.
 
-#### 4. Odoo OWL Advanced Module
-Creates an OWL-powered module with component structure and JS support.
+### POS Components → Extend Screen
 
-#### 5. Odoo Systray Module
-Builds a module that adds custom functionality to the systray menu.
+Extends a Point of Sale screen with `patch()` and template inheritance, adds the files to `point_of_sale._assets_pos` and `point_of_sale` to `depends`.
 
-#### 6. Odoo Website Theme
-Scaffolds a module for custom website themes and QWeb templates.
+| Screen | Files under `static/src/app/screens/` |
+|---|---|
+| **Product Screen** | `product_screen/product_screen.{js,xml,scss}` |
+| **Partner List Screen** | `partner_list/partner_list.*` on 20; `partner_list_screen/partner_list_screen.*` on 18 and 19 |
+| **Payment Screen** | `payment_screen/payment_screen.*` |
+| **Receipt Screen** | On 20: `receipt/generate_printer_data.js` (patches the receipt data) and `views/pos_order_receipt.xml` (extends the `point_of_sale.pos_order_receipt_footer` template). On 18 and 19: `receipt_screen/receipt_screen.*` |
+| **Order Management Screen** | `ticket_screen/ticket_screen.*` |
 
----
+### Create Report
 
-#### OWL Advanced Module Output
+**Create PDF Report** or **Create HTML Report** — creates a report template file (the *Report View* template) in the selected folder.
 
-When you generate an **OWL Advanced Module**, Assista IDE scaffolds a fully functional OWL environment, complete with proper folder structure, JS components, assets, and templates.
+### Install Module and Module Dependency Graph
 
-
----
-
-### Create OWL Component
-
-The **Create OWL Component** option helps you quickly add various OWL elements to your module. When you select a component type, you will be prompted to enter a component name (e.g., `MyWidget`). The extension then automatically:
-1.  Creates the necessary directory structure.
-2.  Generates the JS, XML, and CSS/SCSS files.
-3.  **Automatically updates the `__manifest__.py`** to include the new files in the appropriate asset bundle.
-
-#### 1. Common Component
-Generates a standard OWL component along with its corresponding XML template and styling files.
-- **Generated Path**: `static/src/components/my_widget/`
-- **Files**: `my_widget.js`, `my_widget.xml`, `my_widget.css`
-- **Asset Bundle**: `web.assets_backend`
-
-#### 2. Field Widget Component
-Scaffolds a specialized OWL component designed for use as a field widget in Odoo views.
-- **Generated Path**: `static/src/views/fields/my_field/`
-- **Files**: `my_field.js`, `my_field.xml`, `my_field.scss`
-- **Asset Bundle**: `web.assets_backend`
-
-#### 3. Public Component
-Creates components tailored for Odoo's public-facing website and portal interfaces, featuring advanced glassmorphic design templates.
-- **Generated Path**: `static/src/components/my_public_widget/`
-- **Files**: `my_public_widget.js`, `my_public_widget.xml`, `my_public_widget.scss`
-- **Asset Bundle**: `web.assets_backend` (automatically registered in `public_components`)
-
-#### 4. Owl Service
-Generates a template for creating custom Odoo JavaScript services, allowing for shared logic across components.
-- **Generated Path**: `static/src/services/my_service/`
-- **Files**: `my_service.js`
-- **Asset Bundle**: `web.assets_backend`
+- **Install Module** — on a module folder: installs the module on your configured [Odoo server](#odoo-server-connection), or upgrades it when it is already installed (after confirmation).
+- **Module Dependency Graph** — on a module folder: shows the module's `depends` tree. Click a module to open its manifest, or download the graph as HTML. Needs an internet connection.
 
 ---
 
-### POS Components
+## Other commands
 
-The **POS Components** menu allows you to extend existing Point of Sale screens effortlessly. The extension handles directory creation, JS inheritance (using `patch`), and template extension (using `xpath`).
+From the Command Palette (**Ctrl+Shift+P**):
 
-#### 1. Product Screen
-Extends the main POS screen.
-- **Path**: `static/src/app/screens/product_screen/`
-- **Files**: `product_screen.js`, `product_screen.xml`, `product_screen.scss`
-- **Asset Bundle**: `point_of_sale.assets`
+| Command | What it does |
+|---|---|
+| **Assista: Set Odoo Version** | Auto, 20, 19 or 18 for this workspace (also from the status bar). |
+| **Assista: Update Odoo Server Settings** | Server URL, database, user and password (also from the status bar). |
+| **Assista: Remove Index Data (Clear Cache)** | Deletes the saved index. Reload the window to rebuild it. |
+| **Add File to Manifest** | Adds the current file to the manifest `data` list. |
+| **Add to \_\_init\_\_.py** | Also in the editor and Explorer context menus for Python files and folders. |
 
-#### 2. Partner List Screen
-Extends the customer management screen.
-- **Path**: `static/src/app/screens/partner_list_screen/`
-- **Files**: `partner_list_screen.js`, `partner_list_screen.xml`, `partner_list_screen.scss`
+---
 
-#### 3. Payment Screen
-Customizes the interface for processing payments.
-- **Path**: `static/src/app/screens/payment_screen/`
-- **Files**: `payment_screen.js`, `payment_screen.xml`, `payment_screen.scss`
+## Odoo server connection
 
-#### 4. Receipt Screen
-Modifies the finalized order receipt screen.
-- **Path**: `static/src/app/screens/receipt_screen/`
-- **Files**: `receipt_screen.js`, `receipt_screen.xml`, `receipt_screen.scss`
+Connect a running Odoo server to install modules from VS Code and to see which modules are installed in the Model Inheritance Graph.
 
-#### 5. Order Management Screen (Ticket Screen)
-Extends the interface for managing and refunding orders.
-- **Path**: `static/src/app/screens/ticket_screen/`
-- **Files**: `ticket_screen.js`, `ticket_screen.xml`, `ticket_screen.scss`
-- 
+1. Click **Odoo Server** in the status bar, or run **Assista: Update Odoo Server Settings**.
+2. Enter the URL, database, user and password.
 
-<br/><br/><br/>
+The status bar then shows the server host. The connection uses Odoo's XML-RPC API.
 
+> **Note:** these settings, including the password, are stored as plain text in VS Code's storage for this workspace. Use a development account.
+
+---
+
+## Code standards linter
+
+Optional warnings based on Odoo's coding guidelines. **Off by default** — turn on **Enable Code Standard Warnings** in the settings. Checks run on Python and XML files as you edit.
+
+**Python**
+
+- Model files in `models/` named after the model class; class names in CamelCase; `_name` in singular; transient model names containing `wizard`.
+- `Many2one` field names ending in `_id`; `One2many` and `Many2many` field names ending in `_ids`.
+- Method prefixes: `_compute_`, `_search_`, `_default_`, `_selection_`, `_onchange_`, `_check_`, `action_`.
+- `action_` methods calling `self.ensure_one()`.
+- Import order: standard library, then `odoo`, then `odoo.addons`.
+- Translations: no `%` formatting or concatenation inside `_()`, no nested `_()`.
+- Avoid `.clone()`, `cr.commit()`, `if len(x) > 0`, `for k in d.keys()` and `.get(k, None)`.
+
+**XML**
+
+- `id` before `model` on `<record>`; `name` first on `<field>`.
+- `noupdate` on `<odoo>` rather than on `<data>`.
+- `<menuitem>` instead of `<record model="ir.ui.menu">`.
+- ID and name conventions for views (`<model>_view_<type>`, `<model>.view.<type>`, `.inherit.` for inherited views), actions, menus, groups and rules.
+
+**File names** in `views/`, `security/`, `report/`, `wizard/`, `data/` and `controllers/`.
+
+---
+
+## Performance
+
+The extension is built to stay out of your way:
+
+- It activates only in Odoo workspaces and loads its commands the first time you use them.
+- Indexing runs in a separate process at the lowest OS priority. It starts a few seconds after the window opens and stops when idle. The editor, the debugger and your Odoo server always come first.
+- The index is saved between sessions; afterwards only changed files are read again. File changes are batched.
+- Indexing is silent — no status bar progress and no notifications.
+- Completions work from the index and per-keystroke work is kept small, so typing stays responsive in large files.
+
+Large workspaces can turn off parts of the index in the [settings](#settings).
+
+---
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `cybrosys-assista-odoo-helper.odooVersion` | `auto` | Odoo version: `auto`, `18`, `19` or `20`. |
+| `cybrosys-assista-odoo-helper.odooSourcePath` | *(empty)* | Path of the Odoo source (the folder with `odoo/release.py`), used for version detection and for Odoo's CSS classes. |
+| `cybrosys-assista-odoo-helper.enableCodeStandardWarnings` | `false` | Turns on the [code standards linter](#code-standards-linter). |
+| `cybrosys-assista-odoo-helper.indexing.enableCoreIndexing` | `true` | Index Python models, fields and methods. Needed for most completions and navigation. |
+| `cybrosys-assista-odoo-helper.indexing.enableRegistryIndexing` | `true` | Index JavaScript registries (widgets, client actions, public components). |
+| `cybrosys-assista-odoo-helper.indexing.enableCSSIndexing` | `true` | Index CSS/SCSS classes for `class="…"` completion. |
+| `cybrosys-assista-odoo-helper.indexing.enableAdvanceCSSIndexing` | `false` | Go to Definition for CSS classes. |
+
+---
+
+## Known limitations
+
+- Go to Definition works from XML and Python files, not from JavaScript.
+- Inside an `<xpath>` of an inherited view, field suggestions use the view record rather than the inherited view's model.
+- `depends` suggestions appear on lines that contain the word `depends`.
+- **Add File to Manifest** adds to the `data` list only, and needs that list to exist.
+- After **Remove Index Data**, reload the window to rebuild the index.
+- The two graphs load their drawing library from the internet.
+
+---
+
+## Contact and support
+
+- **Email:** [assista@cybrosys.com](mailto:assista@cybrosys.com) — questions, feedback and support.
+- **Contact form:** [assista.cybrosys.com/contact](https://assista.cybrosys.com/contact)
+- **Bugs and feature requests:** [GitHub issues](https://github.com/CybrosysAssista/odoo-helper-vs-code/issues)
+
+When reporting a problem, include your Odoo version, VS Code version and operating system.
+
+See the [Changelog](CHANGELOG.md) for what changed in each release.
+
+Licensed under the [Apache License 2.0](LICENSE).
 
 <p align="center">
-  Powered by <b><a href="https://www.cybrosys.com/">Cybrosys Technologies</a></b>
+  Made by <b><a href="https://www.cybrosys.com/">Cybrosys Technologies</a></b>
 </p>

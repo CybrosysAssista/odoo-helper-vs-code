@@ -111,8 +111,8 @@ export const getAdvancedViewTemplate = (pureName: string, modelDotName: string, 
                     <field name="field1"/>
                     <field name="field2"/>
                     <templates>
-                        <t t-name="kanban-box">
-                            <div class="oe_kanban_global_click">
+                        <t t-name="card">
+                            <div>
                                 <div class="oe_kanban_details">
                                     <strong class="o_kanban_record_title">
                                         <field name="name"/>

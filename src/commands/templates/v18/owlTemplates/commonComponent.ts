@@ -85,8 +85,7 @@ export class ${this.componentClassName} extends Component {
     }
 
     private getXmlContent(): string {
-        const xmlContent = `
-<?xml version="1.0" encoding="UTF-8"?>
+        const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="${this.templateName}" owl="1">
         <div class="o_${this.componentTechnicalName}_widget" t-ref="containerRef">

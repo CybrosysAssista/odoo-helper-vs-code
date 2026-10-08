@@ -46,7 +46,7 @@ patch(PaymentScreen.prototype, {
 
     <t t-name="point_of_sale.PaymentScreenButtons" t-inherit="point_of_sale.PaymentScreenButtons" t-inherit-mode="extension">
         
-        <xpath expr="//div[@class='payment-buttons d-flex flex-column gap-2']/div[1]" position="after">
+        <xpath expr="//div[hasclass('payment-buttons')]" position="inside">
             <div class="d-flex flex-column flex-sm-row gap-2 w-100">
                 <button class="btn btn-info custom-payment-action-btn btn-lg lh-lg w-100" t-on-click="onCustomPaymentAction">
                     <i class="fa fa-magic me-2"/> Custom Action

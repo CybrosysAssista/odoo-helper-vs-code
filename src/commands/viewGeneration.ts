@@ -322,8 +322,8 @@ export class ViewGenerator {
         const kanban = arch.ele('kanban');
         const templates = kanban.ele('templates');
 
-        // Odoo 19+: a "card" template, the whole card opens the record (no oe_kanban_global_click)
-        const modernCard = isAtLeast(this.odooVersion, '19');
+        // A "card" template (since 18; kanban-box is deprecated): the whole card opens the record
+        const modernCard = isAtLeast(this.odooVersion, '18');
         const t = templates.ele('t', { 't-name': modernCard ? 'card' : 'kanban-box' });
         const div = modernCard ? t : t.ele('div', { class: 'oe_kanban_global_click' });
 
